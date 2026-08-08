@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.88",
     "@hookform/resolvers": "^5.7.1",
