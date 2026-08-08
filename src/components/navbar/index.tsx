@@ -2,11 +2,18 @@
 
 import Link from 'next/link'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
-import { CircleHelp, Frame, LayoutGrid, Palette, Plus } from 'lucide-react'
+import { CircleHelp, Frame, Image as ImageIcon, Plus } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useProjects } from '@/hooks/use-projects'
 import { cn } from '@/lib/utils'
+
+/** Thick white ring with a solid centre — the app mark. */
+const Mark = () => (
+  <span className="grid size-8 shrink-0 place-items-center rounded-full ring-[3px] ring-white">
+    <span className="size-3.5 rounded-full bg-white" />
+  </span>
+)
 
 export const Navbar = ({ name, image }: { name?: string | null; image?: string | null }) => {
   const { createProject, creating, projects } = useProjects()
@@ -14,17 +21,14 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // The navbar has two modes. With a project selected it becomes the workspace
-  // chrome — breadcrumb, Canvas/Style Guide tabs, New Frame. Otherwise it is
-  // the projects header.
   const projectId = searchParams.get('project')
   const project = projects.find((p) => p._id === projectId)
   const inWorkspace = projectId !== null
 
   const base = `/dashboard/${params.session}`
   const tabs = [
-    { href: `${base}/canvas`, label: 'Canvas', Icon: LayoutGrid },
-    { href: `${base}/style-guide`, label: 'Style Guide', Icon: Palette },
+    { href: `${base}/canvas`, label: 'Canvas', Icon: Frame },
+    { href: `${base}/style-guide`, label: 'Style Guide', Icon: ImageIcon },
   ]
 
   const initials = (name ?? '')
@@ -36,24 +40,22 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
     .toUpperCase()
 
   return (
-    <header className="flex items-center justify-between gap-4 px-6 py-4">
-      <div className="flex min-w-0 items-center gap-4">
-        <Link
-          href={base}
-          aria-label="Projects"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full ring-2 ring-foreground/80"
-        >
-          <span className="h-3 w-3 rounded-full bg-foreground/80" />
+    // Relative so the tab group can sit dead centre regardless of how wide the
+    // breadcrumb or the right-hand cluster get.
+    <header className="relative flex items-center justify-between gap-4 px-6 py-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href={base} aria-label="Projects">
+          <Mark />
         </Link>
         {inWorkspace && (
-          <p className="text-muted-foreground truncate text-sm">
-            Project / <span className="text-foreground">{project?.name ?? 'Project'}</span>
-          </p>
+          <span className="truncate rounded-md border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">
+            Project / {project?.name ?? 'Project Name'}
+          </span>
         )}
       </div>
 
       {inWorkspace && (
-        <nav className="flex items-center gap-1 rounded-full p-1">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-white/[0.04] p-1 md:flex">
           {tabs.map(({ href, label, Icon }) => {
             const active = pathname.startsWith(href)
             return (
@@ -61,9 +63,9 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
                 key={href}
                 href={`${href}?project=${projectId}`}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors',
+                  'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs transition-colors',
                   active
-                    ? 'bg-muted text-foreground'
+                    ? 'bg-white/10 text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -76,23 +78,29 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
       )}
 
       <div className="flex items-center gap-3">
-        {/* TODO: credits — replaced by the real balance when billing lands. */}
-        <div className="text-muted-foreground text-right text-[11px] leading-tight">
-          <p>TODO:</p>
-          <p>credits</p>
-        </div>
+        {!inWorkspace && (
+          // TODO: credits — replaced by the real balance when billing lands.
+          <div className="text-muted-foreground text-[11px] leading-tight">
+            <p>TODO:</p>
+            <p>credits</p>
+          </div>
+        )}
 
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label="Help">
-          <CircleHelp className="size-5" />
-        </Button>
+        <button
+          type="button"
+          aria-label="Help"
+          className="grid size-9 place-items-center rounded-full bg-white/[0.06] text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
+        >
+          <CircleHelp className="size-[18px]" />
+        </button>
 
-        <Avatar className="size-8">
+        <Avatar className="size-9">
           {image ? <AvatarImage src={image} alt={name ?? 'You'} /> : null}
           <AvatarFallback className="text-xs">{initials || 'S2'}</AvatarFallback>
         </Avatar>
 
         {inWorkspace ? (
-          <Button className="rounded-full" size="sm">
+          <Button className="rounded-full px-4" size="sm">
             <Frame className="size-4" />
             New Frame
           </Button>
@@ -100,7 +108,7 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
           <Button
             onClick={() => void createProject()}
             disabled={creating}
-            className="rounded-full"
+            className="rounded-full px-4"
             size="sm"
           >
             <Plus className="size-4" />
