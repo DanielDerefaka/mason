@@ -67,3 +67,36 @@ export const deleteProject = mutation({
     await ctx.db.delete(args.projectId)
   },
 })
+
+export const getProject = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) return null
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) return null
+    return project
+  },
+})
+
+export const updateProjectSketches = mutation({
+  args: {
+    projectId: v.id('projects'),
+    sketchesData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    await ctx.db.patch(args.projectId, {
+      sketchesData: args.sketchesData,
+      lastModified: Date.now(),
+    })
+
+    return { success: true }
+  },
+})

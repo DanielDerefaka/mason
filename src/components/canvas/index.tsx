@@ -5,6 +5,7 @@ import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
 import { cn } from '@/lib/utils'
 import { Sparkles, Wand2 } from 'lucide-react'
+import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 
 const ShapeView = ({
@@ -199,6 +200,10 @@ export const Canvas = () => {
           ))}
           {draft && <ShapeView shape={draft} />}
         </div>
+      </div>
+
+      <div className="pointer-events-none absolute top-4 right-5 z-50">
+        <AutoSave />
       </div>
 
       <ToolBar />
