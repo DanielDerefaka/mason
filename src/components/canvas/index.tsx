@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
 import { cn } from '@/lib/utils'
+import { Sparkles, Wand2 } from 'lucide-react'
 import { ToolBar } from './toolbar'
 
 const ShapeView = ({
@@ -26,10 +28,21 @@ const ShapeView = ({
     return (
       <div className={base} style={style} onPointerDown={onSelect}>
         {shape.label && (
-          <span className="text-muted-foreground absolute -top-5 left-0 text-[11px]">
+          <span className="text-muted-foreground absolute -top-6 left-0 text-[11px]">
             {shape.label}
           </span>
         )}
+        {/* Frame actions sit above the top-right corner, outside the frame. */}
+        <div className="absolute -top-7 right-0 flex items-center gap-2">
+          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground">
+            <Sparkles className="size-3" />
+            Inspiration
+          </span>
+          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground">
+            <Wand2 className="size-3" />
+            Generate
+          </span>
+        </div>
         <div
           className={cn(
             'size-full rounded-sm bg-white/[0.02] ring-1',
@@ -40,7 +53,7 @@ const ShapeView = ({
     )
   }
 
-  if (shape.kind === 'pencil' || shape.kind === 'arrow') {
+  if (shape.kind === 'pencil' || shape.kind === 'arrow' || shape.kind === 'line') {
     const points = shape.points ?? []
     if (points.length < 2) return null
 
@@ -126,7 +139,20 @@ export const Canvas = () => {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    eraseShape,
+    deleteSelected,
   } = useInfiniteCanvas()
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const inField =
+        event.target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(event.target.tagName)
+      if (inField) return
+      if (event.key === 'Delete' || event.key === 'Backspace') deleteSelected()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [deleteSelected])
 
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
@@ -165,7 +191,10 @@ export const Canvas = () => {
               key={shape.id}
               shape={shape}
               selected={shape.id === selectedId}
-              onSelect={() => tool === 'select' && selectShape(shape.id)}
+              onSelect={() => {
+                if (tool === 'select') selectShape(shape.id)
+                if (tool === 'eraser') eraseShape(shape.id)
+              }}
             />
           ))}
           {draft && <ShapeView shape={draft} />}

@@ -1,8 +1,15 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 export type Point = { x: number; y: number }
-export type ShapeKind = 'rectangle' | 'ellipse' | 'frame' | 'text' | 'arrow' | 'pencil'
-export type Tool = 'select' | 'hand' | ShapeKind
+export type ShapeKind =
+  | 'rectangle'
+  | 'ellipse'
+  | 'frame'
+  | 'text'
+  | 'arrow'
+  | 'pencil'
+  | 'line'
+export type Tool = 'select' | 'hand' | 'eraser' | ShapeKind
 
 export type Shape = {
   id: string
@@ -30,11 +37,16 @@ const clampScale = (scale: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, sc
 
 export const shapesAdapter = createEntityAdapter<Shape>()
 
+type EntityState = ReturnType<typeof shapesAdapter.getInitialState>
+
 type ShapesState = {
-  entities: ReturnType<typeof shapesAdapter.getInitialState>
+  entities: EntityState
   viewport: Viewport
   tool: Tool
   selectedId: string | null
+  /** Snapshots of the entity table, newest last. Viewport is not part of history. */
+  past: EntityState[]
+  future: EntityState[]
 }
 
 const initialState: ShapesState = {
@@ -42,6 +54,20 @@ const initialState: ShapesState = {
   viewport: { scale: 1, translate: { x: 0, y: 0 } },
   tool: 'select',
   selectedId: null,
+  past: [],
+  future: [],
+}
+
+const HISTORY_LIMIT = 50
+
+const clone = (value: EntityState): EntityState =>
+  JSON.parse(JSON.stringify(value)) as EntityState
+
+/** Snapshot before a mutating action so undo has somewhere to go back to. */
+const commit = (state: ShapesState) => {
+  state.past.push(clone(state.entities))
+  if (state.past.length > HISTORY_LIMIT) state.past.shift()
+  state.future = []
 }
 
 export const shapesSlice = createSlice({
@@ -49,13 +75,16 @@ export const shapesSlice = createSlice({
   initialState,
   reducers: {
     addShape: (state, action: PayloadAction<Shape>) => {
+      commit(state)
       shapesAdapter.addOne(state.entities, action.payload)
       state.selectedId = action.payload.id
     },
     updateShape: (state, action: PayloadAction<{ id: string; changes: Partial<Shape> }>) => {
+      commit(state)
       shapesAdapter.updateOne(state.entities, action.payload)
     },
     removeShape: (state, action: PayloadAction<string>) => {
+      commit(state)
       shapesAdapter.removeOne(state.entities, action.payload)
       if (state.selectedId === action.payload) state.selectedId = null
     },
@@ -109,6 +138,25 @@ export const shapesSlice = createSlice({
       state.viewport.scale = next
     },
 
+    undo: (state) => {
+      const previous = state.past.pop()
+      if (!previous) return
+      state.future.push(clone(state.entities))
+      // Cloned rather than assigned directly: `previous` is a draft belonging
+      // to this same state tree, and moving a draft into another branch of the
+      // tree leaves Immer aliasing the old value instead of replacing it.
+      state.entities = clone(previous)
+      state.selectedId = null
+    },
+
+    redo: (state) => {
+      const next = state.future.pop()
+      if (!next) return
+      state.past.push(clone(state.entities))
+      state.entities = clone(next)
+      state.selectedId = null
+    },
+
     resetViewport: (state) => {
       state.viewport = { scale: 1, translate: { x: 0, y: 0 } }
     },
@@ -126,6 +174,8 @@ export const {
   wheelPan,
   panBy,
   zoomTo,
+  undo,
+  redo,
   resetViewport,
 } = shapesSlice.actions
 

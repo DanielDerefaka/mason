@@ -5,6 +5,9 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   addShape,
   panBy,
+  redo,
+  removeShape,
+  undo,
   selectShape,
   setTool,
   shapesAdapter,
@@ -27,10 +30,11 @@ const FILLS: Record<ShapeKind, string> = {
   text: 'transparent',
   arrow: '#FFFFFF',
   pencil: '#FFFFFF',
+  line: '#FFFFFF',
 }
 
 /** Kinds captured as a path rather than a bounding box. */
-const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow']
+const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow', 'line']
 
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
@@ -99,8 +103,8 @@ export const useInfiniteCanvas = () => {
       return
     }
 
-    if (tool === 'select') {
-      dispatch(selectShape(null))
+    if (tool === 'select' || tool === 'eraser') {
+      if (tool === 'select') dispatch(selectShape(null))
       return
     }
 
@@ -160,7 +164,7 @@ export const useInfiniteCanvas = () => {
           height: Math.max(...ys) - minY,
         }
       }
-      if (current.kind === 'arrow') {
+      if (current.kind === 'arrow' || current.kind === 'line') {
         return { ...current, ...box, points: [active.origin, world] }
       }
       return { ...current, ...box }
@@ -196,6 +200,11 @@ export const useInfiniteCanvas = () => {
     return { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 }
   }
 
+  const eraseShape = (id: string) => dispatch(removeShape(id))
+  const deleteSelected = () => {
+    if (selectedId) dispatch(removeShape(selectedId))
+  }
+
   const zoomIn = () => dispatch(zoomTo({ scale: viewport.scale * 1.2, center: viewportCenter() }))
   const zoomOut = () => dispatch(zoomTo({ scale: viewport.scale / 1.2, center: viewportCenter() }))
   const zoomToScale = (scale: number) => dispatch(zoomTo({ scale, center: viewportCenter() }))
@@ -216,5 +225,11 @@ export const useInfiniteCanvas = () => {
     zoomIn,
     zoomOut,
     zoomToScale,
+    eraseShape,
+    deleteSelected,
+    undo: () => dispatch(undo()),
+    redo: () => dispatch(redo()),
+    canUndo: state.past.length > 0,
+    canRedo: state.future.length > 0,
   }
 }
