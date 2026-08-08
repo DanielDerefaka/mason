@@ -1,27 +1,30 @@
 'use client'
 
-import { Grid2x2, Image as ImageIcon, Type } from 'lucide-react'
+import { Hash, Image as ImageIcon, Type } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { STYLE_GUIDE } from '@/components/style-guide/config'
 import { Colours } from '@/components/style-guide/colours'
 import { Typography } from '@/components/style-guide/typography'
-import { Moodboard } from '@/components/style-guide/moodboard'
+import { MoodBoard } from '@/components/style/mood-board'
+import { useStyles } from '@/hooks/use-styles'
 
 const TABS = [
-  { value: 'colours', label: 'Colours', Icon: Grid2x2 },
-  { value: 'typography', label: 'Typography', Icon: Type },
-  { value: 'moodboard', label: 'Moodboard', Icon: ImageIcon },
+  { value: 'colours', label: 'colours', Icon: Hash },
+  { value: 'typography', label: 'typography', Icon: Type },
+  { value: 'moodboard', label: 'moodboard', Icon: ImageIcon },
 ]
 
 export default function StyleGuidePage() {
+  const { guideImages } = useStyles()
+
   return (
-    <main className="container mx-auto flex-1 px-6 py-14">
+    <main className="container mx-auto flex-1 px-6 py-16">
       <Tabs defaultValue="colours" className="gap-10">
-        {/* Heading and tabs share a row, as in the design. */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Style Guide</h1>
-            <p className="text-muted-foreground mt-1.5 text-sm">{STYLE_GUIDE.description}</p>
+        <div className="flex flex-col items-center gap-6">
+          <div className="text-center">
+            <h1 className="text-4xl font-semibold tracking-tight">Style Guide</h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Manage your style guide for your project.
+            </p>
           </div>
 
           <TabsList className="rounded-full bg-white/[0.04] p-1">
@@ -45,7 +48,7 @@ export default function StyleGuidePage() {
           <Typography />
         </TabsContent>
         <TabsContent value="moodboard">
-          <Moodboard />
+          <MoodBoard guideImages={guideImages} />
         </TabsContent>
       </Tabs>
     </main>

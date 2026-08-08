@@ -9,9 +9,10 @@
     8,
     9,
     12,
-    13
+    13,
+    15
   ],
-  "current": 15,
+  "current": 17,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -41,7 +42,10 @@
     "Canvas is a query param, not a path segment: /dashboard/[session]/canvas?project=<id>.",
     "Same frame showed the Style Guide design for ch13: Colours / Typography / Moodboard tabs, a Themes dropdown (Monochrome), then swatch groups - Primary Colours, Secondary and Accent, UI Component, Utility and Form, Status and Feedback - each swatch a chip with a hex. His Figma text styles: h1 38/40, h2 30/36, h3 24/32, h4 20/28, paragraph 16/28, lead 20/28, large 18/28, small 14/20, muted 14/20, x-small 12/18, xxs 10/14, xxxs 8/14.",
     "Ch13 design read from frames at ~225:40: heading and subtitle on the left with Colours/Typography/Moodboard tabs on the right of the same row; Themes dropdown set to Monochrome; five swatch groups; and a Typography tab with a Font selector reading Aa Manrope followed by seven weight specimens of the line Whereas disregard and contempt for human rights have resulted.",
-    "getComputedStyle returns oklch tokens as lab() in Chrome, which is useless in a style guide. Painting each colour into a 1x1 canvas and reading the pixel back normalises any notation to hex."
+    "getComputedStyle returns oklch tokens as lab() in Chrome, which is useless in a style guide. Painting each colour into a 1x1 canvas and reading the pixel back normalises any notation to hex.",
+    "Frame at ~279:30 corrected ch13: his real style guide centres the heading, uses the subtitle \"Manage your style guide for your project.\" and lowercase centred tabs (colours / typography / moodboard) - not the left-aligned Figma layout with right-side tabs. Updated to match.",
+    "Moodboard scatter algorithm read verbatim from the same frame: seed = sum of char codes of image.id; random = ((seed * 9301 + 49297) % 233280) / 233280; imageWidth 192 (w-48), overlapAmount 30, spacing 162; zIndex index+1; marginLeft -80px, marginTop -96px; container relative w-full max-w-[700px] h-[300px] mx-auto inside hidden lg:flex absolute inset-0.",
+    "His component path is src/components/style/mood-board/index.tsx and the hook is use-styles.ts, per the editor tabs in the frame."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
