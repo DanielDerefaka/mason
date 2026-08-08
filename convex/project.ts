@@ -1,0 +1,69 @@
+import { mutation, query } from './_generated/server'
+import { v } from 'convex/values'
+import { getAuthUserId } from '@convex-dev/auth/server'
+
+export const getProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) return { projects: [], total: 0 }
+
+    const projects = await ctx.db
+      .query('projects')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .order('desc')
+      .collect()
+
+    return { projects, total: projects.length }
+  },
+})
+
+export const createProject = mutation({
+  args: {
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    // A per-user counter rather than a count of rows, so deleting a project
+    // never causes a later one to reuse its number.
+    const counter = await ctx.db
+      .query('project_counters')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+
+    const projectNumber = (counter?.count ?? 0) + 1
+    if (counter) await ctx.db.patch(counter._id, { count: projectNumber })
+    else await ctx.db.insert('project_counters', { userId, count: projectNumber })
+
+    const now = Date.now()
+    const projectId = await ctx.db.insert('projects', {
+      userId,
+      name: args.name ?? `Project ${projectNumber}`,
+      projectNumber,
+      createdAt: now,
+      lastModified: now,
+      isPublic: false,
+      description: args.description,
+      sketchesData: { frameCounter: 0, shapes: [] },
+    })
+
+    return projectId
+  },
+})
+
+export const deleteProject = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(args.projectId)
+    // Ownership is checked here rather than trusted from the client.
+    if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    await ctx.db.delete(args.projectId)
+  },
+})
