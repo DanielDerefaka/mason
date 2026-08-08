@@ -4,9 +4,10 @@
   "completed": [
     2,
     4,
-    5
+    5,
+    7
   ],
-  "current": 6,
+  "current": 8,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has."
@@ -21,10 +22,12 @@
     "Tailark blocks could not be installed via CLI (same shadcn version drift he hits at [26:19]). Rebuilt the equivalent layout from the installed shadcn primitives, matching the structure read off the frame.",
     "Convex Auth: latest @convex-dev/auth@0.0.94 requires @auth/core ^0.41.1 and conflicts with the tutorial pin. Pinned both to the tutorial versions (@convex-dev/auth@0.0.88, @auth/core@0.37.0), which also matches the setup CLI that was run.",
     "convex must be a project dependency before npx convex dev will run; installed convex@1.25.4 per the pin at [34:20].",
-    "Middleware lives at src/middleware.ts, not the repo root - he stresses this at [54:38]."
+    "Middleware lives at src/middleware.ts, not the repo root - he stresses this at [54:38].",
+    "Convex Auth was created with providers: [] - nothing could sign in until the Password provider was added, which the tutorial does later in ch5 around [67:01].",
+    "The Tailark sign-up block has no email field, but Password auth identifies users by email. Added an Email input; without it sign-up cannot work."
   ],
   "blocked": [
-    "Chapter 5 Google OAuth is not done: it needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok for a public callback URL, since Google will not call localhost. Email/password auth works without it.",
+    "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
     ".env contents [16:02] come from the creator downloadable kit and are not shown on screen.",
     "Chapters 24 and 26-30 will need Polar, Inngest and an Anthropic API key."
   ]
