@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { ConvexClientProvider } from "@/convex/provider";
+import { ReduxProvider } from "@/redux/provider";
 import { ThemeProvider } from "@/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -35,15 +36,17 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ConvexClientProvider>
-            <ThemeProvider
+            <ReduxProvider>
+              <ThemeProvider
               attribute="class"
               defaultTheme="dark"
               enableSystem={false}
               disableTransitionOnChange
             >
-              {children}
-              <Toaster />
-            </ThemeProvider>
+                {children}
+                <Toaster />
+              </ThemeProvider>
+            </ReduxProvider>
           </ConvexClientProvider>
         </body>
       </html>
