@@ -29,7 +29,10 @@
     "The Tailark sign-up block has no email field, but Password auth identifies users by email. Added an Email input; without it sign-up cannot work.",
     "combineReducers({}) throws \"Store does not have a valid reducer\" at runtime, so the empty slices record he sets up first is not viable on its own. Added the profile slice from [150:26] to make the store valid.",
     "The projects schema is never narrated - he pastes it. Read the exact columns off the Convex dashboard on screen at [180:03]: name, projectNumber, createdAt, lastModified, isPublic, sketchesData, description, generatedDesignData, inspirationImages, moodBoardImages, styleGuide, tags. His table list also shows credits_grants, credits_ledger, project_counters and subscriptions, which later chapters add.",
-    "Used a project_counters table for auto-naming rather than counting rows, so deleting a project cannot make a later one reuse its number."
+    "Used a project_counters table for auto-naming rather than counting rows, so deleting a project cannot make a later one reuse its number.",
+    "The dashboard UI is never narrated in detail. Read it off frames at ~205:30: circular logo, TODO:credits, help icon, avatar and a rounded-full New Project pill in the navbar; Your Projects heading with the subtitle Manage your design projects and continue where you left off; and a grid of warm gradient preview tiles with a soft white disc centred, name and relative time underneath. No card borders - the tile is the card.",
+    "Frame at ~205:30 also showed his page composition: const Page = async () => { const { projects, profile } = await ProjectsQuery() } with an Authentication Required fallback, then <ProjectsProvider initialProjects={projects}><div className=\"container mx-auto py-36 px-4\"><ProjectsList /></div></ProjectsProvider>. Rebuilt to match rather than the client-only grid I had first.",
+    "Frames also revealed the route structure still to come: src/app/(protected)/dashboard/[session]/(workspace)/ with layout.tsx, page.tsx and style-guide/page.tsx."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",

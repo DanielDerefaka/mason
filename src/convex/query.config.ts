@@ -29,3 +29,13 @@ export const subscriptionEntitlementQuery = async () => {
     entitled: true,
   }
 }
+
+/** Server-side fetch for the dashboard: the signed-in profile and their projects. */
+export const ProjectsQuery = async () => {
+  const token = await convexAuthNextjsToken()
+  const profile = await fetchQuery(api.user.getCurrentUser, {}, { token })
+  if (!profile) return { profile: null, projects: [] }
+
+  const data = await fetchQuery(api.project.getProjects, {}, { token })
+  return { profile, projects: data.projects }
+}
