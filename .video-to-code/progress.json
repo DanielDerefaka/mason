@@ -7,12 +7,15 @@
     5,
     7,
     8,
-    9
+    9,
+    12
   ],
-  "current": 10,
+  "current": 13,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
-    "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has."
+    "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
+    "10": "GitHub commits. Version-history walkthrough, zero code-writing lines.",
+    "11": "CodeRabbit AI code reviewer. Tool install demo, zero code-writing lines."
   },
   "notes": [
     "Honoured the tutorial's Next.js 15.4.6 pin [15:26] rather than upgrading; the rest of the course depends on it.",
@@ -32,7 +35,10 @@
     "Used a project_counters table for auto-naming rather than counting rows, so deleting a project cannot make a later one reuse its number.",
     "The dashboard UI is never narrated in detail. Read it off frames at ~205:30: circular logo, TODO:credits, help icon, avatar and a rounded-full New Project pill in the navbar; Your Projects heading with the subtitle Manage your design projects and continue where you left off; and a grid of warm gradient preview tiles with a soft white disc centred, name and relative time underneath. No card borders - the tile is the card.",
     "Frame at ~205:30 also showed his page composition: const Page = async () => { const { projects, profile } = await ProjectsQuery() } with an Authentication Required fallback, then <ProjectsProvider initialProjects={projects}><div className=\"container mx-auto py-36 px-4\"><ProjectsList /></div></ProjectsProvider>. Rebuilt to match rather than the client-only grid I had first.",
-    "Frames also revealed the route structure still to come: src/app/(protected)/dashboard/[session]/(workspace)/ with layout.tsx, page.tsx and style-guide/page.tsx."
+    "Frames also revealed the route structure still to come: src/app/(protected)/dashboard/[session]/(workspace)/ with layout.tsx, page.tsx and style-guide/page.tsx.",
+    "Frame at ~206:50 showed his Figma for the workspace: the navbar switches modes in project context - breadcrumb Project / Name, centred Canvas and Style Guide tabs, and the button becomes New Frame instead of New Project. That is why the navbar reads useSearchParams().get(project).",
+    "Canvas is a query param, not a path segment: /dashboard/[session]/canvas?project=<id>.",
+    "Same frame showed the Style Guide design for ch13: Colours / Typography / Moodboard tabs, a Themes dropdown (Monochrome), then swatch groups - Primary Colours, Secondary and Accent, UI Component, Utility and Form, Status and Feedback - each swatch a chip with a hex. His Figma text styles: h1 38/40, h2 30/36, h3 24/32, h4 20/28, paragraph 16/28, lead 20/28, large 18/28, small 14/20, muted 14/20, x-small 12/18, xxs 10/14, xxxs 8/14."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",

@@ -38,7 +38,7 @@ export const ProjectCard = ({
   session: string
 }) => {
   return (
-    <Link href={`/dashboard/${session}/${project._id}`} className="group block">
+    <Link href={`/dashboard/${session}/canvas?project=${project._id}`} className="group block">
       <div
         className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br ${swatchFor(project._id)} transition-transform duration-300 group-hover:scale-[1.01]`}
       >
