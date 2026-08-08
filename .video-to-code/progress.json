@@ -65,7 +65,10 @@
     "Undo appeared broken but was not: Next.js dev indicator (NEXTJS-PORTAL) sits in the bottom-left corner and swallowed the click. Confirmed with elementFromPoint, then offset the history cluster. Dev-only, but it makes the button unusable while developing.",
     "PARTIAL on 19 and 21: the properties/inspector panel (ch19) and the per-frame chat window (ch21) are not built. Both are tied to the AI chapters and need the Anthropic key.",
     "Ch23 autosave: debounced Convex mutation updateProjectSketches patching sketchesData and lastModified, a lastSaved serialisation compared before writing so no-op saves do not touch lastModified, and a save-status indicator. Shapes hydrate from the stored sketch on mount, with the baseline recorded so hydration is not mistaken for an edit.",
-    "PARTIAL on 23: he routes autosave through an Inngest event (project/autosave.requested at [470:46]) and the chapter continues into Polar setup at [494:41]. Both need accounts. The Convex persistence path is built and verified without them."
+    "PARTIAL on 23: he routes autosave through an Inngest event (project/autosave.requested at [470:46]) and the chapter continues into Polar setup at [494:41]. Both need accounts. The Convex persistence path is built and verified without them.",
+    "Anthropic wired up: @anthropic-ai/sdk 0.116.0, src/lib/anthropic.ts, POST /api/ai streams text. Model claude-opus-5.",
+    "Gateway agentrouter.org works but 401s 'unauthorized_client_error' unless User-Agent is claude-cli/*; ANTHROPIC_CLIENT_UA supplies it. Auth header can be x-api-key or Bearer, either is fine. Responses carry an extra top-level 'billing' key the SDK ignores.",
+    "Verified through the gateway: SSE streaming, adaptive thinking with display=summarized, output_config.effort, and both claude-opus-5 and claude-opus-4-8."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
