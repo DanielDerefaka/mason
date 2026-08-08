@@ -46,3 +46,6 @@ next-env.d.ts
 
 # convex
 .convex
+
+# the template is safe to share; real values live in .env.local
+!.env.example
