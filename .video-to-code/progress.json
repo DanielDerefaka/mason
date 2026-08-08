@@ -1,17 +1,16 @@
 {
   "url": "https://youtu.be/Ak1ACaqNtM0",
   "title": "AI SaaS - Sketch To Design | CodeRabbit, Convex, Inngest, Sevalla, Polar",
-  "completed": [2, 4],
-  "current": 5,
+  "completed": [
+    2,
+    4,
+    5
+  ],
+  "current": 6,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has."
   },
-  "blocked": [
-    "Chapter 5 (Convex) needs a Convex account: 'login or create an account' [34:48] and 'create a new project' [43:56]. npx convex dev cannot proceed without it. Everything from chapter 7 onward reads or writes through Convex.",
-    ".env contents [16:02] come from the creator's downloadable kit and are not shown on screen.",
-    "Chapters 24 and 26-30 will additionally need Polar, Inngest and an Anthropic API key."
-  ],
   "notes": [
     "Honoured the tutorial's Next.js 15.4.6 pin [15:26] rather than upgrading; the rest of the course depends on it.",
     "shadcn CLI changed since recording: init no longer takes --base-color and now prompts for theme presets. Wrote components.json directly with baseColor=neutral, the value asked for at [17:15].",
@@ -19,6 +18,14 @@
     "Skipping init meant src/lib/utils.ts, the clsx/tailwind-merge deps and the entire theme token block were never generated. All added by hand; the missing tokens are why the first render of the auth pages was unstyled.",
     "Added suppressHydrationWarning on <html>; next-themes requires it and the video does not mention it.",
     "Auth routes are a literal src/app/auth/ folder, not a route group. Confirmed from the file tree on screen at 27:35 - this is why /sign-up 404s for him at [27:32] and he corrects to /auth/sign-up.",
-    "Tailark blocks could not be installed via CLI (same shadcn version drift he hits at [26:19]). Rebuilt the equivalent layout from the installed shadcn primitives, matching the structure read off the frame."
+    "Tailark blocks could not be installed via CLI (same shadcn version drift he hits at [26:19]). Rebuilt the equivalent layout from the installed shadcn primitives, matching the structure read off the frame.",
+    "Convex Auth: latest @convex-dev/auth@0.0.94 requires @auth/core ^0.41.1 and conflicts with the tutorial pin. Pinned both to the tutorial versions (@convex-dev/auth@0.0.88, @auth/core@0.37.0), which also matches the setup CLI that was run.",
+    "convex must be a project dependency before npx convex dev will run; installed convex@1.25.4 per the pin at [34:20].",
+    "Middleware lives at src/middleware.ts, not the repo root - he stresses this at [54:38]."
+  ],
+  "blocked": [
+    "Chapter 5 Google OAuth is not done: it needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok for a public callback URL, since Google will not call localhost. Email/password auth works without it.",
+    ".env contents [16:02] come from the creator downloadable kit and are not shown on screen.",
+    "Chapters 24 and 26-30 will need Polar, Inngest and an Anthropic API key."
   ]
 }
