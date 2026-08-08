@@ -11,9 +11,10 @@
     12,
     13,
     15,
-    17
+    17,
+    18
   ],
-  "current": 18,
+  "current": 19,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -51,7 +52,10 @@
     "Frame at ~376:40 gave ch17 structure: the hook is useInfiniteCanvas in src/hooks/use-canvas.ts (842 lines in his build), ZoomBar lives at src/components/canvas/toolbar/zoom/index.tsx, shapes use an RTK entity adapter (entityState.entities) and the viewport is { scale, translate }.",
     "attachCanvasRef is a callback ref that adds the wheel listener with { passive: false } - React onWheel is always passive, so preventDefault would not work and the page would scroll instead of zooming.",
     "The same frame captured a runtime error worth avoiding: calling useInfiniteCanvas from the canvas layout without use client fails with \"Attempted to call useInfiniteCanvas() from the server\".",
-    "Canvas collapsed to height 0 on first run: h-full cannot resolve a percentage against a flex-1 parent with no definite height. Absolute inset-0 fixes it. Caught by measuring the element rect rather than trusting the screenshot."
+    "Canvas collapsed to height 0 on first run: h-full cannot resolve a percentage against a flex-1 parent with no definite height. Absolute inset-0 fixes it. Caught by measuring the element rect rather than trusting the screenshot.",
+    "Ch18 toolbar read from a magnified frame crop at ~388:20: one centred bar holding select, hand, frame, rectangle, circle, pencil and arrow, with the zoom group nested inside the same bar as its own pill - not a separate control at the right edge as first built.",
+    "An svg sized 0x0 paints nothing even with overflow visible, and the transformed layer has no intrinsic size to inherit. Path shapes anchor their svg to the shape bounding box and draw relative to it.",
+    "Freehand needs its box computed from every sampled point. Deriving it from the start and the current cursor only clips the stroke into fragments, which is what happened on the first pencil render."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",

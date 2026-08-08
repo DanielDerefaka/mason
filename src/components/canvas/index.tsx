@@ -3,7 +3,7 @@
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
 import { cn } from '@/lib/utils'
-import { ToolBarShapes } from './toolbar'
+import { ToolBar } from './toolbar'
 
 const ShapeView = ({
   shape,
@@ -37,6 +37,55 @@ const ShapeView = ({
           )}
         />
       </div>
+    )
+  }
+
+  if (shape.kind === 'pencil' || shape.kind === 'arrow') {
+    const points = shape.points ?? []
+    if (points.length < 2) return null
+
+    // Anchor the svg to the shape's bounding box and draw relative to it. An
+    // svg sized 0x0 paints nothing even with overflow visible, and the parent
+    // layer has no intrinsic size to inherit from.
+    const pad = 8
+    const d = points
+      .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x - shape.x + pad} ${pt.y - shape.y + pad}`)
+      .join(' ')
+
+    return (
+      <svg
+        className="pointer-events-none absolute"
+        style={{
+          left: shape.x - pad,
+          top: shape.y - pad,
+          width: shape.width + pad * 2,
+          height: shape.height + pad * 2,
+        }}
+      >
+        <defs>
+          <marker
+            id={`arrow-${shape.id}`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={shape.fill} />
+          </marker>
+        </defs>
+        <path
+          d={d}
+          fill="none"
+          stroke={shape.fill}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          markerEnd={shape.kind === 'arrow' ? `url(#arrow-${shape.id})` : undefined}
+          opacity={selected ? 1 : 0.9}
+        />
+      </svg>
     )
   }
 
@@ -123,7 +172,7 @@ export const Canvas = () => {
         </div>
       </div>
 
-      <ToolBarShapes />
+      <ToolBar />
     </>
   )
 }

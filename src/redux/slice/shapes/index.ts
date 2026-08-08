@@ -1,7 +1,7 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 export type Point = { x: number; y: number }
-export type ShapeKind = 'rectangle' | 'ellipse' | 'frame' | 'text'
+export type ShapeKind = 'rectangle' | 'ellipse' | 'frame' | 'text' | 'arrow' | 'pencil'
 export type Tool = 'select' | 'hand' | ShapeKind
 
 export type Shape = {
@@ -14,6 +14,8 @@ export type Shape = {
   height: number
   fill: string
   label?: string
+  /** World-space path for freehand and arrow shapes. */
+  points?: Point[]
 }
 
 export type Viewport = {

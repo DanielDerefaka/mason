@@ -25,7 +25,12 @@ const FILLS: Record<ShapeKind, string> = {
   ellipse: '#4ADE80',
   frame: 'transparent',
   text: 'transparent',
+  arrow: '#FFFFFF',
+  pencil: '#FFFFFF',
 }
+
+/** Kinds captured as a path rather than a bounding box. */
+const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow']
 
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
@@ -113,6 +118,7 @@ export const useInfiniteCanvas = () => {
       width: 0,
       height: 0,
       fill: FILLS[kind],
+      ...(PATH_KINDS.includes(kind) ? { points: [world] } : {}),
     })
   }
 
@@ -128,17 +134,37 @@ export const useInfiniteCanvas = () => {
     }
 
     const world = screenToWorld(point)
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            x: Math.min(active.origin.x, world.x),
-            y: Math.min(active.origin.y, world.y),
-            width: Math.abs(world.x - active.origin.x),
-            height: Math.abs(world.y - active.origin.y),
-          }
-        : current,
-    )
+    setDraft((current) => {
+      if (!current) return current
+      const box = {
+        x: Math.min(active.origin.x, world.x),
+        y: Math.min(active.origin.y, world.y),
+        width: Math.abs(world.x - active.origin.x),
+        height: Math.abs(world.y - active.origin.y),
+      }
+      if (current.kind === 'pencil') {
+        const points = [...(current.points ?? []), world]
+        // The box has to span every sampled point, not just the start and the
+        // cursor — the renderer sizes the svg from it, and anything outside
+        // gets clipped away.
+        const xs = points.map((pt) => pt.x)
+        const ys = points.map((pt) => pt.y)
+        const minX = Math.min(...xs)
+        const minY = Math.min(...ys)
+        return {
+          ...current,
+          points,
+          x: minX,
+          y: minY,
+          width: Math.max(...xs) - minX,
+          height: Math.max(...ys) - minY,
+        }
+      }
+      if (current.kind === 'arrow') {
+        return { ...current, ...box, points: [active.origin, world] }
+      }
+      return { ...current, ...box }
+    })
   }
 
   const onPointerUp = () => {
@@ -147,7 +173,11 @@ export const useInfiniteCanvas = () => {
 
     if (active?.kind === 'draw' && draft) {
       // Ignore stray clicks that produce a zero-area shape.
-      if (draft.width > 4 && draft.height > 4) {
+      const isPath = PATH_KINDS.includes(draft.kind)
+      const meaningful = isPath
+        ? (draft.points?.length ?? 0) > 1 && draft.width + draft.height > 4
+        : draft.width > 4 && draft.height > 4
+      if (meaningful) {
         dispatch(
           addShape({
             ...draft,
