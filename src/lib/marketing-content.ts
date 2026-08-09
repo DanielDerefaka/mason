@@ -3,10 +3,12 @@ import type { ApproachStep, FaqItem, ServiceCard } from '@/types/marketing-conte
 /* ------------------------------------------------------------------ *
  * Imagery
  *
- * There is none. Every visual on the marketing site is drawn in CSS by
+ * One image: the hero capture. Everything else is drawn in CSS by
  * `components/marketing/screen-mocks.tsx`. The layout this was ported from
  * carries a studio's own photography — which is theirs — and filling those
- * slots with the same four app screenshots read worse than drawing them.
+ * slots with app screenshots read worse than drawing them. The hero is the
+ * exception because it is the one place a real capture proves something a
+ * drawing cannot.
  * ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ *
@@ -25,6 +27,10 @@ export const HERO = {
   subhead: 'Finished screens from the roughest sketch you can draw.',
   primaryCta: { label: 'Start free', href: '/auth/sign-up' },
   secondaryCta: { label: 'See how it works', href: '/#approach' },
+  image: {
+    src: '/images/hero-canvas.webp',
+    alt: 'The Mason canvas: an inspiration board holding a reference image, an empty frame, and beside them a full landing page generated from them.',
+  },
 }
 
 /* ------------------------------------------------------------------ *
