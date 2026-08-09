@@ -58,12 +58,16 @@ export const DesignEditor = () => {
   const { session } = useParams<{ session: string }>()
 
   const stage = useRef<HTMLDivElement>(null)
+  const artboard = useRef<HTMLDivElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [asking, setAsking] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [box, setBox] = useState<Box | null>(null)
+  const [hoverBox, setHoverBox] = useState<Box | null>(null)
+  const [resizing, setResizing] = useState(false)
 
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
   const resolveStorageUrl = useMutation(api.moodboard.resolveStorageUrl)
@@ -330,6 +334,64 @@ export const DesignEditor = () => {
     node.addEventListener('blur', finish)
   }
 
+  /**
+   * Drags a handle to a new size.
+   *
+   * Only the right edge, bottom edge and their corner: the design is a flow
+   * layout, so dragging a left or top edge would have to compensate with a
+   * margin to keep the element still, and a handle that moves the thing you
+   * are trying to resize is worse than no handle.
+   */
+  const onResizeStart = (edge: 'e' | 's' | 'se') => (event: React.PointerEvent) => {
+    const root = stage.current
+    if (!root || !selectedId) return
+    const node = findNode(root, selectedId)
+    if (!node) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    ;(event.target as Element).setPointerCapture?.(event.pointerId)
+
+    snapshot()
+    setResizing(true)
+
+    const rect = node.getBoundingClientRect()
+    const start = {
+      x: event.clientX,
+      y: event.clientY,
+      width: rect.width / zoom,
+      height: rect.height / zoom,
+    }
+
+    const onMove = (move: PointerEvent) => {
+      if (edge !== 's') {
+        const width = Math.max(8, start.width + (move.clientX - start.x) / zoom)
+        node.style.width = `${Math.round(width)}px`
+        // A flex item defaults to min-width:auto, which refuses to go below
+        // its content — so dragging a handle inwards did nothing at all until
+        // the floor was removed.
+        node.style.minWidth = '0'
+      }
+      if (edge !== 'e') {
+        const height = Math.max(8, start.height + (move.clientY - start.y) / zoom)
+        node.style.height = `${Math.round(height)}px`
+        node.style.minHeight = '0'
+      }
+      setBox(measure(selectedId))
+    }
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      setResizing(false)
+      commit()
+      setBox(measure(selectedId))
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   /** Right-click selects what is under the pointer, then offers its actions. */
   const onStageContextMenu = (event: React.MouseEvent) => {
     const root = stage.current
@@ -381,6 +443,67 @@ export const DesignEditor = () => {
     setSelectedId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
   }
 
+  /**
+   * Where a node sits inside the artboard, in unscaled CSS pixels.
+   *
+   * The artboard is transformed, so screen rectangles have to be divided by
+   * the zoom to land in the same coordinate space the overlay is drawn in.
+   */
+  const measure = useCallback(
+    (id: string | null): Box | null => {
+      const root = stage.current
+      const wrap = artboard.current
+      if (!root || !wrap || !id) return null
+      const node = findNode(root, id)
+      if (!node) return null
+
+      const n = node.getBoundingClientRect()
+      const w = wrap.getBoundingClientRect()
+      return {
+        left: (n.left - w.left) / zoom,
+        top: (n.top - w.top) / zoom,
+        width: n.width / zoom,
+        height: n.height / zoom,
+      }
+    },
+    [zoom],
+  )
+
+  useEffect(() => {
+    setBox(measure(selectedId))
+
+    const root = stage.current
+    if (!root || !selectedId) return
+    const node = findNode(root, selectedId)
+    if (!node) return
+
+    /**
+     * The box has to follow the node, not just be taken once. A generated
+     * design is still settling when it is first selected — images decode,
+     * webfonts swap — and a box measured before that sits in the wrong place
+     * with the wrong size for as long as the selection lasts.
+     */
+    const remeasure = () => setBox(measure(selectedId))
+    const observer = new ResizeObserver(remeasure)
+    observer.observe(node)
+    observer.observe(root)
+
+    // Images finish loading after layout has already been reported stable.
+    const images = Array.from(root.querySelectorAll('img'))
+    for (const image of images) image.addEventListener('load', remeasure)
+    window.addEventListener('resize', remeasure)
+
+    return () => {
+      observer.disconnect()
+      for (const image of images) image.removeEventListener('load', remeasure)
+      window.removeEventListener('resize', remeasure)
+    }
+  }, [selectedId, measure, historyTick])
+
+  useEffect(() => {
+    setHoverBox(hoverId && hoverId !== selectedId ? measure(hoverId) : null)
+  }, [hoverId, selectedId, measure])
+
   /** Same walk as the click, so what lights up is exactly what will select. */
   const onStageHover = (event: React.MouseEvent) => {
     const root = stage.current
@@ -392,30 +515,9 @@ export const DesignEditor = () => {
     setHoverId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
   }
 
-  // Outline the selection without touching its own styles — a ring drawn with
-  // outline cannot shift layout the way a border would.
-  useEffect(() => {
-    const root = stage.current
-    if (!root) return
-    for (const element of Array.from(root.querySelectorAll<HTMLElement>(`[${NODE_ATTR}]`))) {
-      element.style.outline = ''
-      element.style.outlineOffset = ''
-    }
-    if (hoverId && hoverId !== selectedId) {
-      const node = findNode(root, hoverId)
-      if (node) {
-        node.style.outline = '1px solid rgba(56,189,248,0.5)'
-        node.style.outlineOffset = '1px'
-      }
-    }
-    if (selectedId) {
-      const node = findNode(root, selectedId)
-      if (node) {
-        node.style.outline = '2px solid #38BDF8'
-        node.style.outlineOffset = '1px'
-      }
-    }
-  }, [selectedId, hoverId, historyTick])
+  // The selection ring used to be an inline `outline` on the node, which made
+  // it part of innerHTML and shipped it to storage. It is an overlay now, so
+  // there is nothing on the node to leak.
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -572,7 +674,8 @@ export const DesignEditor = () => {
           onClick={() => setSelectedId(null)}
         >
           <div
-            className="mx-auto origin-top shadow-2xl"
+            ref={artboard}
+            className="relative mx-auto origin-top shadow-2xl"
             style={{ width: design.width, transform: `scale(${zoom})` }}
           >
             <div
@@ -585,6 +688,40 @@ export const DesignEditor = () => {
               style={cssVars}
               className="[&_*]:cursor-pointer"
             />
+
+            {hoverBox && !resizing && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute border border-sky-400/50"
+                style={{ ...hoverBox, borderWidth: 1 / zoom }}
+              />
+            )}
+
+            {box && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute border border-sky-400"
+                style={{ ...box, borderWidth: 1.5 / zoom }}
+              >
+                {/* Handles counter-scale so they stay the same size on screen
+                    however far in or out the artboard is zoomed. */}
+                <Handle edge="e" zoom={zoom} onPointerDown={onResizeStart('e')} />
+                <Handle edge="s" zoom={zoom} onPointerDown={onResizeStart('s')} />
+                <Handle edge="se" zoom={zoom} onPointerDown={onResizeStart('se')} />
+
+                <span
+                  className="absolute rounded bg-sky-500 px-1.5 py-0.5 font-mono text-white"
+                  style={{
+                    bottom: -22 / zoom,
+                    left: 0,
+                    fontSize: 10 / zoom,
+                    transform: `scale(${1})`,
+                  }}
+                >
+                  {Math.round(box.width)} × {Math.round(box.height)}
+                </span>
+              </div>
+            )}
           </div>
         </main>
 
@@ -692,6 +829,46 @@ export const DesignEditor = () => {
         </>
       )}
     </div>
+  )
+}
+
+type Box = { left: number; top: number; width: number; height: number }
+
+const HANDLE_STYLES: Record<'e' | 's' | 'se', React.CSSProperties> = {
+  e: { right: 0, top: '50%', cursor: 'ew-resize' },
+  s: { bottom: 0, left: '50%', cursor: 'ns-resize' },
+  se: { right: 0, bottom: 0, cursor: 'nwse-resize' },
+}
+
+const Handle = ({
+  edge,
+  zoom,
+  onPointerDown,
+}: {
+  edge: 'e' | 's' | 'se'
+  zoom: number
+  onPointerDown: (event: React.PointerEvent) => void
+}) => {
+  const size = 9 / zoom
+  const style = HANDLE_STYLES[edge]
+  return (
+    <span
+      onPointerDown={onPointerDown}
+      // The click that follows a drag still bubbles to the artboard, whose
+      // job is to clear the selection — so a resize ended by deselecting the
+      // thing that had just been resized.
+      onClick={(event) => event.stopPropagation()}
+      className="pointer-events-auto absolute rounded-[2px] border border-white bg-sky-500"
+      style={{
+        ...style,
+        width: size,
+        height: size,
+        marginRight: -size / 2,
+        marginBottom: -size / 2,
+        ...(edge === 'e' ? { marginTop: -size / 2 } : {}),
+        ...(edge === 's' ? { marginLeft: -size / 2 } : {}),
+      }}
+    />
   )
 }
 
