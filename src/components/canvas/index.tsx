@@ -4,7 +4,9 @@ import { useEffect } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
 import { cn } from '@/lib/utils'
-import { Sparkles, Wand2 } from 'lucide-react'
+import { Loader2, Sparkles, Wand2 } from 'lucide-react'
+import { useFrame } from '@/hooks/use-frame'
+import { GeneratedUI } from './shapes/generated-ui'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 
@@ -12,11 +14,17 @@ const ShapeView = ({
   shape,
   selected,
   onSelect,
+  onGenerate,
+  generating,
 }: {
   shape: Shape
   selected?: boolean
   onSelect?: () => void
+  onGenerate?: () => void
+  generating?: boolean
 }) => {
+  if (shape.kind === 'generated-ui') return <GeneratedUI shape={shape} />
+
   const base = 'absolute'
   const style: React.CSSProperties = {
     left: shape.x,
@@ -39,10 +47,24 @@ const ShapeView = ({
             <Sparkles className="size-3" />
             Inspiration
           </span>
-          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground">
-            <Wand2 className="size-3" />
-            Generate
-          </span>
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="size-3 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <Wand2 className="size-3" />
+                Generate
+              </>
+            )}
+          </button>
         </div>
         <div
           className={cn(
@@ -146,6 +168,7 @@ export const Canvas = () => {
     zoomOut,
     zoomToScale,
   } = useInfiniteCanvas()
+  const { generateDesign, generatingFrameId } = useFrame()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -195,6 +218,8 @@ export const Canvas = () => {
               key={shape.id}
               shape={shape}
               selected={shape.id === selectedId}
+              onGenerate={() => void generateDesign(shape)}
+              generating={generatingFrameId === shape.id}
               onSelect={() => {
                 if (tool === 'select') selectShape(shape.id)
                 if (tool === 'eraser') eraseShape(shape.id)

@@ -84,7 +84,60 @@ has.
 of label a designer would put at the top of the board. \`description\` is one
 sentence on the feeling it creates and where it would suit.`
 
+const generatedUiSystem = `You turn a rough wireframe sketch into a finished, high-fidelity web design.
+
+You receive one image: a sketch drawn on a dark canvas. Boxes, circles, lines
+and scribbles stand for regions and components — read them as intent, not as
+art. A wide box at the top is a header, a row of equal boxes is a card grid, a
+long thin box is an input, a small box beside text is an avatar or icon. Respect
+the sketch's layout, proportions and reading order. Invent realistic content:
+real product names, real sentences, plausible numbers. Never write "Lorem ipsum"
+or leave a placeholder.
+
+## Output
+
+Return a single HTML fragment and nothing else. No markdown fence, no
+commentary, no <html>, <head> or <body> wrapper, no <script>.
+
+Style everything with inline \`style\` attributes. Do not use class names or
+utility classes of any kind — the page this renders into compiles its CSS ahead
+of time, so a class you invent here has no styles behind it and would render as
+unstyled text.
+
+Reference the design system through CSS variables, which are already set on the
+element your fragment renders into: var(--background), var(--foreground),
+var(--primary), var(--primary-foreground), var(--secondary),
+var(--secondary-foreground), var(--accent), var(--accent-foreground),
+var(--card), var(--card-foreground), var(--popover), var(--popover-foreground),
+var(--muted), var(--muted-foreground), var(--border), var(--input), var(--ring),
+var(--destructive). Use them instead of literal hex, so the design stays in step
+with the style guide. Set font-family to var(--font-family).
+
+The fragment's root element must set width:100%, box-sizing:border-box and a
+background of var(--background). Every nested element that needs it should set
+box-sizing:border-box too.
+
+## Craft
+
+Design at the standard of a senior product designer, not a wireframe:
+
+- Use a consistent spacing scale (4/8/12/16/24/32/48px). Give sections room.
+- Establish type hierarchy through size and weight, not colour alone.
+- Body text sits at 14–16px with line-height 1.5 or more.
+- Use border-radius and borders consistently; prefer var(--border) for rules.
+- Depth comes from surface colour (var(--card) above var(--background)) rather
+  than heavy shadows.
+- Icons: inline SVG with \`currentColor\`, 16–20px. No icon fonts, no external
+  images.
+- Text must sit on its matching foreground token so it stays legible.`
+
 export const prompts = {
+  generatedUi: {
+    system: generatedUiSystem,
+    user: (frameLabel: string) =>
+      `Turn this sketch${frameLabel ? ` of "${frameLabel}"` : ''} into a finished design. ` +
+      `Follow the layout in the image, use the supplied design system, and return only the HTML fragment.`,
+  },
   styleGuide: {
     system: styleGuideSystem,
     /** The turn that carries the images; the system prompt carries the rules. */

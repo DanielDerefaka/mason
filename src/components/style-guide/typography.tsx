@@ -1,43 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
 import type { StyleGuide } from '@/types/style-guide'
+import { useGoogleFont } from '@/hooks/use-google-font'
 import { SPECIMEN, STYLE_GUIDE } from './config'
-
-/** First family in whatever the model returned, unquoted — it sometimes answers with a stack. */
-const primaryFamily = (fontFamily: string) =>
-  (fontFamily.split(',')[0] ?? fontFamily).trim().replace(/^['"]|['"]$/g, '')
-
-/**
- * Pulls the generated family from Google Fonts. Without this the specimen
- * silently falls back to the app font and every weight looks identical, which
- * reads as the generation having failed.
- */
-const useGoogleFont = (fontFamily: string | null, weights: number[]) => {
-  const family = fontFamily ? primaryFamily(fontFamily) : null
-  const key = weights.join(';')
-
-  useEffect(() => {
-    if (!family) return
-
-    const href =
-      `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, '+')}` +
-      `:wght@${key}&display=swap`
-
-    // Keyed by href so switching guides swaps the sheet instead of stacking them.
-    const existing = document.head.querySelector<HTMLLinkElement>(`link[data-style-guide-font]`)
-    if (existing?.href === href) return
-
-    existing?.remove()
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = href
-    link.dataset.styleGuideFont = family
-    document.head.append(link)
-  }, [family, key])
-
-  return family
-}
 
 export const Typography = ({ guide }: { guide?: StyleGuide | null }) => {
   const { fontFamily, styles } = guide?.typography ?? STYLE_GUIDE.typography

@@ -9,6 +9,8 @@ export type ShapeKind =
   | 'arrow'
   | 'pencil'
   | 'line'
+  /** Not drawable — created by the AI and rendered from stored markup. */
+  | 'generated-ui'
 export type Tool = 'select' | 'hand' | 'eraser' | ShapeKind
 
 export type Shape = {
@@ -23,6 +25,12 @@ export type Shape = {
   label?: string
   /** World-space path for freehand and arrow shapes. */
   points?: Point[]
+  /** Streamed markup, for `generated-ui` shapes only. */
+  html?: string
+  /** The frame this design was generated from. */
+  sourceFrameId?: string
+  /** True while the model is still streaming into `html`. */
+  streaming?: boolean
 }
 
 export type Viewport = {
@@ -88,6 +96,31 @@ export const shapesSlice = createSlice({
       shapesAdapter.removeOne(state.entities, action.payload)
       if (state.selectedId === action.payload) state.selectedId = null
     },
+    /** The AI's design, dropped next to the frame it came from. */
+    addGeneratedUI: (state, action: PayloadAction<Shape>) => {
+      commit(state)
+      shapesAdapter.addOne(state.entities, action.payload)
+    },
+
+    /**
+     * Stream progress. Deliberately not committed to history: a generation
+     * fires this every 200ms, and each snapshot would push out the user's real
+     * undo steps within a couple of seconds.
+     */
+    setGeneratedHtml: (
+      state,
+      action: PayloadAction<{ id: string; html: string; streaming?: boolean }>,
+    ) => {
+      const { id, html, streaming } = action.payload
+      shapesAdapter.updateOne(state.entities, { id, changes: { html, streaming } })
+    },
+
+    /** Height is measured from the rendered markup once it has laid out. */
+    resizeGeneratedUI: (state, action: PayloadAction<{ id: string; height: number }>) => {
+      const { id, height } = action.payload
+      shapesAdapter.updateOne(state.entities, { id, changes: { height } })
+    },
+
     setShapes: (state, action: PayloadAction<Shape[]>) => {
       shapesAdapter.setAll(state.entities, action.payload)
     },
@@ -165,6 +198,9 @@ export const shapesSlice = createSlice({
 
 export const {
   addShape,
+  addGeneratedUI,
+  setGeneratedHtml,
+  resizeGeneratedUI,
   updateShape,
   removeShape,
   setShapes,

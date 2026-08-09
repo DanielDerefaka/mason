@@ -2,6 +2,7 @@ import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { StyleGuideSchema } from '@/types/style-guide'
 
 /** URL-safe handle used as the /dashboard/[session] segment. */
 export const toSessionSlug = (value: string) =>
@@ -44,6 +45,14 @@ export const CreditsBalanceQuery = async () => {
 
   const balance = await fetchQuery(api.credits.getBalance, {}, { token })
   return { ok: true, balance: balance ?? 0, profile }
+}
+
+/** The project's generated style guide, or null if it has not been generated yet. */
+export const StyleGuideQuery = async (projectId: Id<'projects'>) => {
+  const token = await convexAuthNextjsToken()
+  const project = await fetchQuery(api.project.getProject, { projectId }, { token })
+  const parsed = StyleGuideSchema.safeParse(project?.styleGuide)
+  return parsed.success ? parsed.data : null
 }
 
 /** The mood board images a generation run should look at. */

@@ -31,6 +31,7 @@ const FILLS: Record<ShapeKind, string> = {
   arrow: '#FFFFFF',
   pencil: '#FFFFFF',
   line: '#FFFFFF',
+  'generated-ui': 'transparent',
 }
 
 /** Kinds captured as a path rather than a bounding box. */
