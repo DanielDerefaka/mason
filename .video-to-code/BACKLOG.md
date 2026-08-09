@@ -13,6 +13,17 @@ text tool only started working on 2026-08-09. Worth testing an annotated sketch
 against an unlabelled one on the same reference before touching anything else;
 this is likely a bigger lever than any prompt or model change.
 
+**A second extraction pass over the references.** The prompt now makes the
+model read a reference against a checklist — what carries the page, its
+signature device, scale, light, density, component anatomy — before writing.
+That is one model call doing two jobs. The clone-website skill's rule is that
+extraction and construction are separate, and that "if a builder has to guess
+anything you have failed at extraction". The stronger version here is a pass
+that runs once when references are uploaded, returns a structured brief
+(layout anatomy, hero treatment, imagery role, signature devices, type scale,
+light behaviour), stores it on the project, and passes it to every generation
+after. Costs one call per board rather than one per design.
+
 **Topical imagery keywords.** Photographic slots pull from
 `loremflickr.com/{w}/{h}/{keywords}?lock={n}`. The model picks the keywords, and
 picks them badly when the product is abstract — a project-workspace landing page

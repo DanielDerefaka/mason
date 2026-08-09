@@ -17,14 +17,16 @@
     20,
     21,
     23,
+    24,
     26,
     27,
     28,
     29,
     30,
-    31
+    31,
+    32
   ],
-  "current": 32,
+  "current": 33,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -122,7 +124,9 @@
     "Remaining after 31: ch32 pre-deploy notes, ch33 Sevalla deploy, ch34 what's next. Plus everything in BACKLOG.md (ch24 Polar, annotated sketches, imagery keywords, reference fidelity, Google OAuth, Inngest, export design).",
     "Landing page + blog built from scratch \u2014 the video has no landing page chapter at all (setup -> auth -> dashboard). Hero follows the creator's Mochi Figma reference: centred, top-down beams, social-proof pill, inline email capture, wide product frame.",
     "/blog is a BYPASS route, not a public route: public routes redirect signed-in users to /dashboard, which would lock them out of reading.",
-    "Landing hero email carries to /auth/sign-up?email=... and prefills the form. Social proof deliberately says 'Now in early access' \u2014 no invented user count."
+    "Landing hero email carries to /auth/sign-up?email=... and prefills the form. Social proof deliberately says 'Now in early access' \u2014 no invented user count.",
+    "ch24: Polar wired as merchant of record. Entitlement gate is real but opt-in via BILLING_ENFORCED. POLAR_WEBHOOK_SECRET must be set in both Next and Convex.",
+    "ch32: launch strategy, no build work beyond a clean production build \u2014 verified passing."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",

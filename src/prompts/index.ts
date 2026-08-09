@@ -149,10 +149,45 @@ or leave a placeholder.
 ## Reference images
 
 Any images after the first are references from the user's inspiration board.
-Borrow their look — palette weighting, type personality, density, shape
-language, the feel of their components — but never their content or layout.
-The sketch decides what goes where; the references decide how it feels. Where a
-reference and the design system disagree on colour, the design system wins.
+
+**Read before you write.** Work through this list against the reference and
+answer each point to yourself before a single tag. A design that matches a
+reference's palette but not its behaviour looks nothing like it, and that is
+the usual failure: the colours are right and the result is unrecognisable.
+
+1. **What carries the page?** One dominant photograph, a wall of type, a
+   product screenshot, a diagram, or flat colour? Whatever it is, the design
+   needs the same thing doing the same job at the same scale. If a portrait
+   fills half the viewport in the reference, a small picture in a rounded box
+   is not the same design — it is a different one wearing the same colours.
+2. **Signature device.** Most strong references have one or two moves that make
+   them recognisable: a colossal wordmark bled off the edges and overlapped by
+   the subject, a split navigation either side of a centred logo, a number set
+   ten times larger than its label, a horizontal rule that doubles as a
+   progress bar. Name them, then build them. These matter more than any hex
+   value — they are what someone recognises across the room.
+3. **Scale.** Measure the headline against the viewport, not against a default.
+   Reference display type is routinely 8–14% of the viewport height and
+   frequently larger. Timid type is the most common way a design that is
+   otherwise correct still reads as generated.
+4. **Where the light comes from.** A flat wash and a radial glow bleeding out
+   of one corner are different designs. Look for the source, its colour, its
+   falloff, and whether the subject is lit by it.
+5. **Density and alignment.** Long-form or clipped micro-copy? Ragged or
+   justified? Wide margins or edge-to-edge? Reference micro-copy is often set
+   narrow and justified, which is a deliberate texture rather than an accident.
+6. **Component anatomy.** A pill with a circular icon badge sunk into its end
+   is not a button with an icon beside the label. Copy the anatomy, not the
+   category.
+
+Borrow all of that. Never borrow their content: not the brand name, not the
+headline, not the statistics, not the section copy. The sketch decides what
+goes where and the project decides what it says; the reference decides how it
+feels and how it is built.
+
+Where a reference and the design system disagree on colour, the design system
+wins — but the reference still decides how those colours are *used*: which one
+dominates, which is the accent, and how much of the page is dark.
 
 ## Imagery
 
@@ -163,7 +198,20 @@ generated design. Read them, then leave them out of the markup.
 
 A layout carried entirely by flat blocks also reads as a wireframe. Where the
 design wants a photograph — a hero, a feature card, an avatar, a background —
-use a stock photo:
+use a stock photo.
+
+**Give photography the same job it has in the reference.** If the reference is
+carried by one large image, the design gets one large image — full-bleed or
+near it, sized so it dominates. A dominant photograph reduced to a small inset
+card is the single biggest reason a design misses its reference.
+
+Keywords decide whether that photograph helps or embarrasses. Choose them from
+the *subject and mood* of the design, not from the product's name — a page
+about software with the keyword "software" returns a stock photo of a laptop on
+a desk, and a page about a studio with the keyword "studio" returns a coffee
+cup. Prefer concrete nouns for subject matter and texture words for
+backgrounds: \`portrait,dramatic,lowkey\`, \`architecture,concrete,minimal\`,
+\`gradient,abstract,dark\`. Never use a brand name as a keyword.
 
     https://loremflickr.com/{width}/{height}/{keywords}?lock={n}
 
