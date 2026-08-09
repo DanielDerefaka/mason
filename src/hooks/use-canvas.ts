@@ -9,6 +9,7 @@ import {
   removeShape,
   undo,
   selectShape,
+  setEditingId,
   setTool,
   shapesAdapter,
   snapshotHistory,
@@ -44,6 +45,10 @@ export type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
 
 /** Stops a shape being dragged inside out. */
 const MIN_SIZE = 8
+
+/** A text box placed with a click rather than dragged out. */
+const TEXT_DEFAULT_WIDTH = 220
+const TEXT_DEFAULT_HEIGHT = 32
 
 /**
  * Moves a shape, carrying its path with it — a path's points are world
@@ -90,7 +95,7 @@ const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shap
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
   const state = useAppSelector((s: RootState) => s.shapes)
-  const { viewport, tool, selectedId } = state
+  const { viewport, tool, selectedId, editingId } = state
   const shapes = selectors.selectAll(state.entities)
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -102,6 +107,17 @@ export const useInfiniteCanvas = () => {
     | null
   >(null)
   const [draft, setDraft] = useState<Shape | null>(null)
+  /**
+   * The same draft, kept in a ref. State alone is not enough: a click fires
+   * pointerdown and pointerup with no render in between, so the pointerup
+   * handler would still close over `null` and create nothing.
+   */
+  const draftRef = useRef<Shape | null>(null)
+
+  const putDraft = (next: Shape | null) => {
+    draftRef.current = next
+    setDraft(next)
+  }
 
   /** Screen pixels → world units. The inverse of the CSS transform. */
   const screenToWorld = useCallback(
@@ -156,13 +172,17 @@ export const useInfiniteCanvas = () => {
    * selection the moment it was made.
    */
   const beginMove = (shape: Shape, event: React.PointerEvent<Element>) => {
-    event.stopPropagation()
     if (tool === 'eraser') {
+      event.stopPropagation()
       dispatch(removeShape(shape.id))
       return
     }
+    // Any drawing tool: let the event reach the canvas so a new shape starts
+    // here. Swallowing it would make the area over an existing shape dead.
     if (tool !== 'select') return
+    if (editingId === shape.id) return
 
+    event.stopPropagation()
     event.currentTarget.setPointerCapture?.(event.pointerId)
     dispatch(selectShape(shape.id))
     dispatch(snapshotHistory())
@@ -201,7 +221,7 @@ export const useInfiniteCanvas = () => {
     const kind: ShapeKind = tool
     const world = screenToWorld(point)
     gesture.current = { kind: 'draw', origin: world }
-    setDraft({
+    putDraft({
       id: `draft-${Date.now()}`,
       kind,
       x: world.x,
@@ -247,8 +267,9 @@ export const useInfiniteCanvas = () => {
     }
 
     const world = screenToWorld(point)
-    setDraft((current) => {
-      if (!current) return current
+    const current = draftRef.current
+    if (!current) return
+    {
       const box = {
         x: Math.min(active.origin.x, world.x),
         y: Math.min(active.origin.y, world.y),
@@ -264,43 +285,57 @@ export const useInfiniteCanvas = () => {
         const ys = points.map((pt) => pt.y)
         const minX = Math.min(...xs)
         const minY = Math.min(...ys)
-        return {
+        putDraft({
           ...current,
           points,
           x: minX,
           y: minY,
           width: Math.max(...xs) - minX,
           height: Math.max(...ys) - minY,
-        }
+        })
+        return
       }
       if (current.kind === 'arrow' || current.kind === 'line') {
-        return { ...current, ...box, points: [active.origin, world] }
+        putDraft({ ...current, ...box, points: [active.origin, world] })
+        return
       }
-      return { ...current, ...box }
-    })
+      putDraft({ ...current, ...box })
+    }
   }
 
   const onPointerUp = () => {
     const active = gesture.current
     gesture.current = null
 
+    const draft = draftRef.current
     if (active?.kind === 'draw' && draft) {
-      // Ignore stray clicks that produce a zero-area shape.
+      // Ignore stray clicks that produce a zero-area shape — except for text,
+      // where a single click is the normal way to place a box.
       const isPath = PATH_KINDS.includes(draft.kind)
+      const isText = draft.kind === 'text'
       const meaningful = isPath
         ? (draft.points?.length ?? 0) > 1 && draft.width + draft.height > 4
-        : draft.width > 4 && draft.height > 4
+        : isText || (draft.width > 4 && draft.height > 4)
+
       if (meaningful) {
+        const id = crypto.randomUUID()
         dispatch(
           addShape({
             ...draft,
-            id: crypto.randomUUID(),
+            id,
+            ...(isText && draft.width < 20
+              ? { width: TEXT_DEFAULT_WIDTH, height: TEXT_DEFAULT_HEIGHT }
+              : {}),
             label: draft.kind === 'frame' ? 'Frame' : undefined,
           }),
         )
+        // setTool clears any active edit, so switching back to select has to
+        // happen before the caret is placed, not after.
         dispatch(setTool('select'))
+        // Straight into the caret, so placing a text box and typing is one move.
+        if (isText) dispatch(setEditingId(id))
       }
-      setDraft(null)
+      putDraft(null)
     }
   }
 
@@ -328,6 +363,16 @@ export const useInfiniteCanvas = () => {
     screenToWorld,
     setTool: (next: Tool) => dispatch(setTool(next)),
     selectShape: (id: string | null) => dispatch(selectShape(id)),
+    editingId,
+    beginEdit: (id: string) => {
+      // One snapshot per editing session rather than per keystroke.
+      dispatch(snapshotHistory())
+      dispatch(selectShape(id))
+      dispatch(setEditingId(id))
+    },
+    endEdit: () => dispatch(setEditingId(null)),
+    setShapeText: (id: string, label: string, height?: number) =>
+      dispatch(updateShapeLive({ id, changes: { label, ...(height ? { height } : {}) } })),
     beginMove,
     beginResize,
     onPointerDown,

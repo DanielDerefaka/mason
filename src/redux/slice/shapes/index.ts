@@ -52,6 +52,8 @@ type ShapesState = {
   viewport: Viewport
   tool: Tool
   selectedId: string | null
+  /** The text shape currently being typed into, if any. */
+  editingId: string | null
   /** Snapshots of the entity table, newest last. Viewport is not part of history. */
   past: EntityState[]
   future: EntityState[]
@@ -62,6 +64,7 @@ const initialState: ShapesState = {
   viewport: { scale: 1, translate: { x: 0, y: 0 } },
   tool: 'select',
   selectedId: null,
+  editingId: null,
   past: [],
   future: [],
 }
@@ -143,6 +146,13 @@ export const shapesSlice = createSlice({
     },
     setTool: (state, action: PayloadAction<Tool>) => {
       state.tool = action.payload
+      // Switching tools ends an edit; the caret would otherwise stay in a box
+      // the user has visibly moved on from.
+      state.editingId = null
+    },
+
+    setEditingId: (state, action: PayloadAction<string | null>) => {
+      state.editingId = action.payload
     },
 
     /**
@@ -212,6 +222,7 @@ export const shapesSlice = createSlice({
 
 export const {
   addShape,
+  setEditingId,
   snapshotHistory,
   updateShapeLive,
   addGeneratedUI,

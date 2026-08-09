@@ -20,6 +20,10 @@ const ShapeView = ({
   onGrab,
   onGenerate,
   onInspiration,
+  onBeginEdit,
+  onEndEdit,
+  onTextChange,
+  editing,
   generating,
 }: {
   shape: Shape
@@ -27,6 +31,10 @@ const ShapeView = ({
   onGrab?: PointerHandler
   onGenerate?: () => void
   onInspiration?: () => void
+  onBeginEdit?: () => void
+  onEndEdit?: () => void
+  onTextChange?: (value: string, height: number) => void
+  editing?: boolean
   generating?: boolean
 }) => {
   if (shape.kind === 'generated-ui') return <GeneratedUI shape={shape} />
@@ -148,13 +156,52 @@ const ShapeView = ({
   }
 
   if (shape.kind === 'text') {
+    const value = shape.label ?? ''
+
+    if (editing) {
+      return (
+        <textarea
+          autoFocus
+          value={value}
+          placeholder="Type something…"
+          onChange={(event) => {
+            // Grow with the content so a wrapped line is never clipped.
+            const field = event.currentTarget
+            field.style.height = 'auto'
+            const height = Math.max(24, field.scrollHeight)
+            field.style.height = `${height}px`
+            onTextChange?.(field.value, height)
+          }}
+          onBlur={onEndEdit}
+          onKeyDown={(event) => {
+            // Escape commits and leaves; Enter stays, since a text box is a
+            // paragraph rather than a single-line field.
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
+          // Stop the canvas turning a caret placement into a drag.
+          onPointerDown={(event) => event.stopPropagation()}
+          className="absolute resize-none overflow-hidden bg-transparent p-0 text-sm leading-snug text-white outline-none ring-1 ring-sky-400 placeholder:text-white/30"
+          style={{ ...style, height: Math.max(shape.height, 24) }}
+        />
+      )
+    }
+
     return (
       <div
-        className={cn(base, 'grid place-items-center text-sm', selected && 'ring-1 ring-white/70')}
+        className={cn(
+          base,
+          'cursor-text text-sm leading-snug whitespace-pre-wrap',
+          !value && 'text-white/30',
+          selected && 'ring-1 ring-white/70',
+        )}
         style={style}
         onPointerDown={onGrab}
+        onDoubleClick={onBeginEdit}
       >
-        Text
+        {value || 'Type something…'}
       </div>
     )
   }
@@ -244,6 +291,10 @@ export const Canvas = () => {
     selectedId,
     beginMove,
     beginResize,
+    editingId,
+    beginEdit,
+    endEdit,
+    setShapeText,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -306,6 +357,10 @@ export const Canvas = () => {
               selected={shape.id === selectedId}
               onGenerate={() => void generateDesign(shape)}
               onInspiration={() => setInspirationOpen((open) => !open)}
+              editing={editingId === shape.id}
+              onBeginEdit={() => beginEdit(shape.id)}
+              onEndEdit={endEdit}
+              onTextChange={(value, height) => setShapeText(shape.id, value, height)}
               generating={generatingFrameId === shape.id}
               onGrab={(event) => beginMove(shape, event)}
             />
