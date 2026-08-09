@@ -5,6 +5,7 @@ import { Loader2, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { sanitisePartialHtml } from '@/lib/sanitise'
+import { cn } from '@/lib/utils'
 import { useStyles } from '@/hooks/use-styles'
 import { useGoogleFont } from '@/hooks/use-google-font'
 
@@ -19,10 +20,14 @@ import { useGoogleFont } from '@/hooks/use-google-font'
  */
 export const GeneratedUI = ({
   shape,
+  selected,
+  onGrab,
   onGenerateWorkflow,
   workflowRunning,
 }: {
   shape: Shape
+  selected?: boolean
+  onGrab?: (event: React.PointerEvent<Element>) => void
   onGenerateWorkflow?: () => void
   workflowRunning?: boolean
 }) => {
@@ -54,8 +59,10 @@ export const GeneratedUI = ({
     if (!node || !shape.html) return
 
     const timer = setTimeout(() => {
+      // Grow only. Correcting downwards as well would undo a height the user
+      // had just dragged, since the effect reruns on every stored change.
       const measured = node.offsetHeight
-      if (measured > 0 && Math.abs(measured - shape.height) > 10) {
+      if (measured > shape.height + 10) {
         dispatch(resizeGeneratedUI({ id: shape.id, height: measured }))
       }
     }, 100)
@@ -65,7 +72,14 @@ export const GeneratedUI = ({
 
   return (
     <div
-      className="absolute rounded-lg ring-1 ring-white/15"
+      // Grabbing anywhere on the design moves it. The markup inside is a
+      // picture of an interface, not a working one, so there is nothing in
+      // there that wants the click more.
+      onPointerDown={onGrab}
+      className={cn(
+        'absolute rounded-lg ring-1',
+        selected ? 'ring-2 ring-sky-400' : 'ring-white/15',
+      )}
       style={{ left: shape.x, top: shape.y, width: shape.width }}
     >
       {/* Caption and actions sit above the panel, like a frame's do. */}
@@ -105,7 +119,13 @@ export const GeneratedUI = ({
         </div>
       )}
 
-      <div ref={containerRef} className="overflow-hidden rounded-lg" style={variables}>
+      <div
+        ref={containerRef}
+        // The design must not swallow the pointer, or the wrapper never sees
+        // the drag.
+        className="pointer-events-none overflow-hidden rounded-lg"
+        style={variables}
+      >
         {html ? (
           <div dangerouslySetInnerHTML={{ __html: html }} />
         ) : (

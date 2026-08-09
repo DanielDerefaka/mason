@@ -1,4 +1,4 @@
-import { mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 
@@ -55,5 +55,41 @@ export const spend = mutation({
     else await ctx.db.insert('credits', { userId, balance: next })
 
     return { balance: next }
+  },
+})
+
+/**
+ * Tops every account up while there is no way to buy credits.
+ *
+ * internalMutation, so it is unreachable from the browser — a public
+ * "give me credits" endpoint would make the balance meaningless. Run it from
+ * the CLI:
+ *
+ *   npx convex run credits:grant '{"amount": 20}'
+ *
+ * Polar replaces this in chapter 24.
+ */
+export const grant = internalMutation({
+  args: { amount: v.number() },
+  handler: async (ctx, args) => {
+    const users = await ctx.db.query('users').collect()
+    const granted: Array<{ email: string; balance: number }> = []
+
+    for (const user of users) {
+      const row = await ctx.db
+        .query('credits')
+        .withIndex('by_user', (q) => q.eq('userId', user._id))
+        .unique()
+
+      // Accounts that have never spent have no row yet, so they start from the
+      // default rather than from zero.
+      const balance = (row?.balance ?? STARTING_CREDITS) + args.amount
+      if (row) await ctx.db.patch(row._id, { balance })
+      else await ctx.db.insert('credits', { userId: user._id, balance })
+
+      granted.push({ email: user.email ?? user._id, balance })
+    }
+
+    return { users: granted.length, granted }
   },
 })

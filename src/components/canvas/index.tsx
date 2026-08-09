@@ -54,6 +54,8 @@ const ShapeView = ({
     return (
       <GeneratedUI
         shape={shape}
+        selected={selected}
+        onGrab={onGrab}
         onGenerateWorkflow={onGenerateWorkflow}
         workflowRunning={workflowRunning}
       />
