@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { sanitisePartialHtml } from '@/lib/sanitise'
@@ -17,7 +17,15 @@ import { useGoogleFont } from '@/hooks/use-google-font'
  * classes: Tailwind compiles the classes it can see at build time, so a class
  * invented at runtime has no rule behind it.
  */
-export const GeneratedUI = ({ shape }: { shape: Shape }) => {
+export const GeneratedUI = ({
+  shape,
+  onGenerateWorkflow,
+  workflowRunning,
+}: {
+  shape: Shape
+  onGenerateWorkflow?: () => void
+  workflowRunning?: boolean
+}) => {
   const dispatch = useAppDispatch()
   const { styleGuide } = useStyles()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -57,9 +65,39 @@ export const GeneratedUI = ({ shape }: { shape: Shape }) => {
 
   return (
     <div
-      className="absolute overflow-hidden rounded-lg ring-1 ring-white/15"
+      className="absolute rounded-lg ring-1 ring-white/15"
       style={{ left: shape.x, top: shape.y, width: shape.width }}
     >
+      {/* Caption and actions sit above the panel, like a frame's do. */}
+      {shape.label && (
+        <span className="text-muted-foreground absolute -top-6 left-0 text-[11px]">
+          {shape.label}
+        </span>
+      )}
+      {onGenerateWorkflow && !shape.streaming && (
+        <div className="absolute -top-7 right-0 flex items-center gap-2">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onGenerateWorkflow}
+            disabled={workflowRunning}
+            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50"
+          >
+            {workflowRunning ? (
+              <>
+                <Loader2 className="size-3 animate-spin" />
+                Building flow…
+              </>
+            ) : (
+              <>
+                <Workflow className="size-3" />
+                Generate Workflow
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {shape.streaming && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white">
           <Loader2 className="size-3 animate-spin" />
@@ -67,7 +105,7 @@ export const GeneratedUI = ({ shape }: { shape: Shape }) => {
         </div>
       )}
 
-      <div ref={containerRef} style={variables}>
+      <div ref={containerRef} className="overflow-hidden rounded-lg" style={variables}>
         {html ? (
           <div dangerouslySetInnerHTML={{ __html: html }} />
         ) : (

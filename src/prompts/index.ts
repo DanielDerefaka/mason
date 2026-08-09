@@ -139,7 +139,53 @@ Design at the standard of a senior product designer, not a wireframe:
   images.
 - Text must sit on its matching foreground token so it stays legible.`
 
+const workflowPlanSystem = `You are a product designer planning the rest of a product around one screen
+you have been shown.
+
+Read the screen and work out what it is: a dashboard, a landing page, a
+checkout, a settings panel, an inbox. Then name the screens a user would
+realistically reach from it — the next steps in the journey, not variations of
+the same page. A pricing page implies checkout and a confirmation. A dashboard
+implies a detail view, settings, and whatever it is a dashboard *of*.
+
+Rules:
+- Every screen must be a different destination, never a restyle of the source.
+- Do not repeat the screen you were shown.
+- Order them the way a user would meet them.
+- \`title\` is two or three words, title case, as it would read in a nav.
+- \`purpose\` is one sentence naming the specific sections and components the
+  screen needs, concrete enough to design from without seeing the source again.`
+
+const workflowPageSystem = `You design one screen in a product flow, given a screen that already exists.
+
+The existing screen's HTML is supplied. Treat it as the design system made
+real: reuse its spacing rhythm, type scale, border radii, surface treatment,
+component shapes and header pattern. Somebody looking at the two screens side
+by side should not doubt they belong to the same product.
+
+Design a different screen, not a restyle. It has its own content, its own
+layout and its own reason to exist. Carry over the shell — header, nav,
+whatever frames the page — and change everything inside it.`
+
 export const prompts = {
+  workflow: {
+    plan: {
+      system: workflowPlanSystem,
+      user: (pageCount: number) =>
+        `Plan the ${pageCount} screens that should follow this one. Return only the plan.`,
+    },
+    page: {
+      system: workflowPageSystem,
+      user: (title: string, purpose: string, sourceHtml: string) =>
+        [
+          `Design the "${title}" screen. ${purpose}`,
+          '',
+          'Here is the existing screen to stay consistent with:',
+          '',
+          sourceHtml,
+        ].join('\n'),
+    },
+  },
   generatedUi: {
     system: generatedUiSystem,
     user: (frameLabel: string, referenceCount = 0) =>

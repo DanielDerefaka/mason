@@ -7,6 +7,7 @@ import type { ResizeHandle } from '@/hooks/use-canvas'
 import { cn } from '@/lib/utils'
 import { Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
+import { useWorkflow } from '@/hooks/use-workflow'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { AutoSave } from './autosave'
@@ -14,12 +15,22 @@ import { ToolBar } from './toolbar'
 
 type PointerHandler = (event: React.PointerEvent<Element>) => void
 
+/**
+ * Keeps a control's pointerdown away from the shape underneath it. Without
+ * this the shape captures the pointer, and a captured pointer sends the
+ * following click to the capturing element rather than the button — so the
+ * button's onClick never runs.
+ */
+const stopPointer = (event: React.PointerEvent<Element>) => event.stopPropagation()
+
 const ShapeView = ({
   shape,
   selected,
   onGrab,
   onGenerate,
   onInspiration,
+  onGenerateWorkflow,
+  workflowRunning,
   onBeginEdit,
   onEndEdit,
   onTextChange,
@@ -31,13 +42,23 @@ const ShapeView = ({
   onGrab?: PointerHandler
   onGenerate?: () => void
   onInspiration?: () => void
+  onGenerateWorkflow?: () => void
+  workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
   onTextChange?: (value: string, height: number) => void
   editing?: boolean
   generating?: boolean
 }) => {
-  if (shape.kind === 'generated-ui') return <GeneratedUI shape={shape} />
+  if (shape.kind === 'generated-ui') {
+    return (
+      <GeneratedUI
+        shape={shape}
+        onGenerateWorkflow={onGenerateWorkflow}
+        workflowRunning={workflowRunning}
+      />
+    )
+  }
 
   const base = 'absolute'
   const style: React.CSSProperties = {
@@ -59,6 +80,7 @@ const ShapeView = ({
         <div className="absolute -top-7 right-0 flex items-center gap-2">
           <button
             type="button"
+            onPointerDown={stopPointer}
             onClick={onInspiration}
             className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
           >
@@ -67,6 +89,7 @@ const ShapeView = ({
           </button>
           <button
             type="button"
+            onPointerDown={stopPointer}
             onClick={onGenerate}
             disabled={generating}
             className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50"
@@ -304,6 +327,7 @@ export const Canvas = () => {
     zoomToScale,
   } = useInfiniteCanvas()
   const { generateDesign, generatingFrameId } = useFrame()
+  const { generateWorkflow, workflowRunningFor } = useWorkflow()
   const [inspirationOpen, setInspirationOpen] = useState(false)
 
   useEffect(() => {
@@ -357,6 +381,8 @@ export const Canvas = () => {
               selected={shape.id === selectedId}
               onGenerate={() => void generateDesign(shape)}
               onInspiration={() => setInspirationOpen((open) => !open)}
+              onGenerateWorkflow={() => void generateWorkflow(shape)}
+              workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}
               onEndEdit={endEdit}
