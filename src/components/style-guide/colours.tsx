@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { StyleGuide } from '@/types/style-guide'
 import { STYLE_GUIDE } from './config'
 
 /**
@@ -44,7 +45,53 @@ const useResolvedTokens = (tokens: string[]) => {
   return values
 }
 
-export const Colours = () => {
+/**
+ * The generated palette. Its colours are stored on the guide, so unlike the
+ * built-in theme there is nothing to read back out of the stylesheet.
+ */
+const GeneratedColours = ({ guide }: { guide: StyleGuide }) => (
+  <div className="space-y-10">
+    <div className="max-w-sm space-y-2">
+      <p className="text-sm">Theme</p>
+      <div className="rounded-lg border border-white/10 px-4 py-3">
+        <p className="text-sm">{guide.theme}</p>
+        <p className="text-muted-foreground mt-1 text-xs">{guide.description}</p>
+      </div>
+    </div>
+
+    {guide.colorSections.map((section) => (
+      <section key={section.title} className="space-y-4">
+        <h2 className="text-muted-foreground text-sm">{section.title}</h2>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-7 sm:grid-cols-2 xl:grid-cols-4">
+          {section.swatches.map((swatch) => (
+            <div key={swatch.token} className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span
+                  className="size-10 shrink-0 rounded-md border border-white/10"
+                  style={{ background: swatch.color }}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm">{swatch.name}</p>
+                  <p className="text-muted-foreground truncate font-mono text-xs uppercase">
+                    {swatch.color}
+                  </p>
+                </div>
+              </div>
+              {swatch.description && (
+                <p className="text-muted-foreground text-xs">{swatch.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+)
+
+export const Colours = ({ guide }: { guide?: StyleGuide | null }) =>
+  guide ? <GeneratedColours guide={guide} /> : <DefaultColours />
+
+const DefaultColours = () => {
   const tokens = STYLE_GUIDE.colorSections.flatMap((s) => s.swatches.map((w) => w.token))
   const resolved = useResolvedTokens(tokens)
 

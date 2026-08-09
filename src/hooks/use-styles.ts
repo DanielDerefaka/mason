@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useGenerateStyleGuideMutation } from '@/redux/api/style-guide'
+import { StyleGuideSchema } from '@/types/style-guide'
 
 /**
  * `uploading` is never set today: an image joins the project only once its blob
@@ -24,6 +25,7 @@ export const useStyles = () => {
     api.moodboard.getMoodboardImages,
     projectId ? { projectId } : 'skip',
   )
+  const project = useQuery(api.project.getProject, projectId ? { projectId } : 'skip')
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
   const addImages = useMutation(api.moodboard.addMoodboardImages)
   const removeImage = useMutation(api.moodboard.removeMoodboardImage)
@@ -71,10 +73,15 @@ export const useStyles = () => {
     }
   }
 
+  // Stored loosely in Convex, so it is parsed rather than trusted on the way
+  // out — an older row could predate a schema change.
+  const parsedGuide = StyleGuideSchema.safeParse(project?.styleGuide)
+
   return {
     projectId,
     guideImages: (guideImages ?? []) as GuideImage[],
     loading: guideImages === undefined,
+    styleGuide: parsedGuide.success ? parsedGuide.data : null,
     uploading,
     upload,
     remove,

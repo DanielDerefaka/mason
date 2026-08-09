@@ -14,7 +14,7 @@ const TABS = [
 ]
 
 export default function StyleGuidePage() {
-  const { guideImages } = useStyles()
+  const { guideImages, styleGuide } = useStyles()
 
   return (
     <main className="container mx-auto flex-1 px-6 py-16">
@@ -42,10 +42,10 @@ export default function StyleGuidePage() {
         </div>
 
         <TabsContent value="colours">
-          <Colours />
+          <Colours guide={styleGuide} />
         </TabsContent>
         <TabsContent value="typography">
-          <Typography />
+          <Typography guide={styleGuide} />
         </TabsContent>
         <TabsContent value="moodboard">
           <MoodBoard guideImages={guideImages} />
