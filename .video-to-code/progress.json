@@ -16,9 +16,10 @@
     19,
     20,
     21,
-    23
+    23,
+    26
   ],
-  "current": 24,
+  "current": 27,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -68,7 +69,14 @@
     "PARTIAL on 23: he routes autosave through an Inngest event (project/autosave.requested at [470:46]) and the chapter continues into Polar setup at [494:41]. Both need accounts. The Convex persistence path is built and verified without them.",
     "Anthropic wired up: @anthropic-ai/sdk 0.116.0, src/lib/anthropic.ts, POST /api/ai streams text. Model claude-opus-5.",
     "Gateway agentrouter.org works but 401s 'unauthorized_client_error' unless User-Agent is claude-cli/*; ANTHROPIC_CLIENT_UA supplies it. Auth header can be x-api-key or Bearer, either is fine. Responses carry an extra top-level 'billing' key the SDK ignores.",
-    "Verified through the gateway: SSE streaming, adaptive thinking with display=summarized, output_config.effort, and both claude-opus-5 and claude-opus-4-8."
+    "Verified through the gateway: SSE streaming, adaptive thinking with display=summarized, output_config.effort, and both claude-opus-5 and claude-opus-4-8.",
+    "Ch26: YouTube now blocks the Downstream API with a bot check; transcripts and frames needed `yt-dlp --cookies-from-browser chrome`. Downstream's server does not pass cookies yet.",
+    "Ch26 deviation: video uses generateObject; agentrouter silently drops output_config (200 + prose), so the route uses generateText + a forced tool call. Verified by curl: output_config ignored, tool use honoured.",
+    "Ch26 deviation: effort pinned to 'low' (default thinks for minutes and drifts generic) and maxOutputTokens 8000 (a truncated tool call looks like success and fails at parse).",
+    "Ch26: model is claude-opus-5 via ANTHROPIC_MODEL, not the video's claude-sonnet-4-20250514.",
+    "Ch26: the style guide is saved to Convex (project.saveStyleGuide) but nothing renders it yet \u2014 the Colours tab still shows the static theme until chapter 27 (Stylesheet).",
+    "Ch26: CreditsBalanceQuery returns an unmetered balance with the real shape; Polar (ch24) still not wired up.",
+    "Ch26 prompt is ours (src/prompts/index.ts) \u2014 the creator's is in a paid kit and never on screen [578:02]."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
