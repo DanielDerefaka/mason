@@ -18,9 +18,10 @@
     21,
     23,
     26,
-    27
+    27,
+    28
   ],
-  "current": 28,
+  "current": 29,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -86,7 +87,14 @@
     "Ch27 deviation: kept our Theme box (shows the generated theme name + description). His generated Colours tab goes straight to 'Primary Colours' with no theme box.",
     "Ch27: the rest of his chapter is buying Anthropic credits and re-pointing ngrok/Convex SITE_URL after his tunnel changed \u2014 not applicable locally.",
     "Credits: own Convex table (credits.balance), 10 to start, spend 1 per generation. His version hangs credits off a Polar subscription with a ledger and idempotency keys \u2014 that arrives with ch24.",
-    "Radix tabs ignore synthetic el.click(); CDP tests must dispatch Input.dispatchMouseEvent at the element's centre."
+    "Radix tabs ignore synthetic el.click(); CDP tests must dispatch Input.dispatchMouseEvent at the element's centre.",
+    "Ch28: generated-ui shape kind + /api/generate streaming route + useFrame.generateDesign. Frame rasterised from shape data (src/lib/rasterise.ts), not a DOM screenshot.",
+    "Ch28 deviation: video has the model emit Tailwind classes. Tailwind v4 compiles classes it can see at build time, so runtime-invented classes have no rule. Model writes inline styles referencing CSS variables bound on the container instead.",
+    "Ch28 deviation: sanitiser is DOMParser + tree walk (src/lib/sanitise.ts), not regex. Allowlist of tags/attrs, strips on*, non-https/data:image URLs.",
+    "Ch28: stream updates use setGeneratedHtml which does NOT commit history \u2014 one snapshot per chunk would flush the 50-deep undo stack in seconds.",
+    "Ch28: credit is charged up front, before the stream opens \u2014 once bytes are flowing there is no clean way to fail the request.",
+    "Ch28: Google font loading moved to src/hooks/use-google-font.ts and called from GeneratedUI too; previously only the Typography tab loaded it, so designs on the canvas referenced a font that was never fetched.",
+    "Ch28 NOT built (later chapters): inspiration images (29), workflow generation (30), per-frame chat (31), export design."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
