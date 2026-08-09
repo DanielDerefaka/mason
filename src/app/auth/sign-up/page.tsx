@@ -5,10 +5,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GoogleIcon, MicrosoftIcon } from '@/components/buttons/oauth/google'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useAuthentication } from '@/hooks/use-auth'
 
 export default function SignUpPage() {
   const { handleSignUp, pending } = useAuthentication()
+  // Carried over from the landing page's email field, so the address is typed once.
+  const presetEmail = useSearchParams().get('email') ?? ''
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -51,7 +54,7 @@ export default function SignUpPage() {
               <Label htmlFor="email" className="block text-sm">
                 Email
               </Label>
-              <Input type="email" required name="email" id="email" />
+              <Input type="email" required name="email" id="email" defaultValue={presetEmail} />
             </div>
 
             <div className="space-y-2">
