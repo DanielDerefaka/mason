@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
  * into a slot shaped for studio photography never sat right, and a
  * drawing cannot go stale when the product's chrome changes.
  *
- * The vocabulary is deliberately small — a sketch is grey and dashed,
- * a design is filled and accented — because the whole story the page
- * tells is the step between those two states.
+ * What is drawn here is only ever *input*: a wireframe is a diagram of
+ * something the user makes. Finished designs are shown as real captures
+ * instead — a coloured block pretending to be a generated screen reads as
+ * a skeleton loader, and claims a result it cannot show.
  * ------------------------------------------------------------------ */
 
 /** The dotted canvas backdrop, matching the real editor's grid. */
@@ -99,100 +100,17 @@ export function SketchScreen({
 }
 
 /* ------------------------------------------------------------------ *
- * Design side
+ * Accents
  * ------------------------------------------------------------------ */
 
-/** Accents the generated screens cycle through, so a row of them reads as
- *  one design system rather than a set of unrelated mocks. */
+/** Used by the flow table's swatch column. */
 export const ACCENTS = ["#2563EB", "#7C5CFF", "#E86A4B", "#1FA97B", "#D4A62A"] as const;
-
-/**
- * The "after" half: the same layout as `SKETCH_LAYOUT`, filled in. Blocks
- * that were dashed outlines become type, imagery and a real button.
- */
-export function DesignScreen({
-  accent = ACCENTS[0],
-  className,
-  dense = false,
-}: {
-  accent?: string;
-  className?: string;
-  /** Drops the card row — used in narrow tiles where it would crowd. */
-  dense?: boolean;
-}) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "relative h-full w-full overflow-hidden bg-[#0B0B0C]",
-        className,
-      )}
-    >
-      {/* Nav */}
-      <div className="flex items-center justify-between px-[7%] pt-[6%]">
-        <span
-          className="block h-[5px] w-[26%] rounded-full"
-          style={{ backgroundColor: accent }}
-        />
-        <span className="flex gap-[5px]">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="block h-[4px] w-[14px] rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.28)" }}
-            />
-          ))}
-        </span>
-      </div>
-
-      {/* Headline + hero image */}
-      <div className="mt-[7%] flex items-start gap-[5%] px-[7%]">
-        <div className="flex-1">
-          <span className="block h-[9px] w-[92%] rounded-[3px] bg-white/90" />
-          <span className="mt-[6px] block h-[9px] w-[64%] rounded-[3px] bg-white/90" />
-          <span className="mt-[11px] block h-[4px] w-[86%] rounded-full bg-white/25" />
-          <span className="mt-[5px] block h-[4px] w-[70%] rounded-full bg-white/25" />
-          <span
-            className="mt-[12px] block h-[13px] w-[46%] rounded-full"
-            style={{ backgroundColor: accent }}
-          />
-        </div>
-
-        <div
-          className="h-[76px] w-[36%] shrink-0 rounded-[6px]"
-          style={{
-            background: `linear-gradient(150deg, ${accent} 0%, rgba(255,255,255,0.10) 100%)`,
-          }}
-        />
-      </div>
-
-      {/* Card row */}
-      {dense ? null : (
-        <div className="mt-[8%] flex gap-[3.5%] px-[7%]">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-[6px] border border-white/10 bg-white/[0.045] p-[8px]"
-            >
-              <span
-                className="block h-[16px] w-full rounded-[3px]"
-                style={{ backgroundColor: `${accent}38` }}
-              />
-              <span className="mt-[7px] block h-[3px] w-[80%] rounded-full bg-white/30" />
-              <span className="mt-[4px] block h-[3px] w-[55%] rounded-full bg-white/18" />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ *
  * Devices
  * ------------------------------------------------------------------ */
 
-/** A phone-shaped bezel. Pass either half of the story as its contents. */
+/** A phone-shaped bezel around a wireframe. */
 export function PhoneFrame({
   children,
   className,
@@ -224,42 +142,3 @@ export const PHONE_SKETCH: Box[] = [
   { x: 10, y: 71, w: 80, h: 11, label: "Card" },
   { x: 10, y: 85, w: 80, h: 11, label: "Card" },
 ];
-
-/** The phone equivalent of `DesignScreen` — same system, one column. */
-export function PhoneDesign({ accent = ACCENTS[1] }: { accent?: string }) {
-  return (
-    <div aria-hidden className="h-full w-full bg-[#0B0B0C] px-[10%] pt-[12%]">
-      <span
-        className="block h-[4px] w-[40%] rounded-full"
-        style={{ backgroundColor: accent }}
-      />
-      <div
-        className="mt-[10%] h-[26%] w-full rounded-[8px]"
-        style={{
-          background: `linear-gradient(150deg, ${accent} 0%, rgba(255,255,255,0.10) 100%)`,
-        }}
-      />
-      <span className="mt-[9%] block h-[7px] w-[88%] rounded-[3px] bg-white/90" />
-      <span className="mt-[5px] block h-[7px] w-[60%] rounded-[3px] bg-white/90" />
-      <span
-        className="mt-[9%] block h-[12px] w-[54%] rounded-full"
-        style={{ backgroundColor: accent }}
-      />
-      {[0, 1].map((i) => (
-        <div
-          key={i}
-          className="mt-[7%] flex items-center gap-[8px] rounded-[6px] border border-white/10 bg-white/[0.045] p-[7px]"
-        >
-          <span
-            className="block h-[18px] w-[18px] shrink-0 rounded-[4px]"
-            style={{ backgroundColor: `${accent}45` }}
-          />
-          <span className="flex-1">
-            <span className="block h-[3px] w-[80%] rounded-full bg-white/30" />
-            <span className="mt-[4px] block h-[3px] w-[50%] rounded-full bg-white/18" />
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}

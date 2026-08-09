@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { CtaSection } from "@/components/marketing/home/CtaSection";
-import { ACCENTS, DesignScreen } from "@/components/marketing/screen-mocks";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
 
 export const metadata: Metadata = {
@@ -33,12 +33,13 @@ export default function BlogPage() {
                     className="card-surface group block overflow-hidden p-[10px] transition-[border-color] duration-400 ease-out hover:border-border"
                   >
                     <div className="relative aspect-[424/238] w-full overflow-hidden rounded-[10px]">
-                      <div className="h-full w-full transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]">
-                        <DesignScreen
-                          accent={ACCENTS[post.coverIndex % ACCENTS.length]}
-                          dense
-                        />
-                      </div>
+                      <Image
+                        src={post.cover}
+                        alt=""
+                        fill
+                        sizes="(max-width: 750px) calc(100vw - 92px), (max-width: 1000px) calc(50vw - 62px), 375px"
+                        className="object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+                      />
                     </div>
 
                     <div className="flex items-center justify-between px-[12px] pt-[18px]">

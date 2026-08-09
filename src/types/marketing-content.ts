@@ -39,7 +39,6 @@ export interface BlogPost {
   excerpt: string;
   category: string;
   readTime: string;
-  /** Index into the accent list the drawn cover cycles through. */
-  coverIndex: number;
+  cover: string;
   body: string[];
 }

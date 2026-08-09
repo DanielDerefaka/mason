@@ -1,112 +1,40 @@
 import Link from "next/link";
 
-import { ACCENTS, PhoneDesign } from "@/components/marketing/screen-mocks";
 import { INTRODUCTION } from "@/lib/marketing-content";
-import { cn } from "@/lib/utils";
 
-/* ------------------------------------------------------------------ *
- * The right-hand column used to be three marquees of screenshots. It is
- * now three marquees of generated screens, drawn in CSS — which says the
- * thing the copy claims (one system, many screens) instead of showing the
- * same four captures twelve times. The tiles are portrait, so they use the
- * single-column phone layout rather than the landscape one.
- * ------------------------------------------------------------------ */
-
-/** Rendered tile footprint per breakpoint (aspect 349:620). */
-const TILE_CLASS =
-  "relative mr-4 h-[266px] w-[150px] shrink-0 overflow-hidden rounded-[10px] border border-hairline md:h-[338px] md:w-[190px] lg:h-[426px] lg:w-[240px]";
-
-/** Each row is offset into the accent list so no two tiles line up. */
-const ROWS = [0, 2, 4].map((offset) =>
-  Array.from({ length: 6 }, (_, i) => ACCENTS[(offset + i) % ACCENTS.length]),
-);
-
-function MarqueeRow({
-  accents,
-  animation,
-  className,
-}: {
-  accents: string[];
-  animation: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn("flex w-max shrink-0", className)}
-      style={{ animation }}
-      aria-hidden="true"
-    >
-      {/* The list is duplicated so the -50% translate loops seamlessly. */}
-      {[0, 1].map((copy) => (
-        <div key={copy} className="flex shrink-0">
-          {accents.map((accent, i) => (
-            <div key={`${copy}-${i}`} className={TILE_CLASS}>
-              <PhoneDesign accent={accent} />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
+/**
+ * A statement, not a showcase.
+ *
+ * This used to be a text column beside three drifting rows of mock screens.
+ * The mocks were coloured blocks standing in for generated designs and read
+ * as skeleton loaders, so they are gone; with nothing real to put in that
+ * column, the section centres on the words instead of stretching to fill a
+ * width it no longer needs.
+ */
 export function IntroductionSection() {
   return (
-    <section
-      id="introduction"
-      className="relative overflow-hidden py-20 md:h-[808px] md:py-0"
-    >
-      <div className="container-site h-full">
-        <div className="relative flex h-full flex-col items-start md:flex-row md:items-center">
-          {/* ---------------------------------------------------------- *
-           * Left — heading, paragraph, buttons
-           * ---------------------------------------------------------- */}
-          <div className="w-full shrink-0 md:w-[45%] lg:w-[38%]">
-            <h2 className="font-display text-[28px] leading-[32px] font-normal tracking-[-1.2px] text-foreground md:text-[34px] md:leading-[38px] md:tracking-[-1.5px] lg:text-[42px] lg:leading-[46px] lg:tracking-[-1.9px]">
-              {INTRODUCTION.headline.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </h2>
+    <section id="introduction" className="relative overflow-hidden py-[110px] md:py-[160px]">
+      <div className="container-site">
+        <div className="mx-auto flex max-w-[760px] flex-col items-center text-center">
+          <h2 className="text-foreground font-display text-[32px] leading-[36px] font-normal tracking-[-1.4px] md:text-[48px] md:leading-[52px] md:tracking-[-2.2px] lg:text-[58px] lg:leading-[62px] lg:tracking-[-2.8px]">
+            {INTRODUCTION.headline.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+          </h2>
 
-            <p className="mt-6 max-w-[400px] font-sans text-[15px] leading-[22px] text-muted-foreground md:text-[17px] md:leading-[24px]">
-              {INTRODUCTION.body}
-            </p>
+          <p className="text-muted-foreground mt-[28px] max-w-[560px] font-sans text-[16px] leading-[26px] md:text-[18px] md:leading-[28px]">
+            {INTRODUCTION.body}
+          </p>
 
-            <div className="mt-8 flex flex-row items-center gap-3">
-              <Link
-                href={INTRODUCTION.primaryCta.href}
-                className="pill pill-primary"
-              >
-                {INTRODUCTION.primaryCta.label}
-              </Link>
-              <Link
-                href={INTRODUCTION.secondaryCta.href}
-                className="pill pill-secondary"
-              >
-                {INTRODUCTION.secondaryCta.label}
-              </Link>
-            </div>
-          </div>
-
-          {/* ---------------------------------------------------------- *
-           * Right — three drifting rows, bleeding off the viewport.
-           * Absolutely placed from tablet up so its (taller than the
-           * section) stack is clipped symmetrically instead of pushing
-           * the text column down.
-           * ---------------------------------------------------------- */}
-          <div className="edge-fade-x -ml-6 mt-12 flex w-screen flex-col gap-4 md:absolute md:top-1/2 md:left-[45%] md:mt-0 md:ml-0 md:-translate-y-1/2 lg:left-[38%]">
-            <MarqueeRow accents={ROWS[0]} animation="marquee-x 55s linear infinite" />
-            <MarqueeRow
-              accents={ROWS[1]}
-              animation="marquee-x-reverse 65s linear infinite"
-            />
-            <MarqueeRow
-              accents={ROWS[2]}
-              animation="marquee-x 55s linear infinite"
-              className="hidden md:flex"
-            />
+          <div className="mt-[36px] flex flex-row items-center gap-3">
+            <Link href={INTRODUCTION.primaryCta.href} className="pill pill-primary">
+              {INTRODUCTION.primaryCta.label}
+            </Link>
+            <Link href={INTRODUCTION.secondaryCta.href} className="pill pill-secondary">
+              {INTRODUCTION.secondaryCta.label}
+            </Link>
           </div>
         </div>
       </div>

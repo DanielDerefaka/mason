@@ -2,12 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 
+import Image from "next/image";
+
 import {
   ACCENTS,
   DOT_GRID,
-  DesignScreen,
   PHONE_SKETCH,
-  PhoneDesign,
   PhoneFrame,
   SketchScreen,
 } from "@/components/marketing/screen-mocks";
@@ -108,7 +108,7 @@ export function DiscoveryMarqueeVisual() {
 }
 
 /* ------------------------------------------------------------------ *
- * 2 — Sketch The Screen: the same phone, drawn then built
+ * 2 — Sketch The Screen: the wireframe, phone and desktop
  * ------------------------------------------------------------------ */
 
 export function PhonesVisual() {
@@ -120,14 +120,14 @@ export function PhonesVisual() {
       }}
     >
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-center">
-        {/* Left phone — the sketch, sitting lower. */}
-        <PhoneFrame className="h-[260px] w-[130px] md:h-[360px] md:w-[180px]">
-          <SketchScreen boxes={PHONE_SKETCH} />
-        </PhoneFrame>
+        {/* The desktop sketch, sitting behind and lower. */}
+        <div className="border-hairline mr-[-40px] hidden h-[300px] w-[380px] overflow-hidden rounded-[10px] border bg-[#0B0B0C] md:block">
+          <SketchScreen />
+        </div>
 
-        {/* Right phone — what it became, overlapping and ~30px higher. */}
-        <PhoneFrame className="-ml-[30px] mb-[30px] h-[260px] w-[130px] md:h-[360px] md:w-[180px]">
-          <PhoneDesign accent={ACCENTS[1]} />
+        {/* The same layout as a phone would take it. */}
+        <PhoneFrame className="mb-[30px] h-[260px] w-[130px] md:h-[360px] md:w-[180px]">
+          <SketchScreen boxes={PHONE_SKETCH} />
         </PhoneFrame>
       </div>
     </VisualFrame>
@@ -142,7 +142,14 @@ export function DashboardVisual() {
   return (
     <VisualFrame>
       <div className="border-hairline absolute bottom-0 left-[24px] right-0 top-[24px] overflow-hidden rounded-tl-[10px] border-l border-t md:left-[32px]">
-        <DesignScreen accent={ACCENTS[0]} />
+        <Image
+          src="/images/generated-page.webp"
+          alt="A landing page generated from a sketch"
+          width={1300}
+          height={820}
+          sizes="(max-width: 750px) 90vw, 45vw"
+          className="h-auto w-full"
+        />
 
         {/* The part not written yet, and the caret at the boundary. */}
         <div
@@ -164,7 +171,7 @@ export function DashboardVisual() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(215deg, rgba(37,99,235,0.9) 0%, rgba(37,99,235,0) 55%)",
+            "linear-gradient(215deg, rgba(37,99,235,0.75) 0%, rgba(37,99,235,0) 38%)",
         }}
       />
     </VisualFrame>
@@ -185,7 +192,14 @@ export function EditorVisual() {
   return (
     <VisualFrame>
       <div className="border-hairline absolute bottom-0 left-1/2 h-[calc(100%-24px)] w-[92%] -translate-x-1/2 overflow-hidden rounded-[10px_10px_0_0] border-x border-t">
-        <DesignScreen accent={ACCENTS[2]} />
+        <Image
+          src="/images/generated-detail.webp"
+          alt="A section of a generated page"
+          width={1300}
+          height={600}
+          sizes="(max-width: 750px) 92vw, 46vw"
+          className="h-auto w-full"
+        />
       </div>
 
       {/* Chat panel, floating over the bottom-right of the design. */}
