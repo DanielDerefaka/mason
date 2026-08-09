@@ -33,7 +33,14 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
 
   const projectId = searchParams.get('project')
   const project = projects.find((p) => p._id === projectId)
-  const inWorkspace = projectId !== null
+  /**
+   * Being in the workspace is about the route, not the query string.
+   * Keying off `?project=` alone meant reaching /canvas or /style-guide
+   * directly showed "New Project" and no Canvas/Style Guide switcher — a
+   * project-scoped view with no way to switch out of it.
+   */
+  const onWorkspaceRoute = /\/(canvas|style-guide)(\/|$)/.test(pathname)
+  const inWorkspace = projectId !== null || onWorkspaceRoute
 
   const base = `/dashboard/${params.session}`
   const tabs = [

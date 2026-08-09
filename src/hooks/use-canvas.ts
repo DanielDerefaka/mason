@@ -607,6 +607,7 @@ export const useInfiniteCanvas = () => {
     setTool: (next: Tool) => dispatch(setTool(next)),
     selectShape: (id: string | null) => dispatch(selectShape(id)),
     selectedIds,
+    toggleSelected: (id: string) => dispatch(toggleSelected(id)),
     selectAll: () => dispatch(setSelection(shapes.map((shape) => shape.id))),
     marquee,
     guides,

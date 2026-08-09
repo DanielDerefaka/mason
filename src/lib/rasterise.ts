@@ -1,3 +1,4 @@
+import { textStyleOf } from '@/lib/text-style'
 import type { Shape } from '@/redux/slice/shapes'
 
 /** Matches the canvas surface, so the snapshot looks like what the user drew on. */
@@ -76,10 +77,21 @@ export const rasteriseFrame = async (
     }
 
     if (shape.kind === 'text') {
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = '16px sans-serif'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(shape.label ?? 'Text', shape.x, shape.y + shape.height / 2)
+      // Typography is editable per shape, so read it rather than assuming
+      // 16px white — otherwise both the export and the image the model reads
+      // disagree with what is on screen.
+      const text = textStyleOf(shape)
+      ctx.fillStyle = text.color
+      ctx.font =
+        `${text.italic ? 'italic ' : ''}${text.fontWeight} ` +
+        `${text.fontSize}px "${text.fontFamily}", sans-serif`
+      ctx.textBaseline = 'top'
+
+      const lineHeight = text.fontSize * text.lineHeight
+      const lines = (shape.label ?? 'Text').split('\n')
+      lines.forEach((line, index) => {
+        ctx.fillText(line, shape.x, shape.y + index * lineHeight)
+      })
       continue
     }
 

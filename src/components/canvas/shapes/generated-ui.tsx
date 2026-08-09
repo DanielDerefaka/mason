@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { Loader2, MessageSquare, Workflow } from 'lucide-react'
+import { Download, Loader2, MessageSquare, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { sanitisePartialHtml } from '@/lib/sanitise'
@@ -24,6 +24,7 @@ export const GeneratedUI = ({
   onGrab,
   onGenerateWorkflow,
   onOpenChat,
+  onExport,
   workflowRunning,
 }: {
   shape: Shape
@@ -31,6 +32,7 @@ export const GeneratedUI = ({
   onGrab?: (event: React.PointerEvent<Element>) => void
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
+  onExport?: () => void
   workflowRunning?: boolean
 }) => {
   const dispatch = useAppDispatch()
@@ -120,6 +122,17 @@ export const GeneratedUI = ({
             >
               <MessageSquare className="size-3" />
               Design Chat
+            </button>
+          )}
+          {onExport && (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onExport}
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
+            >
+              <Download className="size-3" />
+              Export
             </button>
           )}
         </div>

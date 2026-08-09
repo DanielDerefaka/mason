@@ -5,17 +5,21 @@ import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape, Tool } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
 import { cn } from '@/lib/utils'
-import { Loader2, Sparkles, Wand2 } from 'lucide-react'
+import { Download, Layers as LayersIcon, Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
 import { useWorkflow } from '@/hooks/use-workflow'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
 import { useDesignChat } from '@/hooks/use-design-chat'
+import { useStyles } from '@/hooks/use-styles'
+import { exportDesignHtml, exportFramePng } from '@/lib/export'
+import { toast } from 'sonner'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 import { Inspector, ShapeInspector } from './inspector'
 import { ArrangeBar } from './arrange'
+import { LayersPanel } from './layers'
 import { FramePresetDialog } from './frame-presets'
 import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
 import {
@@ -50,6 +54,7 @@ const ShapeView = ({
   onInspiration,
   onGenerateWorkflow,
   onOpenChat,
+  onExport,
   workflowRunning,
   onBeginEdit,
   onEndEdit,
@@ -64,6 +69,7 @@ const ShapeView = ({
   onInspiration?: () => void
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
+  onExport?: () => void
   workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
@@ -79,6 +85,7 @@ const ShapeView = ({
         onGrab={onGrab}
         onGenerateWorkflow={onGenerateWorkflow}
         onOpenChat={onOpenChat}
+        onExport={onExport}
         workflowRunning={workflowRunning}
       />
     )
@@ -130,6 +137,18 @@ const ShapeView = ({
               </>
             )}
           </button>
+          {onExport && (
+            <button
+              type="button"
+              onPointerDown={stopPointer}
+              onClick={onExport}
+              title="Export this frame as a PNG"
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
+            >
+              <Download className="size-3" />
+              Export
+            </button>
+          )}
         </div>
         <div
           className={cn(
@@ -349,6 +368,8 @@ export const Canvas = () => {
     tool,
     selectedId,
     selectedIds,
+    selectShape,
+    toggleSelected,
     selectAll,
     marquee,
     guides,
@@ -379,8 +400,22 @@ export const Canvas = () => {
     zoomToScale,
   } = useInfiniteCanvas()
   const { generateDesign, generatingFrameId } = useFrame()
+  const { styleGuide } = useStyles()
+
+  /** Frames leave as a PNG of the sketch; designs leave as a standalone page. */
+  const onExport = (shape: Shape) => {
+    if (shape.kind === 'generated-ui') {
+      exportDesignHtml(shape, styleGuide)
+      toast.success('Design exported')
+      return
+    }
+    void exportFramePng(shape, shapes)
+      .then(() => toast.success('Frame exported'))
+      .catch(() => toast.error('Could not export that frame'))
+  }
   const { generateWorkflow, workflowRunningFor } = useWorkflow()
   const [inspirationOpen, setInspirationOpen] = useState(false)
+  const [layersOpen, setLayersOpen] = useState(false)
   const { toggle: toggleDesignChat } = useDesignChat()
 
   /**
@@ -537,6 +572,7 @@ export const Canvas = () => {
               onInspiration={() => setInspirationOpen((open) => !open)}
               onGenerateWorkflow={() => void generateWorkflow(shape)}
               onOpenChat={() => toggleDesignChat(shape.id)}
+              onExport={() => onExport(shape)}
               workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}
@@ -609,6 +645,27 @@ export const Canvas = () => {
           )}
         </div>
       </div>
+
+      {layersOpen ? (
+        <LayersPanel
+          shapes={shapes}
+          selectedIds={selectedIds}
+          onSelect={selectShape}
+          onToggle={toggleSelected}
+          onClose={() => setLayersOpen(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          aria-label="Layers"
+          title="Layers"
+          onClick={() => setLayersOpen(true)}
+          className="absolute top-4 left-4 z-30 flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-[11px] text-muted-foreground shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] ring-1 ring-white/[0.06] backdrop-blur transition-colors hover:text-foreground"
+        >
+          <LayersIcon className="size-3.5" />
+          Layers
+        </button>
+      )}
 
       {selectedIds.length > 0 && tool === 'select' && (
         <ArrangeBar
