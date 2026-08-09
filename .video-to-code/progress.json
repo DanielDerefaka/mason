@@ -107,7 +107,8 @@
     "Ch30 deviation: video hardcodes 4 page types and says on camera not to do it that way. Implemented his recommended version \u2014 /api/generate/workflow/plan asks the model to plan the flow from the source screen, then /api/generate/workflow streams each page.",
     "Ch30: pages generated sequentially, 1 credit each; the plan route refuses up front unless the whole flow can be paid for.",
     "REGRESSION FOUND in ch30 testing: beginMove calls setPointerCapture on the shape, and a captured pointer sends the following click to the capturing element \u2014 so the frame's Inspiration/Generate pills stopped firing after the canvas-manipulation commit. Controls on a shape now stopPropagation on pointerdown.",
-    "Testing note: pipe CDP scripts to a file, not through `tail` \u2014 node buffers stdout when piped and the output only appears at exit, which hides where a long run is stuck."
+    "Testing note: pipe CDP scripts to a file, not through `tail` \u2014 node buffers stdout when piped and the output only appears at exit, which hides where a long run is stuck.",
+    "Ch29 under-implementation, found by comparing our output to the user's Dribbble reference: inspiration images were sent as vision input only, and the prompt banned external images \u2014 so designs came out as flat blocks with SVG placeholders. The hosted Convex URLs now go into the brief as text (src/lib/imagery-brief.ts) for both the design and workflow routes, with rules on where photography belongs. Verified: 4 imgs from 2 URLs, none broken."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
