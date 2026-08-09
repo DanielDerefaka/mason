@@ -6,15 +6,24 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Crosshair,
+  Heading,
+  Image as ImageIcon,
   Loader2,
+  Minus,
+  Plus,
+  RectangleHorizontal,
   Redo2,
+  SeparatorHorizontal,
   Sparkles,
+  Square,
+  Type as TypeIcon,
   Trash2,
   Undo2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
@@ -32,10 +41,12 @@ import {
   stripRings,
   duplicateNode,
   findNode,
+  insertNode,
   labelFor,
   moveNode,
   serialise,
   siblingIndex,
+  type InsertKind,
 } from './node'
 import { AiPanel } from './ai'
 import { Properties } from './properties'
@@ -59,6 +70,14 @@ export const DesignEditor = () => {
 
   const stage = useRef<HTMLDivElement>(null)
   const artboard = useRef<HTMLDivElement>(null)
+  const viewport = useRef<HTMLDivElement>(null)
+  const pendingScroll = useRef<{
+    x: number
+    y: number
+    anchorX: number
+    anchorY: number
+    ratio: number
+  } | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -207,6 +226,16 @@ export const DesignEditor = () => {
     snapshot()
     if (!moveNode(selected, direction)) return
     restamp(selected)
+  }
+
+  /** Adds an element after the selection, then selects what it made. */
+  const onInsert = (kind: InsertKind) => {
+    const root = stage.current
+    if (!root) return
+    snapshot()
+    const node = insertNode(root, kind, selected)
+    restamp(node)
+    if (node) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
   const onAttribute = (name: string, value: string) => {
@@ -392,6 +421,102 @@ export const DesignEditor = () => {
     window.addEventListener('pointerup', onUp)
   }
 
+  const MIN_ZOOM = 0.1
+  const MAX_ZOOM = 4
+  const clampZoom = (level: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
+
+  /**
+   * Zooms about a point on screen, keeping whatever is under the pointer
+   * under the pointer. Without the scroll correction the artboard slides
+   * away as it grows and you lose the thing you were zooming into.
+   */
+  const zoomAt = useCallback(
+    (next: number, clientX: number, clientY: number) => {
+      const view = viewport.current
+      if (!view) return
+      const level = clampZoom(next)
+      if (level === zoom) return
+
+      const rect = view.getBoundingClientRect()
+      pendingScroll.current = {
+        x: clientX - rect.left + view.scrollLeft,
+        y: clientY - rect.top + view.scrollTop,
+        anchorX: clientX - rect.left,
+        anchorY: clientY - rect.top,
+        ratio: level / zoom,
+      }
+      setZoom(level)
+    },
+    [zoom],
+  )
+
+  /**
+   * Applies the scroll correction before the browser paints.
+   *
+   * Doing it in requestAnimationFrame meant the artboard was drawn once at the
+   * new zoom and the old scroll, then corrected — one wrong frame per wheel
+   * event, which is what the shake was.
+   */
+  useLayoutEffect(() => {
+    const view = viewport.current
+    const pending = pendingScroll.current
+    if (!view || !pending) return
+    pendingScroll.current = null
+    view.scrollLeft = pending.x * pending.ratio - pending.anchorX
+    view.scrollTop = pending.y * pending.ratio - pending.anchorY
+  }, [zoom])
+
+  /** Fits the selected element, or the whole design when nothing is selected. */
+  const zoomToSelection = useCallback(() => {
+    const view = viewport.current
+    const wrap = artboard.current
+    const root = stage.current
+    if (!view || !wrap || !root) return
+
+    const node = selectedId ? findNode(root, selectedId) : null
+    const target = node ?? root
+    const rect = target.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+
+    // Current on-screen size divided out, so this works from any zoom.
+    const width = rect.width / zoom
+    const height = rect.height / zoom
+    const margin = 0.85
+    const level = clampZoom(
+      Math.min((view.clientWidth * margin) / width, (view.clientHeight * margin) / height),
+    )
+
+    const wrapRect = wrap.getBoundingClientRect()
+    const offsetX = (rect.left - wrapRect.left) / zoom
+    const offsetY = (rect.top - wrapRect.top) / zoom
+
+    setZoom(level)
+    requestAnimationFrame(() => {
+      const artboardLeft = wrap.offsetLeft
+      view.scrollLeft = artboardLeft + offsetX * level - (view.clientWidth - width * level) / 2
+      view.scrollTop = offsetY * level - (view.clientHeight - height * level) / 2
+    })
+  }, [selectedId, zoom])
+
+  /** Cmd/ctrl + wheel zooms; a bare wheel scrolls, as it should. */
+  useEffect(() => {
+    const view = viewport.current
+    if (!view) return
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      event.preventDefault()
+      // Exponential and gentle. A linear factor makes one flick of a trackpad
+      // jump several hundred per cent, and the clamp keeps a single coarse
+      // mouse-wheel notch from doing the same.
+      const delta = Math.max(-40, Math.min(40, event.deltaY))
+      zoomAt(zoom * Math.exp(-delta * 0.004), event.clientX, event.clientY)
+    }
+    // Not passive: the browser will not let a passive listener preventDefault,
+    // and without that the page zooms instead of the artboard.
+    view.addEventListener('wheel', onWheel, { passive: false })
+    return () => view.removeEventListener('wheel', onWheel)
+  }, [zoom, zoomAt])
+
   /** Right-click selects what is under the pointer, then offers its actions. */
   const onStageContextMenu = (event: React.MouseEvent) => {
     const root = stage.current
@@ -534,6 +659,22 @@ export const DesignEditor = () => {
         else undo()
       }
       if (event.key === 'Escape') setSelectedId(null)
+      if ((event.metaKey || event.ctrlKey) && (event.key === '=' || event.key === '+')) {
+        event.preventDefault()
+        setZoom((level) => clampZoom(level * 1.2))
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === '-') {
+        event.preventDefault()
+        setZoom((level) => clampZoom(level / 1.2))
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === '0') {
+        event.preventDefault()
+        setZoom(1)
+      }
+      if (event.shiftKey && (event.key === '2' || event.key === '@')) {
+        event.preventDefault()
+        zoomToSelection()
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && selected) {
         event.preventDefault()
         onDelete()
@@ -614,18 +755,34 @@ export const DesignEditor = () => {
             <Redo2 className="size-4" />
           </HeaderButton>
           <span className="mx-1 h-5 w-px bg-white/10" />
-          <select
-            aria-label="Zoom"
-            value={zoom}
-            onChange={(event) => setZoom(Number(event.target.value))}
-            className="rounded-md bg-white/[0.05] px-2 py-1 text-[11px] outline-none"
+          <HeaderButton
+            label="Zoom out"
+            onClick={() => setZoom((level) => clampZoom(level / 1.2))}
+            disabled={zoom <= MIN_ZOOM}
           >
-            {[0.5, 0.75, 1, 1.25, 1.5].map((level) => (
-              <option key={level} value={level}>
-                {Math.round(level * 100)}%
-              </option>
-            ))}
-          </select>
+            <Minus className="size-4" />
+          </HeaderButton>
+          <button
+            type="button"
+            title="Reset to 100%"
+            onClick={() => setZoom(1)}
+            className="min-w-[46px] rounded-md px-1 py-1 text-center text-[11px] tabular-nums transition-colors hover:bg-white/[0.06]"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <HeaderButton
+            label="Zoom in"
+            onClick={() => setZoom((level) => clampZoom(level * 1.2))}
+            disabled={zoom >= MAX_ZOOM}
+          >
+            <Plus className="size-4" />
+          </HeaderButton>
+          <HeaderButton
+            label={selectedId ? 'Zoom to selection' : 'Fit the design'}
+            onClick={zoomToSelection}
+          >
+            <Crosshair className="size-4" />
+          </HeaderButton>
         </div>
       </header>
 
@@ -666,6 +823,7 @@ export const DesignEditor = () => {
 
         {/* Artboard */}
         <main
+          ref={viewport}
           className="min-w-0 flex-1 overflow-auto p-8"
           style={{
             backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)',
@@ -709,17 +867,22 @@ export const DesignEditor = () => {
                 <Handle edge="s" zoom={zoom} onPointerDown={onResizeStart('s')} />
                 <Handle edge="se" zoom={zoom} onPointerDown={onResizeStart('se')} />
 
-                <span
-                  className="absolute rounded bg-sky-500 px-1.5 py-0.5 font-mono text-white"
-                  style={{
-                    bottom: -22 / zoom,
-                    left: 0,
-                    fontSize: 10 / zoom,
-                    transform: `scale(${1})`,
-                  }}
-                >
-                  {Math.round(box.width)} × {Math.round(box.height)}
-                </span>
+                {/* Only while dragging. A permanent badge sits on top of any
+                    element smaller than the badge itself. */}
+                {resizing && (
+                  <span
+                    className="absolute top-full left-0 mt-1 rounded bg-sky-500 px-1.5 py-0.5 font-mono text-[10px] whitespace-nowrap text-white"
+                    style={{
+                      // The whole badge is counter-scaled rather than just its
+                      // font: scaling the text but not the padding is what made
+                      // it wrap to three lines at small sizes.
+                      transform: `scale(${1 / zoom})`,
+                      transformOrigin: 'top left',
+                    }}
+                  >
+                    {Math.round(box.width)} × {Math.round(box.height)}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -727,6 +890,35 @@ export const DesignEditor = () => {
 
         {/* Properties */}
         <aside className="w-[264px] shrink-0 overflow-y-auto border-l border-white/[0.08]">
+          <div className="border-b border-white/[0.08] p-3">
+            <h3 className="mb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase">
+              Insert
+            </h3>
+            <div className="grid grid-cols-3 gap-1">
+              {(
+                [
+                  ['image', ImageIcon, 'Image'],
+                  ['heading', Heading, 'Heading'],
+                  ['text', TypeIcon, 'Text'],
+                  ['button', RectangleHorizontal, 'Button'],
+                  ['box', Square, 'Box'],
+                  ['divider', SeparatorHorizontal, 'Divider'],
+                ] as const
+              ).map(([kind, Icon, name]) => (
+                <button
+                  key={kind}
+                  type="button"
+                  title={`Insert ${name.toLowerCase()}${selected ? ' after the selection' : ''}`}
+                  onClick={() => onInsert(kind)}
+                  className="text-muted-foreground hover:text-foreground flex flex-col items-center gap-1 rounded-md bg-white/[0.04] py-2 text-[10px] transition-colors hover:bg-white/[0.1]"
+                >
+                  <Icon className="size-3.5" />
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {selected ? (
             <>
               <div className="flex items-center gap-1 border-b border-white/[0.08] px-3 py-2">
@@ -798,6 +990,10 @@ export const DesignEditor = () => {
             >
               <Sparkles className="size-3.5" />
               Ask AI…
+            </MenuItem>
+            <MenuItem onClick={() => { setMenu(null); zoomToSelection() }}>
+              <Crosshair className="size-3.5" />
+              Zoom to this
             </MenuItem>
             <MenuItem onClick={() => { setMenu(null); onDuplicate() }}>
               <Copy className="size-3.5" />

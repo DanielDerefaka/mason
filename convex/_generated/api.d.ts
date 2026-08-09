@@ -20,6 +20,7 @@ import type * as inspiration from "../inspiration.js";
 import type * as moodboard from "../moodboard.js";
 import type * as project from "../project.js";
 import type * as user from "../user.js";
+import type * as versions from "../versions.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   moodboard: typeof moodboard;
   project: typeof project;
   user: typeof user;
+  versions: typeof versions;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

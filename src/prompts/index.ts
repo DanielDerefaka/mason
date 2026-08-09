@@ -78,6 +78,21 @@ publishes, named plainly: Extra Light 200, Light 300, Regular 400, Medium 500,
 Semi Bold 600, Bold 700, Extra Bold 800. Only include weights the family really
 has.
 
+## Colour ramps
+
+Return \`ramps\`: a Neutral ramp and one for each brand colour you chose, each
+with steps 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 — 0 the lightest, 100 the
+darkest. Eleven steps each.
+
+The Neutral ramp is the one that matters most: a surface, the border on that
+surface and the muted text inside it are three steps of the same hue, and
+without a ramp those get invented separately on every screen. Keep the hue
+consistent along a ramp and vary lightness; a ramp that drifts in hue reads as
+several unrelated greys.
+
+The token values you returned above should appear somewhere on their ramp
+rather than sitting outside it.
+
 ## Type scale
 
 Return \`typeScale\` as a ladder of named roles, largest first:

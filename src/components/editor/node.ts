@@ -177,3 +177,51 @@ export const parseLength = (input: string): { value: number; unit: string } => {
   if (!match) return { value: 0, unit: 'auto' }
   return { value: Number.parseFloat(match[1]), unit: match[2] ?? 'px' }
 }
+
+/* ------------------------------------------------------------------ *
+ * Inserting
+ *
+ * New nodes are written the way the model writes them — inline styles,
+ * referencing the guide through CSS variables — so an inserted element is
+ * indistinguishable from a generated one and inherits the design system
+ * without any extra plumbing.
+ * ------------------------------------------------------------------ */
+
+export type InsertKind = 'heading' | 'text' | 'button' | 'image' | 'box' | 'divider'
+
+const MARKUP: Record<InsertKind, string> = {
+  heading:
+    '<h2 style="margin:0;font-family:var(--font-family);font-size:32px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;color:var(--foreground);">Heading</h2>',
+  text: '<p style="margin:0;font-family:var(--font-family);font-size:16px;line-height:1.6;color:var(--muted-foreground);">Some text. Double-click to type over it.</p>',
+  button:
+    '<button style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border:none;border-radius:8px;background:var(--primary);color:var(--primary-foreground);font-family:var(--font-family);font-size:14px;font-weight:600;cursor:pointer;">Button</button>',
+  // A neutral placeholder rather than a remote URL: an inserted image should
+  // render instantly and offline, and the panel replaces it in one click.
+  image:
+    '<img alt="" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:8px;background:var(--muted);" src="data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="%23d4d4d8"/><path d="M150 130l30-38 24 30 18-22 28 30z" fill="%23a1a1aa"/><circle cx="160" cy="78" r="12" fill="%23a1a1aa"/></svg>',
+    ) +
+    '">',
+  box: '<div style="padding:24px;border-radius:12px;background:var(--card);border:1px solid var(--border);"></div>',
+  divider: '<div style="height:1px;width:100%;background:var(--border);"></div>',
+}
+
+/**
+ * Places a new element after the selection, or at the end of the design when
+ * nothing is selected. Returns it so the caller can select what it just made.
+ */
+export const insertNode = (
+  root: HTMLElement,
+  kind: InsertKind,
+  after: HTMLElement | null,
+): HTMLElement | null => {
+  const holder = document.createElement('div')
+  holder.innerHTML = MARKUP[kind]
+  const node = holder.firstElementChild as HTMLElement | null
+  if (!node) return null
+
+  if (after?.parentElement) after.parentElement.insertBefore(node, after.nextSibling)
+  else root.append(node)
+  return node
+}

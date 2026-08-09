@@ -88,8 +88,61 @@ const GeneratedColours = ({ guide }: { guide: StyleGuide }) => (
   </div>
 )
 
-export const Colours = ({ guide }: { guide?: StyleGuide | null }) =>
-  guide ? <GeneratedColours guide={guide} /> : <DefaultColours />
+export const Colours = ({ guide }: { guide?: StyleGuide | null }) => (
+  <div className="space-y-14">
+    {guide ? <GeneratedColours guide={guide} /> : <DefaultColours />}
+    {guide?.ramps?.length ? <Ramps ramps={guide.ramps} /> : null}
+  </div>
+)
+
+/**
+ * The tint and shade ladders.
+ *
+ * Shown after the tokens because that is the order they are used in: a token
+ * is the decision, the ramp is where the neighbouring values come from when a
+ * design needs a border one step darker than its surface.
+ */
+const Ramps = ({ ramps }: { ramps: NonNullable<StyleGuide['ramps']> }) => (
+  <section>
+    <h2 className="text-2xl font-semibold tracking-tight">Ramps</h2>
+    <p className="text-muted-foreground mt-1.5 max-w-xl text-sm">
+      Eleven steps per colour, lightest first. A surface, its border and the muted
+      text on it are three steps of one hue rather than three separate decisions.
+    </p>
+
+    <div className="mt-6 space-y-8">
+      {ramps.map((ramp) => (
+        <div key={ramp.name}>
+          <p className="text-sm font-medium">{ramp.name}</p>
+          <div className="mt-3 overflow-x-auto">
+            <div className="flex min-w-max">
+              {ramp.steps.map((step, index) => (
+                <div key={step.step} className="w-[74px] shrink-0">
+                  <div
+                    className="h-16"
+                    style={{
+                      background: step.color,
+                      // Only the ends get a corner, so the ladder reads as one
+                      // continuous strip rather than eleven chips.
+                      borderTopLeftRadius: index === 0 ? 8 : 0,
+                      borderBottomLeftRadius: index === 0 ? 8 : 0,
+                      borderTopRightRadius: index === ramp.steps.length - 1 ? 8 : 0,
+                      borderBottomRightRadius: index === ramp.steps.length - 1 ? 8 : 0,
+                    }}
+                  />
+                  <p className="mt-2 text-[11px]">{ramp.name.slice(0, 1)}{step.step}</p>
+                  <p className="text-muted-foreground font-mono text-[10px] uppercase">
+                    {step.color}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+)
 
 const DefaultColours = () => {
   const tokens = STYLE_GUIDE.colorSections.flatMap((s) => s.swatches.map((w) => w.token))

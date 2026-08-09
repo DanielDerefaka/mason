@@ -513,7 +513,18 @@ const Colour = ({
           className="absolute inset-0 cursor-pointer opacity-0"
         />
       </label>
-      <span className="ml-1 font-mono text-[10px] text-white/40">{value}</span>
     </div>
+
+    <input
+      value={value}
+      spellCheck={false}
+      onChange={(event) => {
+        const next = event.target.value.trim()
+        // Only paint a complete value — repainting on "#f" blanks the element
+        // mid-keystroke, and `transparent` has to survive being typed out.
+        if (/^#[0-9a-f]{6}$/i.test(next) || next === 'transparent') onPick(next)
+      }}
+      className="h-8 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[11px] outline-none focus:border-white/25"
+    />
   </Field>
 )

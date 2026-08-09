@@ -49,6 +49,24 @@ export const ElevationSchema = z.object({
   usage: z.string().describe('One short line on where this level is used.'),
 })
 
+/**
+ * A tint and shade ladder for one colour.
+ *
+ * The four flat neutrals a guide used to carry are not enough to build with:
+ * a surface, the border on that surface and the muted text inside it are three
+ * different steps of the same hue, and without a ramp the model either reuses
+ * one value for all three or invents the other two per screen.
+ */
+export const ColorRampSchema = z.object({
+  name: z.string().describe('What the ramp is for, e.g. "Neutral", "Primary".'),
+  steps: z.array(
+    z.object({
+      step: z.number().describe('0 is lightest, 100 darkest — 0,10,20…100.'),
+      color: z.string().describe('6-digit hex.'),
+    }),
+  ),
+})
+
 export const StyleGuideSchema = z.object({
   theme: z.string().describe('Two or three word name for the direction, title case.'),
   description: z.string().describe('One sentence on the feeling it creates.'),
@@ -67,6 +85,7 @@ export const StyleGuideSchema = z.object({
   spacing: z.array(z.number()).optional(),
   radii: z.array(RadiusSchema).optional(),
   elevation: z.array(ElevationSchema).optional(),
+  ramps: z.array(ColorRampSchema).optional(),
 })
 
 export type ColorSwatch = z.infer<typeof ColorSwatchSchema>
@@ -75,6 +94,7 @@ export type TypographyStyle = z.infer<typeof TypographyStyleSchema>
 export type TypeStyle = z.infer<typeof TypeStyleSchema>
 export type Radius = z.infer<typeof RadiusSchema>
 export type Elevation = z.infer<typeof ElevationSchema>
+export type ColorRamp = z.infer<typeof ColorRampSchema>
 export type StyleGuide = z.infer<typeof StyleGuideSchema>
 
 /**

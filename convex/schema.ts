@@ -6,6 +6,23 @@ export default defineSchema({
   // Convex Auth's own tables (users, sessions, accounts, verification codes).
   ...authTables,
 
+  /**
+   * Named snapshots of a project's canvas.
+   *
+   * Undo lives in Redux and dies with the tab, which is fine for the last few
+   * moves and useless for "put back what I had this morning". A separate table
+   * rather than an array on the project so a long history cannot push the
+   * project document towards Convex's per-document size limit.
+   */
+  versions: defineTable({
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    label: v.string(),
+    createdAt: v.number(),
+    /** The whole sketchesData payload as it was. */
+    data: v.any(),
+  }).index('by_project', ['projectId']),
+
   projects: defineTable({
     userId: v.id('users'),
     name: v.string(),

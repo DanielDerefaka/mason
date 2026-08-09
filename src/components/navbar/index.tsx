@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { VersionHistory } from '@/components/canvas/history'
 import { useAuthentication } from '@/hooks/use-auth'
 import { useProjects } from '@/hooks/use-projects'
 import { useDispatch } from 'react-redux'
@@ -104,6 +105,13 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
         <span className="text-muted-foreground text-xs whitespace-nowrap">
           {credits == null ? '—' : `${credits} credit${credits === 1 ? '' : 's'}`}
         </span>
+
+        {/* Anchored, so the panel can hang off it. */}
+        {inWorkspace && (
+          <div className="relative">
+            <VersionHistory />
+          </div>
+        )}
 
         <button
           type="button"

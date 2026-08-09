@@ -57,12 +57,25 @@ export const describeStyleGuide = (
       ].join('\n')
     : null
 
+  const ramps = guide.ramps?.length
+    ? [
+        'Colour ramps — prefer a step from these over a colour you mix yourself:',
+        ...guide.ramps.map(
+          (ramp) =>
+            `  ${ramp.name}: ${ramp.steps
+              .map((step) => `${step.step}=${step.color}`)
+              .join('  ')}`,
+        ),
+      ].join('\n')
+    : null
+
   return [
     `Theme: ${guide.theme} — ${guide.description}`,
     `Font family: ${guide.typography.fontFamily}`,
     `Weights available: ${guide.typography.styles.map((s) => s.weight).join(', ')}`,
     'Colours (already bound to the matching CSS variables):',
     swatches,
+    ramps,
     typeScale,
     spacing,
     radii,
