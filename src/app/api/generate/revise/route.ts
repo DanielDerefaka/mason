@@ -47,9 +47,11 @@ export async function POST(request: NextRequest) {
     const result = streamText({
       model: anthropicProvider(UI_MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
-      // A revision returns the whole design, so it needs the same room the
-      // original generation had, not less.
-      maxOutputTokens: 16000,
+      // A revision returns the whole design — six cards of copy plus their styles ran
+      // past 16k and the stream simply stopped, leaving a half-written
+      // element and no footer. Truncation is reported below rather
+      // than saved silently.
+      maxOutputTokens: 32000,
       system: [
         prompts.generatedUi.system,
         `## Revising\n\n${prompts.revise.system}`,
@@ -64,6 +66,13 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           for await (const chunk of result.textStream) controller.enqueue(encoder.encode(chunk))
+
+          // A length stop means the design is incomplete, not merely short.
+          // The marker is an HTML comment, which the sanitiser drops anyway,
+          // so it can never reach the rendered design.
+          if ((await result.finishReason) === 'length') {
+            controller.enqueue(encoder.encode('<!--mason:truncated-->'))
+          }
         } catch (error) {
           controller.error(error)
           return

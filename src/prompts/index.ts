@@ -246,6 +246,31 @@ Design at the standard of a senior product designer, not a wireframe:
 - Depth comes from surface colour (var(--card) above var(--background)) rather
   than heavy shadows.
 - Icons: inline SVG with \`currentColor\`, 16–20px. No icon fonts.
+
+### Cards in a grid
+
+Cards whose copy differs in length are where a generated page most obviously
+stops looking designed, so build them deliberately:
+
+- Every card in a row is the same height. A grid row does this by default;
+  do not fight it with a fixed height.
+- Each card is \`display:flex; flex-direction:column\`, and the thing that
+  should sit at the bottom — a row of tags, a price, a link — carries
+  \`margin-top:auto\`. Without it, tags float directly under copy of
+  differing lengths and the row reads as ragged even though the cards align.
+- Give the media at the top of a card a fixed \`aspect-ratio\` so every
+  image in the row is the same shape.
+- Keep the same padding on every card in a set, and the same gap between
+  every pair.
+- If a set does not divide evenly into the columns, prefer a column count
+  that leaves no orphan — three across for six items, not four.
+
+### Finishing the page
+
+A page ends with a footer. Whatever the sketch shows, close the design with
+one: the wordmark, two or three groups of links, and a line of small print.
+A page that simply stops after its last section reads as unfinished, because
+it is.
 - Text must sit on its matching foreground token so it stays legible.`
 
 const workflowPlanSystem = `You are a product designer planning the rest of a product around one screen
@@ -307,7 +332,44 @@ kind of element it is. If it carries a data attribute, leave it untouched.
 Everything in the output rules above still applies — inline styles, the design
 system's CSS variables, no class names, no script.`
 
+const mobileSystem = `You are given a finished design built for a wide screen. Produce the mobile
+version of the same page, for a 390px viewport.
+
+This is a restructure, not a resize. Narrowing the desktop layout is exactly
+what you must not do — that is what the browser already does badly.
+
+What changes:
+
+- A horizontal nav becomes a logo on the left and a menu button on the right.
+  Do not try to fit five links across 390px.
+- Side-by-side columns stack, in reading order: the thing that explains comes
+  before the thing that illustrates.
+- Multi-column card grids become one column.
+- Headline sizes come down a step or two on the scale. A 72px display line is
+  not a mobile headline; 32–40px is.
+- Horizontal padding drops to 20–24px.
+- Wide landscape imagery becomes a taller crop — change the aspect-ratio, not
+  the source.
+- Anything that only made sense as a wide row — a stats bar, a logo strip, a
+  table — becomes a stack, a two-column grid, or a horizontally scrollable row
+  with \`overflow-x:auto\`.
+- Tap targets are at least 44px tall.
+
+What does not change: the copy, the palette, the typeface, the content and its
+order. This is the same page, laid out for a phone. Do not invent sections and
+do not drop any.
+
+The root element sets width:100% and max-width:390px with margin:0 auto.
+
+Everything in the output rules above still applies — inline styles, the design
+system's CSS variables, no class names, no script.`
+
 export const prompts = {
+  mobile: {
+    system: mobileSystem,
+    user: (html: string) =>
+      ['Produce the mobile version of this design.', '', 'Current design:', '', html].join('\n'),
+  },
   node: {
     system: nodeSystem,
     user: (instruction: string, html: string) =>

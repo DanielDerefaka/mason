@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Download, Layers as LayersIcon, Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
 import { useWorkflow } from '@/hooks/use-workflow'
+import { useMobileVersion } from '@/hooks/use-mobile-version'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
@@ -57,6 +58,8 @@ const ShapeView = ({
   onOpenChat,
   onExport,
   onEdit,
+  onMobile,
+  mobileRunning,
   workflowRunning,
   onBeginEdit,
   onEndEdit,
@@ -73,6 +76,8 @@ const ShapeView = ({
   onOpenChat?: () => void
   onExport?: () => void
   onEdit?: () => void
+  onMobile?: () => void
+  mobileRunning?: boolean
   workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
@@ -90,6 +95,8 @@ const ShapeView = ({
         onOpenChat={onOpenChat}
         onExport={onExport}
         onEdit={onEdit}
+        onMobile={onMobile}
+        mobileRunning={mobileRunning}
         workflowRunning={workflowRunning}
       />
     )
@@ -431,6 +438,7 @@ export const Canvas = () => {
       .catch(() => toast.error('Could not export that frame'))
   }
   const { generateWorkflow, workflowRunningFor } = useWorkflow()
+  const { generateMobile, mobileRunningFor } = useMobileVersion()
   const [inspirationOpen, setInspirationOpen] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
   const { toggle: toggleDesignChat } = useDesignChat()
@@ -591,6 +599,8 @@ export const Canvas = () => {
               onOpenChat={() => toggleDesignChat(shape.id)}
               onExport={() => onExport(shape)}
               onEdit={() => openEditor(shape)}
+              onMobile={() => void generateMobile(shape)}
+              mobileRunning={mobileRunningFor !== null}
               workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}

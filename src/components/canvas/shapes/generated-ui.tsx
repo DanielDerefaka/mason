@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { Download, Loader2, MessageSquare, PenLine, Workflow } from 'lucide-react'
+import { Download, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { sanitisePartialHtml } from '@/lib/sanitise'
@@ -26,6 +26,8 @@ export const GeneratedUI = ({
   onOpenChat,
   onExport,
   onEdit,
+  onMobile,
+  mobileRunning,
   workflowRunning,
 }: {
   shape: Shape
@@ -35,6 +37,8 @@ export const GeneratedUI = ({
   onOpenChat?: () => void
   onExport?: () => void
   onEdit?: () => void
+  onMobile?: () => void
+  mobileRunning?: boolean
   workflowRunning?: boolean
 }) => {
   const dispatch = useAppDispatch()
@@ -124,6 +128,28 @@ export const GeneratedUI = ({
             >
               <MessageSquare className="size-3" />
               Design Chat
+            </button>
+          )}
+          {onMobile && (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onMobile}
+              disabled={mobileRunning}
+              title="Restructure this design for a phone, as a new design beside it"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] transition-colors hover:bg-white/[0.14] disabled:opacity-50"
+            >
+              {mobileRunning ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" />
+                  Building…
+                </>
+              ) : (
+                <>
+                  <Smartphone className="size-3" />
+                  Mobile version
+                </>
+              )}
             </button>
           )}
           {onExport && (
