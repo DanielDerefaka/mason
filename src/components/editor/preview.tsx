@@ -3,7 +3,7 @@
 import { ArrowLeft, Loader2, Monitor, Smartphone, Tablet } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
@@ -30,6 +30,8 @@ export const DesignPreview = () => {
   const { projectId, design, styleGuide, loading } = useDesignEditor()
   const { session } = useParams<{ session: string }>()
   const [width, setWidth] = useState<(typeof WIDTHS)[number]['key']>('full')
+  const column = useRef<HTMLDivElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
 
   useGoogleFont(styleGuide?.typography.fontFamily, [300, 400, 500, 600, 700, 800])
 
@@ -43,6 +45,31 @@ export const DesignPreview = () => {
   }, [styleGuide])
 
   const back = `/dashboard/${session}/editor?project=${projectId ?? ''}&design=${design?.id ?? ''}`
+
+  /**
+   * Does the design actually fit the chosen width?
+   *
+   * Measured rather than assumed, and re-measured as images decode and fonts
+   * swap — a design can fit until a webfont makes its headline wider.
+   */
+  useEffect(() => {
+    const node = column.current
+    if (!node) return
+    const check = () => setOverflowing(node.scrollWidth > node.clientWidth + 1)
+    check()
+
+    const observer = new ResizeObserver(check)
+    observer.observe(node)
+    const images = Array.from(node.querySelectorAll('img'))
+    for (const image of images) image.addEventListener('load', check)
+    const timer = setTimeout(check, 1200)
+
+    return () => {
+      observer.disconnect()
+      for (const image of images) image.removeEventListener('load', check)
+      clearTimeout(timer)
+    }
+  }, [width, design?.html])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -82,16 +109,26 @@ export const DesignPreview = () => {
       // this the page shows the app's background either side of it.
       style={{ ...cssVars, background: 'var(--background)' }}
     >
-      {/* overflow-hidden on the device column so content that does not
-          reflow is visibly clipped rather than escaping across the page —
-          a design that overflows at 390px should look broken here, because
-          it is. */}
+      {/* Scrolls rather than clips. Clipping cut headlines in half, which
+          reads as the preview being broken; a real phone scrolls sideways,
+          and the scrollbar is the honest signal. The warning below says what
+          the scrollbar means. */}
       <div
-        className={cn('mx-auto', frame?.width && 'shadow-2xl', frame?.width && 'overflow-hidden')}
+        ref={column}
+        className={cn('mx-auto', frame?.width && 'shadow-2xl', frame?.width && 'overflow-x-auto')}
         style={{ width: frame?.width ?? '100%', maxWidth: '100%' }}
       >
         <div dangerouslySetInnerHTML={{ __html: sanitiseHtml(design.html) }} />
       </div>
+
+      {overflowing && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+          <p className="pointer-events-auto rounded-full bg-amber-500/90 px-3.5 py-2 text-[11px] font-medium text-black shadow-lg">
+            This design is wider than {frame?.width}px — open it in the editor, select the
+            outermost group and press <span className="font-semibold">Make responsive</span>.
+          </p>
+        </div>
+      )}
 
       {/* Ours, and deliberately almost invisible until reached for. */}
       <div className="group fixed top-4 left-4 z-50 flex items-center gap-1 opacity-25 transition-opacity hover:opacity-100 focus-within:opacity-100">
