@@ -66,6 +66,7 @@ export const Properties = ({
   const padding = Number.parseFloat(readStyle(element, 'padding-top')) || 0
   const gap = Number.parseFloat(readStyle(element, 'gap')) || 0
   const isFlex = readStyle(element, 'display').includes('flex')
+  const isFree = ['absolute', 'fixed'].includes(readStyle(element, 'position'))
 
   const italic = readStyle(element, 'font-style') === 'italic'
   const underline = readStyle(element, 'text-decoration-line').includes('underline')
@@ -323,6 +324,45 @@ export const Properties = ({
       </Group>
 
       <Group label="Layout">
+        <Field label="Placement">
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                onStyle('position', 'static')
+                onStyle('left', '')
+                onStyle('top', '')
+              }}
+              className={cn(
+                'flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors',
+                !isFree ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-white/60 hover:bg-white/10',
+              )}
+            >
+              In flow
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Seeded from where it already sits, so switching does not
+                // teleport it to the corner of its container.
+                onStyle('position', 'absolute')
+                onStyle('left', `${Math.round(element.offsetLeft)}px`)
+                onStyle('top', `${Math.round(element.offsetTop)}px`)
+              }}
+              className={cn(
+                'flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors',
+                isFree ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-white/60 hover:bg-white/10',
+              )}
+            >
+              Free
+            </button>
+          </div>
+          <p className="text-[10px] leading-relaxed text-white/40">
+            In flow, dragging drops it between other elements. Free lets you put it
+            anywhere, and takes it out of the layout.
+          </p>
+        </Field>
+
         <Field label={`Padding: ${Math.round(padding)}px`}>
           <Slider
             min={0}

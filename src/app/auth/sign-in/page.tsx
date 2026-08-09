@@ -37,12 +37,14 @@ export default function SignInPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="pwd" className="text-title text-sm">
+                <Label htmlFor="pwd" className="text-sm">
                   Password
                 </Label>
+                {/* Pointed at "#" until now — an inert control, like the OAuth
+                    buttons were. */}
                 <Button asChild variant="link" size="sm">
-                  <Link href="#" className="link intent-info variant-ghost text-sm">
-                    Forgot your Password ?
+                  <Link href="/auth/forgot-password" className="text-sm">
+                    Forgot your password?
                   </Link>
                 </Button>
               </div>

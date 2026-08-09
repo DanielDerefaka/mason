@@ -44,6 +44,7 @@ import {
   insertNode,
   labelFor,
   moveNode,
+  readStyle,
   serialise,
   siblingIndex,
   type InsertKind,
@@ -87,6 +88,10 @@ export const DesignEditor = () => {
   const [box, setBox] = useState<Box | null>(null)
   const [hoverBox, setHoverBox] = useState<Box | null>(null)
   const [resizing, setResizing] = useState(false)
+  const [draggingNode, setDraggingNode] = useState(false)
+  const [dropLine, setDropLine] = useState<
+    { left: number; top: number; width: number } | null
+  >(null)
 
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
   const resolveStorageUrl = useMutation(api.moodboard.resolveStorageUrl)
@@ -421,6 +426,89 @@ export const DesignEditor = () => {
     window.addEventListener('pointerup', onUp)
   }
 
+  /**
+   * Drags the selection.
+   *
+   * Two modes, because a generated design is a flow layout and "move this
+   * anywhere" means two different things in one. An element that is
+   * absolutely positioned gets its offsets moved — genuinely free placement.
+   * Everything else is reordered into a new place in the flow, with a line
+   * showing where it will land, because setting `left` on a flow element does
+   * nothing and setting `position:absolute` behind the user's back collapses
+   * the space it was holding open.
+   */
+  const onMoveStart = (event: React.PointerEvent, node: HTMLElement) => {
+    const root = stage.current
+    if (!root) return
+    snapshot()
+
+    const free = ['absolute', 'fixed'].includes(readStyle(node, 'position'))
+    const start = {
+      x: event.clientX,
+      y: event.clientY,
+      left: Number.parseFloat(readStyle(node, 'left')) || 0,
+      top: Number.parseFloat(readStyle(node, 'top')) || 0,
+    }
+
+    let target: { node: HTMLElement; before: boolean } | null = null
+    setDraggingNode(true)
+
+    const onMove = (move: PointerEvent) => {
+      if (free) {
+        node.style.left = `${Math.round(start.left + (move.clientX - start.x) / zoom)}px`
+        node.style.top = `${Math.round(start.top + (move.clientY - start.y) / zoom)}px`
+        setBox(measure(selectedId))
+        return
+      }
+
+      // Hit-test through the overlay, which is why it is pointer-events-none.
+      let under = document.elementFromPoint(move.clientX, move.clientY) as HTMLElement | null
+      while (under && under !== root && !under.hasAttribute(NODE_ATTR)) {
+        under = under.parentElement
+      }
+      if (!under || under === root || under === node || node.contains(under)) {
+        target = null
+        setDropLine(null)
+        return
+      }
+
+      const rect = under.getBoundingClientRect()
+      const before = move.clientY < rect.top + rect.height / 2
+      target = { node: under, before }
+
+      const wrap = artboard.current
+      if (!wrap) return
+      const w = wrap.getBoundingClientRect()
+      setDropLine({
+        left: (rect.left - w.left) / zoom,
+        top: (before ? rect.top - w.top : rect.bottom - w.top) / zoom,
+        width: rect.width / zoom,
+      })
+    }
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      setDropLine(null)
+      setDraggingNode(false)
+
+      if (free) {
+        commit()
+        setBox(measure(selectedId))
+        return
+      }
+      if (!target) return
+      target.node.parentElement?.insertBefore(
+        node,
+        target.before ? target.node : target.node.nextSibling,
+      )
+      restamp(node)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   const MIN_ZOOM = 0.1
   const MAX_ZOOM = 4
   const clampZoom = (level: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
@@ -498,24 +586,47 @@ export const DesignEditor = () => {
     })
   }, [selectedId, zoom])
 
-  /** Cmd/ctrl + wheel zooms; a bare wheel scrolls, as it should. */
-  useEffect(() => {
-    const view = viewport.current
-    if (!view) return
+  /**
+   * Wheel zoom.
+   *
+   * Attached through a callback ref rather than an effect: the editor renders
+   * a loading state first, so an effect keyed on zoom ran once while the
+   * viewport was still null and never ran again — the listener was never
+   * attached and only the buttons worked.
+   */
+  const wheelRef = useRef<((event: WheelEvent) => void) | null>(null)
+
+  const attachViewport = useCallback((node: HTMLDivElement | null) => {
+    if (viewport.current && wheelRef.current) {
+      viewport.current.removeEventListener('wheel', wheelRef.current)
+    }
+    viewport.current = node
+    if (!node) return
+
     const onWheel = (event: WheelEvent) => {
+      // A trackpad pinch arrives as a wheel event with ctrlKey set. A plain
+      // two-finger scroll is left alone so the artboard can still be panned.
       if (!event.ctrlKey && !event.metaKey) return
       event.preventDefault()
       // Exponential and gentle. A linear factor makes one flick of a trackpad
       // jump several hundred per cent, and the clamp keeps a single coarse
       // mouse-wheel notch from doing the same.
       const delta = Math.max(-40, Math.min(40, event.deltaY))
-      zoomAt(zoom * Math.exp(-delta * 0.004), event.clientX, event.clientY)
+      zoomAtRef.current(event.deltaY === 0 ? 1 : Math.exp(-delta * 0.004), event.clientX, event.clientY)
     }
+
+    wheelRef.current = onWheel
     // Not passive: the browser will not let a passive listener preventDefault,
     // and without that the page zooms instead of the artboard.
-    view.addEventListener('wheel', onWheel, { passive: false })
-    return () => view.removeEventListener('wheel', onWheel)
-  }, [zoom, zoomAt])
+    node.addEventListener('wheel', onWheel, { passive: false })
+  }, [])
+
+  /**
+   * The handler is attached once, so it reads the current zoom through a ref
+   * rather than closing over a stale one.
+   */
+  const zoomAtRef = useRef<(factor: number, x: number, y: number) => void>(() => {})
+  zoomAtRef.current = (factor, x, y) => zoomAt(zoom * factor, x, y)
 
   /** Right-click selects what is under the pointer, then offers its actions. */
   const onStageContextMenu = (event: React.MouseEvent) => {
@@ -552,6 +663,60 @@ export const DesignEditor = () => {
     commit()
   }
 
+  /**
+   * Starts a drag only once the pointer has actually travelled.
+   *
+   * The move handle used to be a transparent span over the whole selection,
+   * which swallowed the double-click that puts the caret in text. Dragging
+   * begins from the element itself now, and a press that does not move is
+   * left alone so click, double-click and typing all still reach it.
+   */
+  const DRAG_THRESHOLD = 4
+
+  const onStagePointerDown = (event: React.PointerEvent) => {
+    const root = stage.current
+    if (!root || event.button !== 0) return
+
+    let node = event.target as HTMLElement | null
+    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
+    if (!node || node === root) return
+    // Typing beats dragging while a node is open for editing.
+    if (node.isContentEditable) return
+    // A press on something not yet selected still starts a drag — requiring a
+    // separate click first meant an element you could see could not be moved
+    // until you had clicked it, which is not how a canvas behaves.
+    const id = node.getAttribute(NODE_ATTR)
+    if (id && id !== selectedId) setSelectedId(id)
+
+    const origin = { x: event.clientX, y: event.clientY }
+    const held = node
+
+    const maybeStart = (move: PointerEvent) => {
+      if (
+        Math.abs(move.clientX - origin.x) < DRAG_THRESHOLD &&
+        Math.abs(move.clientY - origin.y) < DRAG_THRESHOLD
+      ) {
+        return
+      }
+      cleanup()
+      onMoveStart(
+        { clientX: origin.x, clientY: origin.y } as React.PointerEvent,
+        held,
+      )
+      // Hand the in-flight gesture over: the real handler listens on window,
+      // so replaying this move gets it tracking immediately.
+      window.dispatchEvent(new PointerEvent('pointermove', move))
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', maybeStart)
+      window.removeEventListener('pointerup', cleanup)
+    }
+
+    window.addEventListener('pointermove', maybeStart)
+    window.addEventListener('pointerup', cleanup)
+  }
+
   /** Selection: walk up from whatever was clicked to the nearest tagged node. */
   const onStageClick = (event: React.MouseEvent) => {
     const root = stage.current
@@ -561,6 +726,8 @@ export const DesignEditor = () => {
     // to clear the selection — so every click selected and instantly
     // deselected, and only the layer list appeared to work.
     event.stopPropagation()
+    // The click that ends a drag should not re-select whatever it landed on.
+    if (draggingNode) return
     let node = event.target as HTMLElement | null
     while (node && node !== root && !node.hasAttribute(NODE_ATTR)) {
       node = node.parentElement
@@ -823,7 +990,7 @@ export const DesignEditor = () => {
 
         {/* Artboard */}
         <main
-          ref={viewport}
+          ref={attachViewport}
           className="min-w-0 flex-1 overflow-auto p-8"
           style={{
             backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)',
@@ -838,13 +1005,14 @@ export const DesignEditor = () => {
           >
             <div
               ref={stage}
+              onPointerDown={onStagePointerDown}
               onClick={onStageClick}
               onDoubleClick={onStageDoubleClick}
               onContextMenu={onStageContextMenu}
               onMouseOver={onStageHover}
               onMouseLeave={() => setHoverId(null)}
               style={cssVars}
-              className="[&_*]:cursor-pointer"
+              className={cn('[&_*]:cursor-pointer', draggingNode && '[&_*]:cursor-grabbing')}
             />
 
             {hoverBox && !resizing && (
@@ -855,12 +1023,26 @@ export const DesignEditor = () => {
               />
             )}
 
+            {dropLine && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute bg-fuchsia-400"
+                style={{
+                  left: dropLine.left,
+                  top: dropLine.top,
+                  width: dropLine.width,
+                  height: 2 / zoom,
+                }}
+              />
+            )}
+
             {box && (
               <div
                 aria-hidden
                 className="pointer-events-none absolute border border-sky-400"
                 style={{ ...box, borderWidth: 1.5 / zoom }}
               >
+
                 {/* Handles counter-scale so they stay the same size on screen
                     however far in or out the artboard is zoomed. */}
                 <Handle edge="e" zoom={zoom} onPointerDown={onResizeStart('e')} />
