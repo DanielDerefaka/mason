@@ -47,7 +47,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Sketch to Design",
+  title: "Mason",
   description: "Turn sketches into production-ready designs.",
 };
 

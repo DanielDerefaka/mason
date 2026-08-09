@@ -41,7 +41,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
           <span className="flex items-center gap-2.5">
             <LogoMark className="text-foreground h-[22px] w-[22px]" />
             <span className="text-foreground text-[16px] font-bold tracking-[-0.16px]">
-              Sketch to Design
+              Mason
             </span>
           </span>
           <button type="button" aria-label="Close menu" onClick={onClose}>

@@ -66,10 +66,10 @@ export function SiteHeader() {
         )}
       >
         <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between px-6 md:px-10 lg:px-[60px]">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Sketch to Design home">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Mason home">
             <LogoMark className="h-[22px] w-[22px] text-foreground" />
             <span className="font-sans text-[16px] leading-4 font-bold tracking-[-0.16px] text-foreground">
-              Sketch to Design
+              Mason
             </span>
           </Link>
 

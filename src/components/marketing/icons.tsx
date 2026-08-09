@@ -16,13 +16,17 @@ const base = (viewBox: string) =>
  * ------------------------------------------------------------------ */
 
 /**
- * The app mark — a downward chevron whose top edge dips to a centre peak,
- * with the left arm slightly heavier than the right.
+ * The Mason mark — three blocks in a running bond: two laid down, one set
+ * across the joint above them. It is the product's own vocabulary (a screen
+ * is rectangles before it is anything else) and it survives 16px, which the
+ * ported chevron was never designed to do.
  */
 export function LogoMark({ className, ...props }: IconProps) {
   return (
     <svg {...base("0 0 24 24")} className={className} {...props}>
-      <path d="M1.6 2.6h7.2L12 11.4l3.2-8.8h7.2L12 21.4z" />
+      <rect x="7.4" y="2.6" width="9.2" height="8.2" rx="1.4" />
+      <rect x="1.6" y="13.2" width="9.2" height="8.2" rx="1.4" />
+      <rect x="13.2" y="13.2" width="9.2" height="8.2" rx="1.4" />
     </svg>
   );
 }

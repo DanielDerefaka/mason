@@ -6,7 +6,7 @@ import { ACCENTS, DesignScreen } from "@/components/marketing/screen-mocks";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
 
 export const metadata: Metadata = {
-  title: "Blog | Sketch to Design",
+  title: "Blog | Mason",
 };
 
 /**

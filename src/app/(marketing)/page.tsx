@@ -7,7 +7,7 @@ import { MarqueeStrip } from '@/components/marketing/home/MarqueeStrip'
 import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 
 export const metadata = {
-  title: 'Sketch to Design — draw the shape, get the product',
+  title: 'Mason — draw the shape, get the product',
   description:
     'Rough out a screen with rectangles. Get a design system from your mood board, a finished interface from your sketch, and the whole flow around it.',
 }

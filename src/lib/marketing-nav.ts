@@ -82,10 +82,10 @@ export const SOCIAL_LINKS: SocialLink[] = [
 ]
 
 export const CONTACT = {
-  email: 'hello@sketchtodesign.app',
+  email: 'hello@mason.design',
   phone: '—',
   whatsapp: 'Support',
   location: 'Built remotely',
 }
 
-export const COPYRIGHT = `© ${new Date().getFullYear()} Sketch to Design. All rights reserved.`
+export const COPYRIGHT = `© ${new Date().getFullYear()} Mason. All rights reserved.`

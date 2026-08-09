@@ -33,7 +33,7 @@ export const HERO = {
 
 export const INTRODUCTION = {
   headline: ['Sketches, not prompts.', 'Systems, not screenshots.'],
-  body: 'Sketch to Design reads the shape you drew and builds the screen it implies — using a design system derived from your own mood board, so the fifth screen still looks like the first.',
+  body: 'Mason reads the shape you drew and builds the screen it implies — using a design system derived from your own mood board, so the fifth screen still looks like the first.',
   primaryCta: { label: 'About us', href: '/about-us' },
   secondaryCta: { label: 'Read the blog', href: '/blog' },
 }

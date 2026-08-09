@@ -111,7 +111,7 @@ export function AboutContent() {
         <div className="relative mt-[48px] md:mt-[64px]">
           <div className="relative z-10 mx-auto flex max-w-[620px] flex-col gap-[32px]">
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              <Hl>Sketch to Design</Hl> turns the roughest thing you can draw into{" "}
+              <Hl>Mason</Hl> turns the roughest thing you can draw into{" "}
               <Hl>a finished interface</Hl>. Rectangles on a canvas become a real screen,
               built from a design system read out of your own mood board.
             </p>
@@ -234,7 +234,7 @@ export function AboutContent() {
 
         {/* 6 — Closing line */}
         <p className="text-muted-foreground mx-auto mt-[96px] max-w-[620px] text-center font-sans text-[17px] leading-[28px] md:mt-[140px]">
-          Sketch to Design was built in the open, chapter by chapter, and the parts that
+          Mason was built in the open, chapter by chapter, and the parts that
           were hard are written up on the <Hl>blog</Hl> — why a labelled box beats a better
           prompt, why a palette is a set of constraints, and what it takes to stream a
           design into existence without it flickering.
