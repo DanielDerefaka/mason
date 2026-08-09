@@ -71,10 +71,17 @@ export const exportDesignHtml = (design: Shape, styleGuide?: StyleGuide | null) 
     <style>
       :root {
 ${variables}
-        --font-family: ${family ?? 'system-ui, sans-serif'};
+        --font-family: ${family ? `'${family.split(',')[0].trim().replace(/^['"]|['"]$/g, '')}', sans-serif` : 'system-ui, sans-serif'};
       }
       * { box-sizing: border-box; }
-      body { margin: 0; font-family: var(--font-family); }
+      /* The design paints its own root, but only inside its column. Without
+         this the page shows white gutters either side of a dark design. */
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-family);
+      }
     </style>
   </head>
   <body>
