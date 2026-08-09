@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
-import type { Shape } from '@/redux/slice/shapes'
+import type { Shape, Tool } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
 import { cn } from '@/lib/utils'
 import { Loader2, Sparkles, Wand2 } from 'lucide-react'
@@ -34,6 +34,12 @@ type PointerHandler = (event: React.PointerEvent<Element>) => void
  * button's onClick never runs.
  */
 const stopPointer = (event: React.PointerEvent<Element>) => event.stopPropagation()
+
+const Key = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="rounded border border-white/15 bg-white/[0.08] px-1.5 py-0.5 font-sans text-[11px] text-foreground">
+    {children}
+  </kbd>
+)
 
 const ShapeView = ({
   shape,
@@ -356,6 +362,12 @@ export const Canvas = () => {
     deleteSelected,
     zoomIn,
     zoomOut,
+    zoomToFit,
+    nudge,
+    duplicate,
+    undo,
+    redo,
+    setTool,
     zoomToScale,
   } = useInfiniteCanvas()
   const { generateDesign, generatingFrameId } = useFrame()
@@ -363,16 +375,85 @@ export const Canvas = () => {
   const [inspirationOpen, setInspirationOpen] = useState(false)
   const { toggle: toggleDesignChat } = useDesignChat()
 
+  /**
+   * Keyboard shortcuts.
+   *
+   * Tool letters follow Figma's, because that is the muscle memory the people
+   * this is aimed at already have. Undo is the reflex the app most obviously
+   * ignored: it had exactly one binding before this, and it was Delete.
+   */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
       const inField =
-        event.target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(event.target.tagName)
+        target instanceof HTMLElement &&
+        (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)
       if (inField) return
-      if (event.key === 'Delete' || event.key === 'Backspace') deleteSelected()
+
+      const mod = event.metaKey || event.ctrlKey
+
+      if (mod && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redo()
+        else undo()
+        return
+      }
+      if (mod && event.key.toLowerCase() === 'd') {
+        event.preventDefault()
+        duplicate()
+        return
+      }
+      if (mod) return
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        deleteSelected()
+        return
+      }
+
+      // Shift+1 is zoom-to-fit; on most layouts that key reports as '!'.
+      if (event.shiftKey && (event.key === '1' || event.key === '!')) {
+        event.preventDefault()
+        zoomToFit()
+        return
+      }
+
+      const NUDGE: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      }
+      const step = NUDGE[event.key]
+      if (step) {
+        event.preventDefault()
+        // Shift makes it a coarse nudge, as everywhere else.
+        const size = event.shiftKey ? 10 : 1
+        nudge(step[0] * size, step[1] * size)
+        return
+      }
+
+      const TOOLS: Record<string, Tool> = {
+        v: 'select',
+        h: 'hand',
+        f: 'frame',
+        r: 'rectangle',
+        o: 'ellipse',
+        p: 'pencil',
+        l: 'line',
+        a: 'arrow',
+        t: 'text',
+        e: 'eraser',
+      }
+      const next = TOOLS[event.key.toLowerCase()]
+      if (next) {
+        event.preventDefault()
+        setTool(next)
+      }
     }
+
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [deleteSelected])
+  }, [deleteSelected, duplicate, nudge, redo, setTool, undo, zoomToFit])
 
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
@@ -458,6 +539,21 @@ export const Canvas = () => {
         onClose={closeFrameDialog}
         onPick={addFrame}
       />
+
+      {/* First-run hint. The canvas is where the product happens and it used
+          to open as an empty dotted field with no indication of the move. */}
+      {shapes.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+          <div className="max-w-sm text-center">
+            <p className="text-sm font-medium">Draw a frame, then press Generate.</p>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              Press <Key>F</Key> for a frame or <Key>R</Key> for a rectangle, and label the
+              boxes with <Key>T</Key> — a labelled sketch is an instruction, an unlabelled
+              one is a guess. <Key>New Frame</Key> above picks a device size for you.
+            </p>
+          </div>
+        </div>
+      )}
 
       <InspirationSidebar isOpen={inspirationOpen} onClose={() => setInspirationOpen(false)} />
 

@@ -105,6 +105,13 @@ export const updateProjectSketches = mutation({
   args: {
     projectId: v.id('projects'),
     sketchesData: v.any(),
+    /**
+     * Whether this counts as an edit. Pan and zoom are saved so a project
+     * reopens where you left it, but they are not work — bumping
+     * lastModified for them would make every project read as just-edited
+     * because somebody scrolled past it.
+     */
+    touch: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -115,7 +122,7 @@ export const updateProjectSketches = mutation({
 
     await ctx.db.patch(args.projectId, {
       sketchesData: args.sketchesData,
-      lastModified: Date.now(),
+      ...(args.touch === false ? {} : { lastModified: Date.now() }),
     })
 
     return { success: true }

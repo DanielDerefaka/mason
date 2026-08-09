@@ -295,6 +295,52 @@ export const shapesSlice = createSlice({
       state.selectedId = null
     },
 
+    /** Restores a stored pan/zoom on load. */
+    setViewport: (state, action: PayloadAction<Viewport>) => {
+      state.viewport = {
+        scale: clampScale(action.payload.scale),
+        translate: action.payload.translate,
+      }
+    },
+    /** Nudges the selection by whole world units — arrow keys. */
+    nudgeSelected: (state, action: PayloadAction<{ dx: number; dy: number }>) => {
+      if (!state.selectedId) return
+      commit(state)
+      const shape = state.entities.entities[state.selectedId]
+      if (!shape) return
+      shape.x += action.payload.dx
+      shape.y += action.payload.dy
+      // Freehand and arrows carry their own path, which has to move too.
+      if (shape.points) {
+        shape.points = shape.points.map((point) => ({
+          x: point.x + action.payload.dx,
+          y: point.y + action.payload.dy,
+        }))
+      }
+    },
+    /**
+     * Copies the selection, offset so the new shape is visibly on top of the
+     * old one rather than hidden exactly behind it.
+     */
+    duplicateSelected: (state, action: PayloadAction<{ id: string; offset: number }>) => {
+      const source = state.entities.entities[state.selectedId ?? '']
+      if (!source) return
+      commit(state)
+      const copy: Shape = {
+        ...JSON.parse(JSON.stringify(source)),
+        id: action.payload.id,
+        x: source.x + action.payload.offset,
+        y: source.y + action.payload.offset,
+      }
+      if (copy.points) {
+        copy.points = copy.points.map((point) => ({
+          x: point.x + action.payload.offset,
+          y: point.y + action.payload.offset,
+        }))
+      }
+      shapesAdapter.addOne(state.entities, copy)
+      state.selectedId = copy.id
+    },
     resetViewport: (state) => {
       state.viewport = { scale: 1, translate: { x: 0, y: 0 } }
     },
@@ -327,6 +373,9 @@ export const {
   undo,
   redo,
   resetViewport,
+  setViewport,
+  nudgeSelected,
+  duplicateSelected,
 } = shapesSlice.actions
 
 export default shapesSlice.reducer

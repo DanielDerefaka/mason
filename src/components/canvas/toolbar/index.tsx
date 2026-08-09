@@ -9,13 +9,20 @@ import { ZoomBar, type ZoomControls } from './zoom'
 const track =
   'flex items-center gap-1 rounded-full bg-black/50 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] ring-1 ring-white/[0.06] backdrop-blur'
 
-/** History bottom-left, tools centred, zoom bottom-right — the final layout. */
+/**
+ * History bottom-left, tools centred, zoom bottom-right.
+ *
+ * On a phone that single row overflowed and there was no way to scroll it
+ * back — the pill is fixed and centred — so Text, Eraser and both zoom
+ * buttons were simply unreachable. Below `sm` the tools take their own full
+ * width row and scroll; history and zoom share the row beneath.
+ */
 export const ToolBar = ({ zoom }: { zoom: ZoomControls }) => {
   const { tool, setTool, undo, redo, canUndo, canRedo } = useInfiniteCanvas()
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex items-end justify-between p-5">
-      <div className={`pointer-events-auto ${track}`}>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex flex-wrap items-end justify-between gap-3 p-4 sm:flex-nowrap sm:p-5">
+      <div className={`pointer-events-auto order-2 sm:order-1 ${track}`}>
         <Button
           variant="ghost"
           size="icon"
@@ -40,11 +47,15 @@ export const ToolBar = ({ zoom }: { zoom: ZoomControls }) => {
         </Button>
       </div>
 
-      <div className={`pointer-events-auto ${track}`}>
-        <ToolBarShapes tool={tool} selectTool={setTool} />
+      {/* w-max inside an overflow-x-auto wrapper: the track keeps its natural
+          width and the wrapper scrolls, rather than the buttons squashing. */}
+      <div className="pointer-events-auto order-1 w-full overflow-x-auto sm:order-2 sm:w-auto">
+        <div className={`w-max ${track}`}>
+          <ToolBarShapes tool={tool} selectTool={setTool} />
+        </div>
       </div>
 
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto order-3">
         <ZoomBar {...zoom} />
       </div>
     </div>

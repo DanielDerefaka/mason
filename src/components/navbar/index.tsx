@@ -52,7 +52,7 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
   return (
     // Relative so the tab group can sit dead centre regardless of how wide the
     // breadcrumb or the right-hand cluster get.
-    <header className="relative flex items-center justify-between gap-4 px-6 py-4">
+    <header className="relative flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-4 md:px-6 md:py-4">
       <div className="flex min-w-0 items-center gap-3">
         <Link href={base} aria-label="Projects">
           <LogoMark className="size-7 shrink-0 text-white" />
@@ -64,8 +64,10 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
         )}
       </div>
 
+      {/* Was md-only, which left a phone with no route from the canvas to the
+          style guide at all — and that is where the design system lives. */}
       {inWorkspace && (
-        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-black/50 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] ring-1 ring-white/[0.06] md:flex">
+        <nav className="order-last flex w-full items-center justify-center gap-1 rounded-full bg-black/50 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] ring-1 ring-white/[0.06] md:absolute md:order-none md:left-1/2 md:w-auto md:-translate-x-1/2">
           {tabs.map(({ href, label, Icon }) => {
             const active = pathname.startsWith(href)
             return (

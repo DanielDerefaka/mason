@@ -12,7 +12,9 @@ export const InspectorPanel = ({ children }: { children: React.ReactNode }) => (
     // would close this panel the moment you reached for a slider.
     onPointerDown={(event) => event.stopPropagation()}
     onWheel={(event) => event.stopPropagation()}
-    className="absolute top-1/2 right-6 z-30 flex max-h-[80vh] w-[272px] -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-xl border border-white/10 bg-[#141416]/95 p-4 shadow-2xl backdrop-blur"
+    // A bottom sheet on a phone, a right-hand panel from md up. 272px anchored
+    // right covers 70% of a 390px screen — including the shape being edited.
+    className="absolute inset-x-0 bottom-0 z-30 flex max-h-[55vh] flex-col gap-5 overflow-y-auto border-t border-white/10 bg-[#141416]/95 p-4 pb-24 shadow-2xl backdrop-blur md:inset-x-auto md:top-1/2 md:right-6 md:bottom-auto md:max-h-[80vh] md:w-[272px] md:-translate-y-1/2 md:rounded-xl md:border md:pb-4"
   >
     {children}
   </aside>

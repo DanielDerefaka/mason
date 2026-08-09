@@ -42,6 +42,7 @@ export const ToolBarShapes = ({
         variant="ghost"
         size="icon"
         aria-label={label}
+        aria-pressed={tool === value}
         title={label}
         onClick={() => selectTool(value)}
         className={cn(

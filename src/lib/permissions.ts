@@ -12,6 +12,11 @@ export const isBypassRoute = [
   // should not depend on being signed out.
   '/blog(.*)',
   '/about-us(.*)',
+  // The landing page too. As a public route it bounced signed-in visitors to
+  // the dashboard, so anyone with an account could never reach their own
+  // marketing site again without signing out — and the header on /blog and
+  // /about-us links straight to it.
+  '/',
 ]
 
 /**
@@ -19,4 +24,4 @@ export const isBypassRoute = [
  * dashboard — which is why the blog is a bypass route instead: it is public
  * reading, and signing in should not lock you out of it.
  */
-export const isPublicRoutes = ['/', '/auth/sign-in', '/auth/sign-up']
+export const isPublicRoutes = ['/auth/sign-in', '/auth/sign-up']

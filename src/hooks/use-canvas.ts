@@ -8,11 +8,14 @@ import {
   redo,
   removeShape,
   undo,
+  duplicateSelected,
   focusOnRect,
+  nudgeSelected,
   selectShape,
   setEditingId,
   setFrameDialogOpen,
   setTool,
+  setViewport,
   shapesAdapter,
   snapshotHistory,
   updateShapeLive,
@@ -21,6 +24,7 @@ import {
   zoomWheel,
   type Point,
   type Shape,
+  type Viewport,
   type ShapeKind,
   type Tool,
 } from '@/redux/slice/shapes'
@@ -385,6 +389,31 @@ export const useInfiniteCanvas = () => {
     dispatch(setFrameDialogOpen(false))
   }
 
+  /** Fits every shape on screen. Nothing drawn yet means nothing to fit. */
+  const zoomToFit = () => {
+    if (shapes.length === 0) return
+    const rect = canvasRef.current?.getBoundingClientRect()
+    const viewWidth = rect?.width ?? 0
+    const viewHeight = rect?.height ?? 0
+    if (!viewWidth || !viewHeight) return
+
+    const minX = Math.min(...shapes.map((shape) => shape.x))
+    const minY = Math.min(...shapes.map((shape) => shape.y))
+    const maxX = Math.max(...shapes.map((shape) => shape.x + shape.width))
+    const maxY = Math.max(...shapes.map((shape) => shape.y + shape.height))
+
+    dispatch(
+      focusOnRect({
+        x: minX,
+        y: minY,
+        width: Math.max(1, maxX - minX),
+        height: Math.max(1, maxY - minY),
+        viewWidth,
+        viewHeight,
+      }),
+    )
+  }
+
   const eraseShape = (id: string) => dispatch(removeShape(id))
   const deleteSelected = () => {
     if (selectedId) dispatch(removeShape(selectedId))
@@ -426,6 +455,13 @@ export const useInfiniteCanvas = () => {
     zoomIn,
     zoomOut,
     zoomToScale,
+    zoomToFit,
+    restoreViewport: (next: Viewport) => dispatch(setViewport(next)),
+    nudge: (dx: number, dy: number) => dispatch(nudgeSelected({ dx, dy })),
+    duplicate: () => {
+      if (!selectedId) return
+      dispatch(duplicateSelected({ id: crypto.randomUUID(), offset: 24 }))
+    },
     eraseShape,
     deleteSelected,
     undo: () => dispatch(undo()),

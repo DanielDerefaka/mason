@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
-import { setShapes, shapesAdapter, type Shape } from '@/redux/slice/shapes'
+import { setShapes, setViewport, shapesAdapter, type Shape, type Viewport } from '@/redux/slice/shapes'
 import type { RootState } from '@/redux/store'
 
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error'
@@ -21,6 +21,7 @@ export const useAutosave = () => {
 
   const entities = useAppSelector((s: RootState) => s.shapes.entities)
   const shapes = selectors.selectAll(entities)
+  const viewport = useAppSelector((s: RootState) => s.shapes.viewport)
 
   const project = useQuery(api.project.getProject, projectId ? { projectId } : 'skip')
   const save = useMutation(api.project.updateProjectSketches)
@@ -29,6 +30,9 @@ export const useAutosave = () => {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string | null>(null)
   const hydratedRef = useRef(false)
+  const lastViewportRef = useRef<string | null>(null)
+  const shapesRef = useRef(shapes)
+  shapesRef.current = shapes
 
   // Load the stored sketch once, and record it as the baseline so hydration
   // does not immediately look like an unsaved change.
@@ -36,40 +40,58 @@ export const useAutosave = () => {
     if (hydratedRef.current || project === undefined || project === null) return
     hydratedRef.current = true
 
-    const stored = (project.sketchesData ?? {}) as { shapes?: Shape[] }
+    const stored = (project.sketchesData ?? {}) as { shapes?: Shape[]; viewport?: Viewport }
     const loaded = Array.isArray(stored.shapes) ? stored.shapes : []
     dispatch(setShapes(loaded))
+    // Pan and zoom were previously thrown away on every reload, which on a
+    // 1512-wide frame left you parked inside its edge looking at blank canvas.
+    if (stored.viewport && typeof stored.viewport.scale === 'number') {
+      dispatch(setViewport(stored.viewport))
+    }
     lastSavedRef.current = JSON.stringify(loaded)
+    lastViewportRef.current = JSON.stringify(stored.viewport ?? null)
     setStatus('saved')
   }, [project, dispatch])
 
   useEffect(() => {
     if (!projectId || !hydratedRef.current) return
 
-    const serialised = JSON.stringify(shapes)
-    // Nothing changed — skip the write rather than touching lastModified.
-    if (serialised === lastSavedRef.current) return
+    const serialisedShapes = JSON.stringify(shapes)
+    const serialisedViewport = JSON.stringify(viewport)
+    const shapesChanged = serialisedShapes !== lastSavedRef.current
+    const viewportChanged = serialisedViewport !== lastViewportRef.current
+    if (!shapesChanged && !viewportChanged) return
 
-    setStatus('unsaved')
+    // Panning is not an unsaved change, so the indicator stays quiet for it.
+    if (shapesChanged) setStatus('unsaved')
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     debounceRef.current = setTimeout(() => {
-      setStatus('saving')
+      if (shapesChanged) setStatus('saving')
       void save({
         projectId,
-        sketchesData: { frameCounter: shapes.length, shapes },
+        sketchesData: {
+          frameCounter: shapesRef.current.length,
+          shapes: shapesRef.current,
+          viewport,
+        },
+        // A viewport-only write must not read as an edit.
+        touch: shapesChanged,
       })
         .then(() => {
-          lastSavedRef.current = serialised
-          setStatus('saved')
+          lastSavedRef.current = serialisedShapes
+          lastViewportRef.current = serialisedViewport
+          if (shapesChanged) setStatus('saved')
         })
-        .catch(() => setStatus('error'))
+        .catch(() => {
+          if (shapesChanged) setStatus('error')
+        })
     }, DEBOUNCE_MS)
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [shapes, projectId, save])
+  }, [shapes, viewport, projectId, save])
 
   return { status, hydrated: hydratedRef.current }
 }

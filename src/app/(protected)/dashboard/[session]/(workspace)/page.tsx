@@ -2,6 +2,8 @@ import { ProjectsProvider } from '@/components/projects/provider'
 import { ProjectsList } from '@/components/projects/list'
 import { ProjectsQuery } from '@/convex/query.config'
 
+export const metadata = { title: 'Projects | Mason' }
+
 const Page = async () => {
   const { projects, profile } = await ProjectsQuery()
 
