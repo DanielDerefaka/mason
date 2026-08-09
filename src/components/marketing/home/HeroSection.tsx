@@ -1,8 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type SVGProps } from "react";
 
-import { HERO, HERO_CANVAS_TILES } from "@/lib/marketing-content";
+import { LogoMark } from "@/components/marketing/icons";
+import {
+  ACCENTS,
+  DOT_GRID,
+  DesignScreen,
+  SketchScreen,
+} from "@/components/marketing/screen-mocks";
+import { HERO } from "@/lib/marketing-content";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
@@ -56,6 +62,15 @@ function PhoneGlyph(props: GlyphProps) {
     <svg {...stroke} {...props}>
       <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
       <path d="M11 18.5h2" />
+    </svg>
+  );
+}
+
+/** The sketch → design arrow between the two canvas panels. */
+function ArrowGlyph(props: GlyphProps) {
+  return (
+    <svg {...stroke} {...props}>
+      <path d="M4 12h16M14 6l6 6-6 6" />
     </svg>
   );
 }
@@ -114,13 +129,11 @@ const SIDEBAR_TABS = ["Pages", "Layers", "Assets"] as const;
 
 const SIDEBAR_LAYERS = [
   "Hero",
-  "Tech Stack",
-  "Introduction",
-  "Featured Works",
-  "Services",
-  "Approach",
-  "FAQs",
-  "CTA",
+  "Headline",
+  "Subhead",
+  "Buttons",
+  "Image",
+  "Cards",
   "Footer",
 ] as const;
 
@@ -144,24 +157,18 @@ const valueChip =
 
 export function HeroSection() {
   const [lineOne, lineTwo] = [HERO.headline.slice(0, 2), HERO.headline.slice(2)];
-  const canvasTiles = [...HERO_CANVAS_TILES, ...HERO_CANVAS_TILES];
 
   return (
     <section id="hero" className="relative overflow-hidden">
-      {/* Blue orb — sits behind everything, overflowing both edges. */}
+      {/* Glow — a gradient, not an image, so nothing can overlap the buttons. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[300px] z-0 -translate-x-1/2 md:top-[360px] lg:top-[419px]"
-      >
-        <Image
-          src={HERO.orb}
-          alt=""
-          width={1890}
-          height={1260}
-          priority
-          className="h-auto w-[150vw] max-w-none lg:w-[110vw] lg:max-w-[1890px]"
-        />
-      </div>
+        className="pointer-events-none absolute left-1/2 top-[240px] z-0 h-[760px] w-[150vw] max-w-none -translate-x-1/2 md:top-[300px] lg:top-[340px] lg:w-[110vw]"
+        style={{
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(37,99,235,0.30) 0%, rgba(37,99,235,0.08) 45%, transparent 72%)",
+        }}
+      />
 
       {/* Headline block */}
       <div className="container-site relative z-10 flex flex-col items-center pt-[110px] text-center md:pt-[130px] lg:pt-[150px]">
@@ -202,13 +209,7 @@ export function HeroSection() {
           {/* 1 — Top toolbar */}
           <div className="flex h-[52px] shrink-0 items-center gap-[12px] border-b border-hairline px-[12px]">
             <div className="flex flex-1 items-center gap-[10px]">
-              <Image
-                src="/images/s2c-canvas.png"
-                alt=""
-                width={18}
-                height={18}
-                className="h-[18px] w-[18px] shrink-0 object-contain"
-              />
+              <LogoMark className="h-[16px] w-[16px] shrink-0 text-foreground" />
               <ChevronLeftGlyph className="h-[14px] w-[14px] text-muted-foreground" />
             </div>
 
@@ -280,41 +281,35 @@ export function HeroSection() {
               </div>
             </aside>
 
-            {/* 4 — Canvas: two counter-drifting screenshot marquees */}
-            <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-[12px] overflow-hidden">
-              <div
-                className="flex w-max shrink-0"
-                style={{ animation: "marquee-x 40s linear infinite" }}
-              >
-                {canvasTiles.map((src, i) => (
-                  <Image
-                    loading="eager"
-                    key={`row1-${i}`}
-                    src={src}
-                    alt=""
-                    width={200}
-                    height={352}
-                    className="mr-[12px] h-[352px] w-[200px] shrink-0 rounded-[8px] object-cover"
-                  />
-                ))}
-              </div>
+            {/* 4 — Canvas: the sketch on the left, what it became on the right */}
+            <div
+              className="relative flex min-w-0 flex-1 items-center justify-center gap-[16px] overflow-hidden p-[20px] md:gap-[28px] md:p-[32px]"
+              style={DOT_GRID}
+            >
+              <figure className="flex h-full max-h-[430px] min-w-0 flex-1 flex-col">
+                <figcaption className="mb-[10px] shrink-0 font-sans text-[11px] leading-none tracking-[0.08em] text-muted-foreground uppercase">
+                  What you draw
+                </figcaption>
+                <div className="min-h-0 flex-1 overflow-hidden rounded-[10px] border border-hairline bg-surface">
+                  <SketchScreen />
+                </div>
+              </figure>
 
-              <div
-                className="flex w-max shrink-0"
-                style={{ animation: "marquee-x-reverse 52s linear infinite" }}
+              <span
+                aria-hidden
+                className="flex h-[30px] w-[30px] shrink-0 items-center justify-center self-center rounded-full border border-hairline bg-surface text-foreground"
               >
-                {canvasTiles.map((src, i) => (
-                  <Image
-                    loading="eager"
-                    key={`row2-${i}`}
-                    src={src}
-                    alt=""
-                    width={200}
-                    height={352}
-                    className="mr-[12px] h-[352px] w-[200px] shrink-0 rounded-[8px] object-cover"
-                  />
-                ))}
-              </div>
+                <ArrowGlyph className="h-[14px] w-[14px]" />
+              </span>
+
+              <figure className="flex h-full max-h-[430px] min-w-0 flex-1 flex-col">
+                <figcaption className="mb-[10px] shrink-0 font-sans text-[11px] leading-none tracking-[0.08em] text-muted-foreground uppercase">
+                  What you get
+                </figcaption>
+                <div className="min-h-0 flex-1 overflow-hidden rounded-[10px] border border-hairline">
+                  <DesignScreen accent={ACCENTS[0]} />
+                </div>
+              </figure>
             </div>
 
             {/* 3 — Right inspector */}

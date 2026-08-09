@@ -17,9 +17,7 @@ export const HEADER_NAV: NavItem[] = [
 /** Ordered home-page section ids the header observes to highlight the active link. */
 export const HOME_SECTION_IDS = [
   'hero',
-  'tech-stack',
   'introduction',
-  'featured-works',
   'services',
   'approach',
   'faqs',
@@ -29,9 +27,7 @@ export const HOME_SECTION_IDS = [
 /** Which nav label lights up for a given home section. */
 export const SECTION_TO_NAV: Record<string, string> = {
   hero: 'Home',
-  'tech-stack': 'Home',
   introduction: 'About Us',
-  'featured-works': 'Features',
   services: 'Features',
   approach: 'How It Works',
   faqs: 'How It Works',

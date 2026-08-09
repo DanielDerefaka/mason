@@ -1,31 +1,32 @@
-import Image from "next/image";
 import Link from "next/link";
 
-import { INTRODUCTION, PROJECTS } from "@/lib/marketing-content";
+import { ACCENTS, PhoneDesign } from "@/components/marketing/screen-mocks";
+import { INTRODUCTION } from "@/lib/marketing-content";
 import { cn } from "@/lib/utils";
-import type { Project } from "@/types/marketing-content";
 
-/**
- * The marquee is split 9 / 8 / 8 across three rows. Row 3 is hidden on mobile.
- */
-const ROWS: Project[][] = [
-  PROJECTS.slice(0, 9),
-  PROJECTS.slice(9, 17),
-  PROJECTS.slice(17, 25),
-];
+/* ------------------------------------------------------------------ *
+ * The right-hand column used to be three marquees of screenshots. It is
+ * now three marquees of generated screens, drawn in CSS — which says the
+ * thing the copy claims (one system, many screens) instead of showing the
+ * same four captures twelve times. The tiles are portrait, so they use the
+ * single-column phone layout rather than the landscape one.
+ * ------------------------------------------------------------------ */
 
 /** Rendered tile footprint per breakpoint (aspect 349:620). */
 const TILE_CLASS =
-  "relative mr-4 h-[266px] w-[150px] shrink-0 overflow-hidden rounded-[10px] md:h-[338px] md:w-[190px] lg:h-[426px] lg:w-[240px]";
+  "relative mr-4 h-[266px] w-[150px] shrink-0 overflow-hidden rounded-[10px] border border-hairline md:h-[338px] md:w-[190px] lg:h-[426px] lg:w-[240px]";
 
-const TILE_SIZES = "(min-width: 1001px) 240px, (min-width: 751px) 190px, 150px";
+/** Each row is offset into the accent list so no two tiles line up. */
+const ROWS = [0, 2, 4].map((offset) =>
+  Array.from({ length: 6 }, (_, i) => ACCENTS[(offset + i) % ACCENTS.length]),
+);
 
 function MarqueeRow({
-  projects,
+  accents,
   animation,
   className,
 }: {
-  projects: Project[];
+  accents: string[];
   animation: string;
   className?: string;
 }) {
@@ -38,17 +39,9 @@ function MarqueeRow({
       {/* The list is duplicated so the -50% translate loops seamlessly. */}
       {[0, 1].map((copy) => (
         <div key={copy} className="flex shrink-0">
-          {projects.map((project) => (
-            <div key={`${copy}-${project.slug}`} className={TILE_CLASS}>
-              <Image
-                loading="eager"
-                src={project.image}
-                alt={project.name}
-                width={240}
-                height={426}
-                sizes={TILE_SIZES}
-                className="h-full w-full object-cover"
-              />
+          {accents.map((accent, i) => (
+            <div key={`${copy}-${i}`} className={TILE_CLASS}>
+              <PhoneDesign accent={accent} />
             </div>
           ))}
         </div>
@@ -98,22 +91,19 @@ export function IntroductionSection() {
           </div>
 
           {/* ---------------------------------------------------------- *
-           * Right — three-row image marquee, bleeding off the viewport.
+           * Right — three drifting rows, bleeding off the viewport.
            * Absolutely placed from tablet up so its (taller than the
            * section) stack is clipped symmetrically instead of pushing
            * the text column down.
            * ---------------------------------------------------------- */}
           <div className="edge-fade-x -ml-6 mt-12 flex w-screen flex-col gap-4 md:absolute md:top-1/2 md:left-[45%] md:mt-0 md:ml-0 md:-translate-y-1/2 lg:left-[38%]">
+            <MarqueeRow accents={ROWS[0]} animation="marquee-x 55s linear infinite" />
             <MarqueeRow
-              projects={ROWS[0]}
-              animation="marquee-x 55s linear infinite"
-            />
-            <MarqueeRow
-              projects={ROWS[1]}
+              accents={ROWS[1]}
               animation="marquee-x-reverse 65s linear infinite"
             />
             <MarqueeRow
-              projects={ROWS[2]}
+              accents={ROWS[2]}
               animation="marquee-x 55s linear infinite"
               className="hidden md:flex"
             />

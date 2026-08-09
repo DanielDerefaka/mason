@@ -1,9 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import { useSyncExternalStore } from "react";
 
-import { CMS_ROWS, PLATFORM, PROJECTS } from "@/lib/marketing-content";
+import {
+  ACCENTS,
+  DOT_GRID,
+  DesignScreen,
+  PHONE_SKETCH,
+  PhoneDesign,
+  PhoneFrame,
+  SketchScreen,
+} from "@/components/marketing/screen-mocks";
+import { CMS_ROWS } from "@/lib/marketing-content";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
@@ -36,36 +44,50 @@ function VisualFrame({
 }
 
 /* ------------------------------------------------------------------ *
- * 1 — Discovery First: two opposed screenshot marquees
+ * 1 — Mood Board First: the palette and type a board is read down into
  * ------------------------------------------------------------------ */
 
-/** One duplicated row. The gap lives on each tile (`mr`) so the -50% loop
- *  lands exactly on the seam — flex `gap` would leave it half a gap short. */
-function MarqueeRow({
-  tiles,
-  animation,
-}: {
-  tiles: (typeof PROJECTS)[number][];
-  animation: string;
-}) {
+/** Each card is one token from a style guide, named the way the app names them. */
+const SWATCHES: { name: string; hex: string; role: string }[] = [
+  { name: "Primary", hex: "#2563EB", role: "Buttons, links" },
+  { name: "Accent", hex: "#7C5CFF", role: "Highlights" },
+  { name: "Surface", hex: "#111114", role: "Cards, sheets" },
+  { name: "Foreground", hex: "#F4F4F5", role: "Body text" },
+  { name: "Success", hex: "#1FA97B", role: "Confirmations" },
+  { name: "Warning", hex: "#D4A62A", role: "Cautions" },
+];
+
+function SwatchRow({ animation, from }: { animation: string; from: number }) {
+  const cards = Array.from(
+    { length: 6 },
+    (_, i) => SWATCHES[(from + i) % SWATCHES.length],
+  );
+
   return (
     <div className="overflow-hidden">
       <div className="flex w-max" style={{ animation }}>
         {[0, 1].map((copy) => (
           <div key={copy} className="flex shrink-0">
-            {tiles.map((tile) => (
+            {cards.map((card, i) => (
               <div
-                key={`${copy}-${tile.slug}`}
-                className="relative mr-[12px] h-[190px] w-[280px] shrink-0 overflow-hidden rounded-[8px]"
+                key={`${copy}-${i}`}
+                className="border-hairline bg-surface mr-[12px] flex h-[190px] w-[280px] shrink-0 flex-col justify-between overflow-hidden rounded-[8px] border p-[16px]"
               >
-                <Image
-                  loading="eager"
-                  src={tile.image}
-                  alt={tile.name}
-                  fill
-                  sizes="280px"
-                  className="object-cover"
+                <span
+                  className="block h-[86px] w-full rounded-[6px]"
+                  style={{
+                    background: `linear-gradient(150deg, ${card.hex} 0%, rgba(255,255,255,0.08) 130%)`,
+                  }}
                 />
+                <span>
+                  <span className="text-foreground block font-sans text-[14px] leading-[18px]">
+                    {card.name}
+                  </span>
+                  <span className="text-muted-foreground mt-[2px] flex items-center justify-between font-sans text-[12px] leading-[16px]">
+                    <span>{card.role}</span>
+                    <span className="tabular-nums">{card.hex}</span>
+                  </span>
+                </span>
               </div>
             ))}
           </div>
@@ -78,27 +100,16 @@ function MarqueeRow({
 export function DiscoveryMarqueeVisual() {
   return (
     <VisualFrame className="flex flex-col justify-center">
-      <MarqueeRow
-        tiles={PROJECTS.slice(0, 6)}
-        animation="marquee-x 35s linear infinite"
-      />
+      <SwatchRow from={0} animation="marquee-x 35s linear infinite" />
       <div className="h-[12px] shrink-0" />
-      <MarqueeRow
-        tiles={PROJECTS.slice(6, 12)}
-        animation="marquee-x-reverse 45s linear infinite"
-      />
+      <SwatchRow from={3} animation="marquee-x-reverse 45s linear infinite" />
     </VisualFrame>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * 2 — Mobile-First Design: two phone mockups on a blue glow
+ * 2 — Sketch The Screen: the same phone, drawn then built
  * ------------------------------------------------------------------ */
-
-const PHONES = [
-  { src: "/images/s2c-colours.png", alt: "ShowIn mobile layout" },
-  { src: "/images/s2c-workflow.png", alt: "Health Core mobile layout" },
-];
 
 export function PhonesVisual() {
   return (
@@ -109,46 +120,42 @@ export function PhonesVisual() {
       }}
     >
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-center">
-        {/* Left phone — sits lower. */}
-        <div className="relative h-[260px] w-[130px] shrink-0 overflow-hidden rounded-[22px] md:h-[360px] md:w-[180px]">
-          <Image
-            src={PHONES[0].src}
-            alt={PHONES[0].alt}
-            fill
-            sizes="(max-width: 750px) 130px, 180px"
-            className="object-cover"
-          />
-        </div>
+        {/* Left phone — the sketch, sitting lower. */}
+        <PhoneFrame className="h-[260px] w-[130px] md:h-[360px] md:w-[180px]">
+          <SketchScreen boxes={PHONE_SKETCH} />
+        </PhoneFrame>
 
-        {/* Right phone — overlaps the left and rides ~30px higher. */}
-        <div className="relative -ml-[30px] mb-[30px] h-[260px] w-[130px] shrink-0 overflow-hidden rounded-[22px] md:h-[360px] md:w-[180px]">
-          <Image
-            src={PHONES[1].src}
-            alt={PHONES[1].alt}
-            fill
-            sizes="(max-width: 750px) 130px, 180px"
-            className="object-cover"
-          />
-        </div>
+        {/* Right phone — what it became, overlapping and ~30px higher. */}
+        <PhoneFrame className="-ml-[30px] mb-[30px] h-[260px] w-[130px] md:h-[360px] md:w-[180px]">
+          <PhoneDesign accent={ACCENTS[1]} />
+        </PhoneFrame>
       </div>
     </VisualFrame>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * 3 — Conversion-Driven: dashboard screenshot + blue sweep
+ * 3 — Watch It Build: a design part-written, with the streaming edge
  * ------------------------------------------------------------------ */
 
 export function DashboardVisual() {
   return (
     <VisualFrame>
-      <div className="absolute bottom-0 left-[24px] right-0 top-[24px] overflow-hidden rounded-tl-[10px] rounded-bl-[10px] md:left-[32px]">
-        <Image
-          src="/images/s2c-dashboard.png"
-          alt="Analytics dashboard"
-          fill
-          sizes="(max-width: 750px) 90vw, 45vw"
-          className="rounded-[10px] object-cover object-left-top"
+      <div className="border-hairline absolute bottom-0 left-[24px] right-0 top-[24px] overflow-hidden rounded-tl-[10px] border-l border-t md:left-[32px]">
+        <DesignScreen accent={ACCENTS[0]} />
+
+        {/* The part not written yet, and the caret at the boundary. */}
+        <div
+          className="bg-surface absolute inset-x-0 bottom-0 h-[38%]"
+          style={DOT_GRID}
+        />
+        <span
+          className="absolute left-0 right-0 h-[2px]"
+          style={{
+            bottom: "38%",
+            background:
+              "linear-gradient(90deg, transparent, rgba(37,99,235,0.9) 20%, rgba(37,99,235,0.9) 80%, transparent)",
+          }}
         />
       </div>
 
@@ -165,20 +172,39 @@ export function DashboardVisual() {
 }
 
 /* ------------------------------------------------------------------ *
- * 4 — Pixel-Perfect Development: editor screenshot
+ * 4 — Revise By Asking: the design with the chat open over it
  * ------------------------------------------------------------------ */
+
+const CHAT = [
+  { from: "user", text: "Make the hero image full width" },
+  { from: "app", text: "Updated the hero. Nothing else moved." },
+  { from: "user", text: "Warmer accent on the cards" },
+];
 
 export function EditorVisual() {
   return (
     <VisualFrame>
-      <div className="absolute bottom-0 left-1/2 h-[calc(100%-24px)] w-[92%] -translate-x-1/2 overflow-hidden rounded-[10px_10px_0_0]">
-        <Image
-          src="/images/s2c-canvas.png"
-          alt="Website editor interface"
-          fill
-          sizes="(max-width: 750px) 92vw, 46vw"
-          className="object-cover object-top"
-        />
+      <div className="border-hairline absolute bottom-0 left-1/2 h-[calc(100%-24px)] w-[92%] -translate-x-1/2 overflow-hidden rounded-[10px_10px_0_0] border-x border-t">
+        <DesignScreen accent={ACCENTS[2]} />
+      </div>
+
+      {/* Chat panel, floating over the bottom-right of the design. */}
+      <div className="border-hairline bg-surface absolute bottom-[18px] right-[8%] w-[62%] max-w-[300px] overflow-hidden rounded-[10px] border p-[10px] shadow-[0_18px_50px_rgba(0,0,0,0.6)]">
+        <div className="flex flex-col gap-[6px]">
+          {CHAT.map((line) => (
+            <span
+              key={line.text}
+              className={cn(
+                "max-w-[86%] rounded-[8px] px-[9px] py-[6px] font-sans text-[11px] leading-[15px]",
+                line.from === "user"
+                  ? "self-end bg-[#2563EB] text-white"
+                  : "bg-surface-2 text-muted-foreground self-start",
+              )}
+            >
+              {line.text}
+            </span>
+          ))}
+        </div>
       </div>
     </VisualFrame>
   );
@@ -188,7 +214,7 @@ export function EditorVisual() {
  * 5 — Seamless CMS Launch: vertically looping CMS table
  * ------------------------------------------------------------------ */
 
-const CMS_GRID = "grid grid-cols-[1fr_92px_44px] items-center gap-[12px]";
+const CMS_GRID = "grid grid-cols-[1fr_56px_44px] items-center gap-[12px]";
 
 function CmsRows({ copy }: { copy: number }) {
   return (
@@ -202,16 +228,13 @@ function CmsRows({ copy }: { copy: number }) {
           )}
         >
           <span className="truncate">{row.title}</span>
-          <span className="whitespace-nowrap">{row.date}</span>
-          <span className="relative block h-[24px] w-[36px] overflow-hidden rounded-[4px]">
-            <Image
-              src={PROJECTS[i % PROJECTS.length].image}
-              alt=""
-              fill
-              sizes="36px"
-              className="object-cover"
-            />
-          </span>
+          <span className="whitespace-nowrap text-right tabular-nums">{row.date}</span>
+          <span
+            className="ml-auto block h-[24px] w-[36px] rounded-[4px]"
+            style={{
+              background: `linear-gradient(150deg, ${ACCENTS[i % ACCENTS.length]} 0%, rgba(255,255,255,0.10) 100%)`,
+            }}
+          />
         </div>
       ))}
     </div>
@@ -221,14 +244,8 @@ function CmsRows({ copy }: { copy: number }) {
 export function CmsTableVisual() {
   return (
     <VisualFrame>
-      {/* Soft photographic backdrop behind the panel. */}
-      <Image
-        src={PLATFORM.background}
-        alt=""
-        fill
-        sizes="(max-width: 750px) 100vw, 50vw"
-        className="object-cover opacity-[0.35]"
-      />
+      {/* Canvas grid behind the panel. */}
+      <div className="absolute inset-0" style={DOT_GRID} />
 
       <div className="bg-surface relative mx-[24px] flex h-full flex-col overflow-hidden rounded-[12px] md:mx-[32px]">
         {/* Header. */}
@@ -238,9 +255,9 @@ export function CmsTableVisual() {
             "border-hairline text-muted-foreground shrink-0 border-b px-[20px] py-[16px] font-sans text-[14px] leading-[22px]",
           )}
         >
-          <span>Title</span>
-          <span>Date</span>
-          <span>Image</span>
+          <span>Page</span>
+          <span className="text-right">Time</span>
+          <span className="text-right">Look</span>
         </div>
 
         {/* Body — two copies translated -50% for a seamless vertical loop. */}

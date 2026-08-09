@@ -1,12 +1,3 @@
-export interface Project {
-  slug: string;
-  name: string;
-  /** Portrait tile used in marquees (349×620 on the reference). */
-  image: string;
-  /** Large landscape image used by the Featured Works stack. */
-  featureImage?: string;
-}
-
 export interface ServiceCard {
   /** Two-line label, exactly as the reference splits it. */
   lines: [string, string];
@@ -21,11 +12,6 @@ export interface ServiceCard {
     | "navigation"
     | "rocket"
     | "tools";
-}
-
-export interface PlatformLogo {
-  name: string;
-  image: string;
 }
 
 export interface ApproachStep {
@@ -53,6 +39,7 @@ export interface BlogPost {
   excerpt: string;
   category: string;
   readTime: string;
-  cover: string;
+  /** Index into the accent list the drawn cover cycles through. */
+  coverIndex: number;
   body: string[];
 }

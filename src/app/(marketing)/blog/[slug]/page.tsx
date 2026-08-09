@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+
+import { ACCENTS, DesignScreen } from "@/components/marketing/screen-mocks";
 import { notFound } from "next/navigation";
 
 import { CtaSection } from "@/components/marketing/home/CtaSection";
@@ -86,15 +87,8 @@ export default async function PostPage({ params }: PostPageProps) {
               {post.title}
             </h1>
 
-            <div className="relative mt-[36px] aspect-video w-full overflow-hidden rounded-[14px]">
-              <Image
-                src={post.cover}
-                alt={post.title}
-                fill
-                sizes="(max-width: 850px) calc(100vw - 48px), 760px"
-                priority
-                className="object-cover"
-              />
+            <div className="border-hairline relative mt-[36px] aspect-video w-full overflow-hidden rounded-[14px] border">
+              <DesignScreen accent={ACCENTS[post.coverIndex % ACCENTS.length]} />
             </div>
 
             <div className="mt-[40px]">

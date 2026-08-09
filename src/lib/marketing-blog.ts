@@ -14,8 +14,8 @@ export const BLOG_POSTS: BlogPost[] = POSTS.map((post, index) => ({
   excerpt: post.excerpt,
   category: post.tag,
   readTime: `${post.readingMinutes} min read`,
-  // Screenshots of our own app, cycled so each post has a distinct cover.
-  cover: ['/images/s2c-canvas.png', '/images/s2c-colours.png', '/images/s2c-workflow.png', '/images/s2c-dashboard.png'][index % 4],
+  // Covers are drawn, not photographed — this picks which accent each gets.
+  coverIndex: index,
   body: post.body,
 }))
 

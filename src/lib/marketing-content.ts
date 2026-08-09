@@ -1,34 +1,13 @@
-import type {
-  ApproachStep,
-  FaqItem,
-  PlatformLogo,
-  Project,
-  ServiceCard,
-} from '@/types/marketing-content'
+import type { ApproachStep, FaqItem, ServiceCard } from '@/types/marketing-content'
 
 /* ------------------------------------------------------------------ *
  * Imagery
  *
- * Every picture on the marketing site is a screenshot of this app, captured
- * from a real project. Nothing is stock and nothing is borrowed: the reference
- * this layout came from ships its own studio's photography, which is theirs.
+ * There is none. Every visual on the marketing site is drawn in CSS by
+ * `components/marketing/screen-mocks.tsx`. The layout this was ported from
+ * carries a studio's own photography — which is theirs — and filling those
+ * slots with the same four app screenshots read worse than drawing them.
  * ------------------------------------------------------------------ */
-
-const CANVAS = '/images/s2c-canvas.png'
-const COLOURS = '/images/s2c-colours.png'
-const WORKFLOW = '/images/s2c-workflow.png'
-const DASHBOARD = '/images/s2c-dashboard.png'
-
-export const PROJECTS: Project[] = [
-  { slug: 'canvas', name: 'Sketch to screen', image: CANVAS, featureImage: CANVAS },
-  { slug: 'style-guide', name: 'Design systems from a mood board', image: COLOURS, featureImage: COLOURS },
-  { slug: 'workflow', name: 'A whole flow, generated', image: WORKFLOW, featureImage: WORKFLOW },
-  { slug: 'projects', name: 'Every project in one place', image: DASHBOARD, featureImage: DASHBOARD },
-]
-
-export const FEATURED_PROJECTS: Project[] = PROJECTS
-
-export const PROJECT_COUNT = 4
 
 /* ------------------------------------------------------------------ *
  * Hero
@@ -46,32 +25,11 @@ export const HERO = {
   subhead: 'Finished screens from the roughest sketch you can draw.',
   primaryCta: { label: 'Start free', href: '/auth/sign-up' },
   secondaryCta: { label: 'See how it works', href: '/#approach' },
-  orb: CANVAS,
 }
 
-/** Screenshots that drift through the hero canvas mockup. */
-export const HERO_CANVAS_TILES = [
-  CANVAS, COLOURS, WORKFLOW, DASHBOARD,
-  CANVAS, COLOURS, WORKFLOW, DASHBOARD,
-  CANVAS, COLOURS, WORKFLOW, DASHBOARD,
-]
-
 /* ------------------------------------------------------------------ *
- * Stack strip + introduction
+ * Introduction
  * ------------------------------------------------------------------ */
-
-export const TECH_STACK_STRIP = CANVAS
-
-export const TECH_STACK_LOGOS = [
-  'Next.js',
-  'Convex',
-  'Claude',
-  'Tailwind',
-  'Redux',
-  'shadcn/ui',
-  'Vercel AI SDK',
-  'Google Fonts',
-]
 
 export const INTRODUCTION = {
   headline: ['Sketches, not prompts.', 'Systems, not screenshots.'],
@@ -101,28 +59,6 @@ export const SERVICES: ServiceCard[] = [
   { lines: ['Flow', 'Generation'], icon: 'navigation' },
   { lines: ['Contrast', 'Checked Palettes'], icon: 'rocket' },
   { lines: ['Autosave &', 'Full History'], icon: 'tools' },
-]
-
-export const PLATFORM = {
-  headline: ['One design system.', 'Every screen you make.'],
-  body: [
-    { text: 'Colour, type and spacing are bound to roles, so a design stays ' },
-    { text: 'consistent, legible, on-brand', bold: true },
-    { text: ' from the first screen to the last.' },
-  ],
-  cta: { label: 'Start free', href: '/auth/sign-up' },
-  background: COLOURS,
-}
-
-export const PLATFORM_LOGOS: PlatformLogo[] = [
-  { name: 'Canvas', image: CANVAS },
-  { name: 'Style guide', image: COLOURS },
-  { name: 'Workflow', image: WORKFLOW },
-  { name: 'Projects', image: DASHBOARD },
-  { name: 'Canvas', image: CANVAS },
-  { name: 'Style guide', image: COLOURS },
-  { name: 'Workflow', image: WORKFLOW },
-  { name: 'Projects', image: DASHBOARD },
 ]
 
 /* ------------------------------------------------------------------ *
@@ -199,13 +135,13 @@ export const APPROACH: ApproachStep[] = [
 
 /** Rows that scroll inside the flow-generation table mock. */
 export const CMS_ROWS = [
-  { title: 'Pricing — plans and comparison', date: 'Generated in 58s' },
-  { title: 'Checkout — payment step', date: 'Generated in 61s' },
-  { title: 'Confirmation — order received', date: 'Generated in 47s' },
-  { title: 'Dashboard — account overview', date: 'Generated in 66s' },
-  { title: 'Settings — billing and team', date: 'Generated in 52s' },
-  { title: 'Empty state — no projects yet', date: 'Generated in 39s' },
-  { title: 'All handoffs — review queue', date: 'Generated in 71s' },
+  { title: 'Pricing — plans and comparison', date: '58s' },
+  { title: 'Checkout — payment step', date: '61s' },
+  { title: 'Confirmation — order received', date: '47s' },
+  { title: 'Dashboard — account overview', date: '66s' },
+  { title: 'Settings — billing and team', date: '52s' },
+  { title: 'Empty state — no projects yet', date: '39s' },
+  { title: 'All handoffs — review queue', date: '71s' },
 ]
 
 /* ------------------------------------------------------------------ *

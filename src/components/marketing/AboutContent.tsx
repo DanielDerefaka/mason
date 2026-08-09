@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -39,11 +38,13 @@ const VALUES: ValueEntry[] = [
 ];
 
 /** Award badges — the wide pair keep their 826x171 aspect at an ~78px cap. */
-const BADGES = [
-  { src: "/images/s2c-canvas.png", width: 78, height: 78, alt: "Design award badge" },
-  { src: "/images/s2c-colours.png", width: 78, height: 78, alt: "Design award badge" },
-  { src: "/images/s2c-workflow.png", width: 377, height: 78, alt: "Design award badge" },
-  { src: "/images/s2c-dashboard.png", width: 377, height: 78, alt: "Design award badge" },
+/** The badge row held award logos in the layout this came from. We have no
+ *  awards, so it states what the product actually does instead. */
+const FACTS = [
+  { value: "18", label: "design tokens per style guide" },
+  { value: "1", label: "credit per generation" },
+  { value: "6", label: "reference images per project" },
+  { value: "0", label: "prompts required" },
 ];
 
 /** Brightens a phrase to the foreground colour without bolding it. */
@@ -106,21 +107,8 @@ export function AboutContent() {
           About <span className="font-display-italic">Us</span>
         </h1>
 
-        {/* 2 — Watermark + intro */}
+        {/* 2 — Intro */}
         <div className="relative mt-[48px] md:mt-[64px]">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center"
-          >
-            <Image
-              src="/images/s2c-canvas.png"
-              alt=""
-              width={150}
-              height={150}
-              className="h-auto w-[150px] opacity-[0.06] blur-[2px]"
-            />
-          </div>
-
           <div className="relative z-10 mx-auto flex max-w-[620px] flex-col gap-[32px]">
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
               <Hl>Sketch to Design</Hl> turns the roughest thing you can draw into{" "}
@@ -128,25 +116,28 @@ export function AboutContent() {
               built from a design system read out of your own mood board.
             </p>
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              Every project begins with understanding and ends with precision. Our goal is
-              to design experiences that feel effortless and intentional while delivering
-              measurable results that help <Hl>brands grow</Hl> and{" "}
-              <Hl>perform better online.</Hl>
+              It starts with a mood board and ends with something you can move, resize and
+              argue with. No prompt engineering, no blank page — you draw the shape you
+              already have in your head, and the parts that are <Hl>tedious rather than
+              creative</Hl> get done for you.
             </p>
           </div>
         </div>
 
-        {/* 3 — Award badges */}
-        <div className="mt-[56px] flex flex-wrap items-center justify-center gap-[32px] md:mt-[72px]">
-          {BADGES.map((badge) => (
-            <Image
-              key={badge.src}
-              src={badge.src}
-              alt={badge.alt}
-              width={badge.width}
-              height={badge.height}
-              className="h-[78px] w-auto opacity-90"
-            />
+        {/* 3 — Facts */}
+        <div className="mt-[56px] grid grid-cols-2 gap-[24px] md:mt-[72px] md:grid-cols-4 md:gap-[32px]">
+          {FACTS.map((fact) => (
+            <div
+              key={fact.label}
+              className="border-hairline flex flex-col items-center gap-[6px] border-t pt-[20px] text-center"
+            >
+              <span className="text-foreground font-display text-[40px] leading-none tracking-[-2px] md:text-[52px]">
+                {fact.value}
+              </span>
+              <span className="text-muted-foreground max-w-[150px] font-sans text-[13px] leading-[18px]">
+                {fact.label}
+              </span>
+            </div>
           ))}
         </div>
 
