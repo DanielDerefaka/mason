@@ -4,18 +4,18 @@ import { Redo2, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import { ToolBarShapes } from './shapes'
-import { ZoomBar } from './zoom'
+import { ZoomBar, type ZoomControls } from './zoom'
 
 const track =
   'flex items-center gap-1 rounded-full bg-black/50 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] ring-1 ring-white/[0.06] backdrop-blur'
 
 /** History bottom-left, tools centred, zoom bottom-right — the final layout. */
-export const ToolBar = () => {
+export const ToolBar = ({ zoom }: { zoom: ZoomControls }) => {
   const { tool, setTool, undo, redo, canUndo, canRedo } = useInfiniteCanvas()
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex items-end justify-between p-5">
-      <div className={`pointer-events-auto ml-14 ${track}`}>
+      <div className={`pointer-events-auto ${track}`}>
         <Button
           variant="ghost"
           size="icon"
@@ -45,7 +45,7 @@ export const ToolBar = () => {
       </div>
 
       <div className="pointer-events-auto">
-        <ZoomBar />
+        <ZoomBar {...zoom} />
       </div>
     </div>
   )

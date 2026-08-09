@@ -142,6 +142,9 @@ export const Canvas = () => {
     onPointerUp,
     eraseShape,
     deleteSelected,
+    zoomIn,
+    zoomOut,
+    zoomToScale,
   } = useInfiniteCanvas()
 
   useEffect(() => {
@@ -206,7 +209,7 @@ export const Canvas = () => {
         <AutoSave />
       </div>
 
-      <ToolBar />
+      <ToolBar zoom={{ scale: viewport.scale, zoomIn, zoomOut, zoomToScale }} />
     </>
   )
 }
