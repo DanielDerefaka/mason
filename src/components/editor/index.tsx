@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Minus,
+  Play,
   Plus,
   RectangleHorizontal,
   Redo2,
@@ -950,6 +951,21 @@ export const DesignEditor = () => {
           >
             <Crosshair className="size-4" />
           </HeaderButton>
+
+          <span className="mx-1 h-5 w-px bg-white/10" />
+
+          {/* A link, not a button, so cmd-click opens the preview in its own
+              tab — which is how anyone showing this to someone else will
+              want it. */}
+          <Link
+            href={`/dashboard/${session}/preview?project=${projectId ?? ''}&design=${design.id}`}
+            aria-label="Preview"
+            title="Preview full screen"
+            className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] transition-colors hover:bg-white/[0.06]"
+          >
+            <Play className="size-3.5" />
+            Preview
+          </Link>
         </div>
       </header>
 

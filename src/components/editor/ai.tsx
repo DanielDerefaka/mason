@@ -12,12 +12,21 @@ import { useState } from 'react'
  * rewrite, and it answers in seconds rather than a minute.
  */
 const SUGGESTIONS = [
+  // First, because it is the fix most designs generated before the responsive
+  // rules existed actually need — run it on the outermost group.
+  'Make this responsive: no fixed widths, wrap rows, min-width 0 on flex children, clamp() headings',
   'Make this bigger',
   'Make it stand out more',
   'Tighten the spacing',
   'Use the accent colour',
   'Round the corners',
 ]
+
+/** Long instructions get a short chip. */
+const SHORT: Record<string, string> = {
+  'Make this responsive: no fixed widths, wrap rows, min-width 0 on flex children, clamp() headings':
+    'Make responsive',
+}
 
 export const AiPanel = ({
   label,
@@ -72,9 +81,10 @@ export const AiPanel = ({
             type="button"
             disabled={busy}
             onClick={() => submit(suggestion)}
+            title={suggestion}
             className="rounded-md bg-white/[0.05] px-2 py-1 text-[10px] text-white/70 transition-colors hover:bg-white/[0.12] hover:text-white disabled:opacity-40"
           >
-            {suggestion}
+            {SHORT[suggestion] ?? suggestion}
           </button>
         ))}
       </div>

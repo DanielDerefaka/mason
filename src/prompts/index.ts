@@ -203,6 +203,38 @@ The fragment's root element must set width:100%, box-sizing:border-box and a
 background of var(--background). Every nested element that needs it should set
 box-sizing:border-box too.
 
+## Responsive
+
+The design has to hold together at any width — a phone, a tablet and a wide
+desktop — and it has to do that with inline styles alone. Inline styles cannot
+carry media queries, so the layout must be intrinsically fluid rather than
+switched at breakpoints. That is a constraint on how you build, not an excuse:
+
+- No fixed pixel width on any container. Use \`width:100%\` with a
+  \`max-width\` when a column should stop growing, and centre with
+  \`margin:0 auto\`.
+- Rows of items are \`display:flex\` with \`flex-wrap:wrap\` and a \`gap\`,
+  so they stack instead of overflowing. Give each item a sensible
+  \`flex:1 1 260px\` rather than a fixed width.
+- Card grids are \`display:grid\` with
+  \`grid-template-columns:repeat(auto-fit,minmax(240px,1fr))\`. That reflows
+  from four columns to one with no breakpoints at all.
+- Every flex or grid child that contains text needs \`min-width:0\`. Without
+  it the default \`min-width:auto\` refuses to shrink below its content and
+  the row overflows the screen instead of wrapping — this is the single most
+  common cause of a design that breaks on a phone.
+- Headline sizes use \`clamp()\`, e.g.
+  \`font-size:clamp(32px,6vw,64px)\`, so type scales with the viewport
+  instead of overflowing it. Body text stays fixed.
+- Images take \`max-width:100%\` and \`height:auto\` unless they are a fixed
+  ratio banner, in which case use \`aspect-ratio\` rather than a pixel height.
+- Horizontal padding scales: \`padding:0 clamp(16px,5vw,64px)\`.
+- Never set \`white-space:nowrap\` on anything that could be long, and never
+  set a \`width\` in pixels on text.
+
+A design that needs a horizontal scrollbar at 390px is wrong, however good it
+looks at 1440px.
+
 ## Craft
 
 Design at the standard of a senior product designer, not a wireframe:
