@@ -7,6 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useAuthentication } from '@/hooks/use-auth'
 import { useProjects } from '@/hooks/use-projects'
 import { useDispatch } from 'react-redux'
 import { LogoMark } from '@/components/logo-mark'
@@ -15,6 +24,7 @@ import { cn } from '@/lib/utils'
 
 export const Navbar = ({ name, image }: { name?: string | null; image?: string | null }) => {
   const dispatch = useDispatch()
+  const { handleSignOut } = useAuthentication()
   const { createProject, creating, projects } = useProjects()
   const credits = useQuery(api.credits.getBalance)
   const params = useParams<{ session: string }>()
@@ -94,10 +104,32 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
           <CircleHelp className="size-[18px]" />
         </button>
 
-        <Avatar className="size-9">
-          {image ? <AvatarImage src={image} alt={name ?? 'You'} /> : null}
-          <AvatarFallback className="text-xs">{initials || 'S2'}</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Account" className="rounded-full outline-none">
+              <Avatar className="size-9">
+                {image ? <AvatarImage src={image} alt={name ?? 'You'} /> : null}
+                <AvatarFallback className="text-xs">{initials || 'M'}</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            {name && (
+              <>
+                <DropdownMenuLabel className="truncate font-normal">{name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem asChild>
+              <Link href="/settings">Settings</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard">Projects</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void handleSignOut()}>Sign out</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {inWorkspace ? (
           <Button
