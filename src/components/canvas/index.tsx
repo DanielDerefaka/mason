@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
+import type { ResizeHandle } from '@/hooks/use-canvas'
 import { cn } from '@/lib/utils'
 import { Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
@@ -10,16 +11,18 @@ import { GeneratedUI } from './shapes/generated-ui'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 
+type PointerHandler = (event: React.PointerEvent<Element>) => void
+
 const ShapeView = ({
   shape,
   selected,
-  onSelect,
+  onGrab,
   onGenerate,
   generating,
 }: {
   shape: Shape
   selected?: boolean
-  onSelect?: () => void
+  onGrab?: PointerHandler
   onGenerate?: () => void
   generating?: boolean
 }) => {
@@ -35,7 +38,7 @@ const ShapeView = ({
 
   if (shape.kind === 'frame') {
     return (
-      <div className={base} style={style} onPointerDown={onSelect}>
+      <div className={base} style={style} onPointerDown={onGrab}>
         {shape.label && (
           <span className="text-muted-foreground absolute -top-6 left-0 text-[11px]">
             {shape.label}
@@ -111,6 +114,18 @@ const ShapeView = ({
             <path d="M 0 0 L 10 5 L 0 10 z" fill={shape.fill} />
           </marker>
         </defs>
+        {/* Invisible fat stroke so thin lines can actually be clicked. The svg
+            is pointer-events-none; this child opts back in. */}
+        <path
+          d={d}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={14}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+          onPointerDown={onGrab}
+        />
         <path
           d={d}
           fill="none"
@@ -130,7 +145,7 @@ const ShapeView = ({
       <div
         className={cn(base, 'grid place-items-center text-sm', selected && 'ring-1 ring-white/70')}
         style={style}
-        onPointerDown={onSelect}
+        onPointerDown={onGrab}
       >
         Text
       </div>
@@ -145,8 +160,70 @@ const ShapeView = ({
         selected && 'ring-2 ring-white/80',
       )}
       style={{ ...style, background: shape.fill }}
-      onPointerDown={onSelect}
+      onPointerDown={onGrab}
     />
+  )
+}
+
+const CURSORS: Record<ResizeHandle, string> = {
+  nw: 'nwse-resize',
+  se: 'nwse-resize',
+  ne: 'nesw-resize',
+  sw: 'nesw-resize',
+}
+
+/**
+ * Outline and grips for the selected shape. Sizes are divided by the zoom so
+ * the handles stay the same size on screen however far in or out you are.
+ */
+const SelectionBox = ({
+  shape,
+  scale,
+  onResize,
+}: {
+  shape: Shape
+  scale: number
+  onResize: (handle: ResizeHandle, event: React.PointerEvent<Element>) => void
+}) => {
+  const size = 10 / scale
+  const edge = 1 / scale
+  const corners: Array<[ResizeHandle, number, number]> = [
+    ['nw', shape.x, shape.y],
+    ['ne', shape.x + shape.width, shape.y],
+    ['se', shape.x + shape.width, shape.y + shape.height],
+    ['sw', shape.x, shape.y + shape.height],
+  ]
+
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute border-sky-400"
+        style={{
+          left: shape.x,
+          top: shape.y,
+          width: shape.width,
+          height: shape.height,
+          borderWidth: edge,
+          borderStyle: 'solid',
+        }}
+      />
+      {corners.map(([handle, cx, cy]) => (
+        <div
+          key={handle}
+          onPointerDown={(event) => onResize(handle, event)}
+          className="absolute border-sky-400 bg-white"
+          style={{
+            left: cx - size / 2,
+            top: cy - size / 2,
+            width: size,
+            height: size,
+            borderWidth: edge,
+            borderStyle: 'solid',
+            cursor: CURSORS[handle],
+          }}
+        />
+      ))}
+    </>
   )
 }
 
@@ -158,11 +235,11 @@ export const Canvas = () => {
     draft,
     tool,
     selectedId,
-    selectShape,
+    beginMove,
+    beginResize,
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    eraseShape,
     deleteSelected,
     zoomIn,
     zoomOut,
@@ -184,6 +261,7 @@ export const Canvas = () => {
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
   const gridSize = 24 * viewport.scale
+  const selectedShape = shapes.find((shape) => shape.id === selectedId)
 
   return (
     <>
@@ -220,13 +298,18 @@ export const Canvas = () => {
               selected={shape.id === selectedId}
               onGenerate={() => void generateDesign(shape)}
               generating={generatingFrameId === shape.id}
-              onSelect={() => {
-                if (tool === 'select') selectShape(shape.id)
-                if (tool === 'eraser') eraseShape(shape.id)
-              }}
+              onGrab={(event) => beginMove(shape, event)}
             />
           ))}
           {draft && <ShapeView shape={draft} />}
+
+          {selectedShape && tool === 'select' && (
+            <SelectionBox
+              shape={selectedShape}
+              scale={viewport.scale}
+              onResize={(handle, event) => beginResize(selectedShape, handle, event)}
+            />
+          )}
         </div>
       </div>
 

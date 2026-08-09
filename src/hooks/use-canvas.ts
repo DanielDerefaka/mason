@@ -11,6 +11,8 @@ import {
   selectShape,
   setTool,
   shapesAdapter,
+  snapshotHistory,
+  updateShapeLive,
   wheelPan,
   zoomTo,
   zoomWheel,
@@ -37,6 +39,54 @@ const FILLS: Record<ShapeKind, string> = {
 /** Kinds captured as a path rather than a bounding box. */
 const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow', 'line']
 
+/** Corner grips, named for the corner they own. */
+export type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
+
+/** Stops a shape being dragged inside out. */
+const MIN_SIZE = 8
+
+/**
+ * Moves a shape, carrying its path with it — a path's points are world
+ * coordinates, so shifting only the bounding box would leave the stroke behind.
+ */
+const translated = (shape: Shape, dx: number, dy: number): Partial<Shape> => ({
+  x: shape.x + dx,
+  y: shape.y + dy,
+  ...(shape.points
+    ? { points: shape.points.map((point) => ({ x: point.x + dx, y: point.y + dy })) }
+    : {}),
+})
+
+/** Resizes about the corner opposite the grip, scaling any path to match. */
+const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shape> => {
+  const left = handle === 'nw' || handle === 'sw'
+  const top = handle === 'nw' || handle === 'ne'
+
+  const anchorX = left ? shape.x + shape.width : shape.x
+  const anchorY = top ? shape.y + shape.height : shape.y
+
+  const x = Math.min(anchorX, world.x)
+  const y = Math.min(anchorY, world.y)
+  const width = Math.max(MIN_SIZE, Math.abs(world.x - anchorX))
+  const height = Math.max(MIN_SIZE, Math.abs(world.y - anchorY))
+
+  if (!shape.points) return { x, y, width, height }
+
+  // Map each point through the same box transform so the stroke keeps its shape.
+  const scaleX = width / Math.max(shape.width, 1)
+  const scaleY = height / Math.max(shape.height, 1)
+  return {
+    x,
+    y,
+    width,
+    height,
+    points: shape.points.map((point) => ({
+      x: x + (point.x - shape.x) * scaleX,
+      y: y + (point.y - shape.y) * scaleY,
+    })),
+  }
+}
+
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
   const state = useAppSelector((s: RootState) => s.shapes)
@@ -45,7 +95,12 @@ export const useInfiniteCanvas = () => {
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const onWheelRef = useRef<(event: WheelEvent) => void>(() => {})
-  const gesture = useRef<{ kind: 'pan' | 'draw'; origin: Point; shapeId?: string } | null>(null)
+  const gesture = useRef<
+    | { kind: 'pan' | 'draw'; origin: Point }
+    | { kind: 'move'; origin: Point; shape: Shape }
+    | { kind: 'resize'; origin: Point; shape: Shape; handle: ResizeHandle }
+    | null
+  >(null)
   const [draft, setDraft] = useState<Shape | null>(null)
 
   /** Screen pixels → world units. The inverse of the CSS transform. */
@@ -95,6 +150,37 @@ export const useInfiniteCanvas = () => {
     }
   }, [])
 
+  /**
+   * Grab a shape. Called from the shape, which stops the event before it
+   * reaches the canvas — otherwise the canvas's own handler would clear the
+   * selection the moment it was made.
+   */
+  const beginMove = (shape: Shape, event: React.PointerEvent<Element>) => {
+    event.stopPropagation()
+    if (tool === 'eraser') {
+      dispatch(removeShape(shape.id))
+      return
+    }
+    if (tool !== 'select') return
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    dispatch(selectShape(shape.id))
+    dispatch(snapshotHistory())
+    gesture.current = { kind: 'move', origin: screenToWorld(localPoint(event)), shape }
+  }
+
+  const beginResize = (
+    shape: Shape,
+    handle: ResizeHandle,
+    event: React.PointerEvent<Element>,
+  ) => {
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    dispatch(selectShape(shape.id))
+    dispatch(snapshotHistory())
+    gesture.current = { kind: 'resize', origin: screenToWorld(localPoint(event)), shape, handle }
+  }
+
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const point = localPoint(event)
     ;(event.target as Element).setPointerCapture?.(event.pointerId)
@@ -135,6 +221,28 @@ export const useInfiniteCanvas = () => {
     if (active.kind === 'pan') {
       dispatch(panBy({ dx: point.x - active.origin.x, dy: point.y - active.origin.y }))
       gesture.current = { ...active, origin: point }
+      return
+    }
+
+    if (active.kind === 'move') {
+      const world = screenToWorld(point)
+      const changes = translated(
+        active.shape,
+        world.x - active.origin.x,
+        world.y - active.origin.y,
+      )
+      dispatch(updateShapeLive({ id: active.shape.id, changes }))
+      return
+    }
+
+    if (active.kind === 'resize') {
+      const world = screenToWorld(point)
+      dispatch(
+        updateShapeLive({
+          id: active.shape.id,
+          changes: resized(active.shape, active.handle, world),
+        }),
+      )
       return
     }
 
@@ -220,6 +328,8 @@ export const useInfiniteCanvas = () => {
     screenToWorld,
     setTool: (next: Tool) => dispatch(setTool(next)),
     selectShape: (id: string | null) => dispatch(selectShape(id)),
+    beginMove,
+    beginResize,
     onPointerDown,
     onPointerMove,
     onPointerUp,

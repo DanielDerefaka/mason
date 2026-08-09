@@ -121,6 +121,20 @@ export const shapesSlice = createSlice({
       shapesAdapter.updateOne(state.entities, { id, changes: { height } })
     },
 
+    /**
+     * Snapshot the current shapes so a drag can be undone as one step. Taken
+     * once when a gesture starts; the moves themselves must not commit, or a
+     * single drag would fill the whole history.
+     */
+    snapshotHistory: (state) => {
+      commit(state)
+    },
+
+    /** Mid-gesture update. Deliberately no history — see snapshotHistory. */
+    updateShapeLive: (state, action: PayloadAction<{ id: string; changes: Partial<Shape> }>) => {
+      shapesAdapter.updateOne(state.entities, action.payload)
+    },
+
     setShapes: (state, action: PayloadAction<Shape[]>) => {
       shapesAdapter.setAll(state.entities, action.payload)
     },
@@ -198,6 +212,8 @@ export const shapesSlice = createSlice({
 
 export const {
   addShape,
+  snapshotHistory,
+  updateShapeLive,
   addGeneratedUI,
   setGeneratedHtml,
   resizeGeneratedUI,
