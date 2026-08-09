@@ -51,7 +51,6 @@ Built from scratch — the video has no landing page chapter. Still open:
   starting grant and per-generation spend, but nothing sells them.
   `credits:grant` tops accounts up from the CLI in the meantime. Polar replaces
   the top-up path, not the ledger.
-- **31 — Design chat.** Revising a generated screen conversationally.
 - **32 — Pre-deploy notes**, **33 — Deploy on Sevalla.**
 - **Export design.** Referenced by chapter 28's pill row alongside Generate
   Workflow and Design Chat; only the workflow pill is built.
