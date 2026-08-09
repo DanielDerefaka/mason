@@ -5,6 +5,8 @@ import { useParams, usePathname, useSearchParams } from 'next/navigation'
 import { CircleHelp, Frame, LayoutTemplate, Plus } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 import { useProjects } from '@/hooks/use-projects'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +19,7 @@ const Mark = () => (
 
 export const Navbar = ({ name, image }: { name?: string | null; image?: string | null }) => {
   const { createProject, creating, projects } = useProjects()
+  const credits = useQuery(api.credits.getBalance)
   const params = useParams<{ session: string }>()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -80,13 +83,11 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
       )}
 
       <div className="flex items-center gap-3">
-        {!inWorkspace && (
-          // TODO: credits — replaced by the real balance when billing lands.
-          <div className="text-muted-foreground text-[11px] leading-tight">
-            <p>TODO:</p>
-            <p>credits</p>
-          </div>
-        )}
+        {/* Shown everywhere, as in the video — a generation can start from
+            either page, so the balance has to be visible on both. */}
+        <span className="text-muted-foreground text-xs whitespace-nowrap">
+          {credits == null ? '—' : `${credits} credit${credits === 1 ? '' : 's'}`}
+        </span>
 
         <button
           type="button"

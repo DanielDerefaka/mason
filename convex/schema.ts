@@ -29,4 +29,11 @@ export default defineSchema({
     userId: v.id('users'),
     count: v.number(),
   }).index('by_user', ['userId']),
+
+  // What a generation spends. Kept out of the auth users table so Polar can
+  // top it up later without reaching into Convex Auth's own schema.
+  credits: defineTable({
+    userId: v.id('users'),
+    balance: v.number(),
+  }).index('by_user', ['userId']),
 })

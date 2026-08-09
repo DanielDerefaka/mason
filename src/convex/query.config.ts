@@ -32,12 +32,9 @@ export const subscriptionEntitlementQuery = async () => {
 }
 
 /**
- * What the generation routes charge against.
- *
- * Credits are Polar's job and Polar is not wired up yet (chapter 24), so this
- * reports an unmetered balance for a signed-in user rather than inventing a
- * ledger the billing chapter would only have to replace. The shape is already
- * the real one, so only the middle of this function changes later.
+ * What the generation routes charge against. Polar (chapter 24) will top the
+ * balance up; it is not the source of the balance itself, so this reads the
+ * same Convex row the navbar shows.
  */
 export const CreditsBalanceQuery = async () => {
   const token = await convexAuthNextjsToken()
@@ -45,8 +42,8 @@ export const CreditsBalanceQuery = async () => {
 
   if (!profile) return { ok: false, balance: 0, profile: null }
 
-  // TODO: read the real balance from Polar once billing lands.
-  return { ok: true, balance: Number.POSITIVE_INFINITY, profile }
+  const balance = await fetchQuery(api.credits.getBalance, {}, { token })
+  return { ok: true, balance: balance ?? 0, profile }
 }
 
 /** The mood board images a generation run should look at. */

@@ -116,8 +116,10 @@ export async function POST(request: NextRequest) {
 
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.project.saveStyleGuide, { projectId, styleGuide }, { token })
+    // Charged only once there is something to show for it.
+    const { balance: remaining } = await fetchMutation(api.credits.spend, {}, { token })
 
-    return NextResponse.json({ success: true, styleGuide })
+    return NextResponse.json({ success: true, styleGuide, credits: remaining })
   } catch (error) {
     console.error('[generate/style]', error)
     return NextResponse.json(
