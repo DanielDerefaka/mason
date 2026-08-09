@@ -33,6 +33,18 @@ figures blank, and put low-contrast text in the nav. Opus 5 is the default.
 `ANTHROPIC_UI_MODEL` switches the design model without touching the model used
 for extraction. Worth re-running whenever the router adds a model.
 
+## Landing page
+
+Built from scratch — the video has no landing page chapter. Still open:
+
+- **A real product screenshot.** The hero frame is drawn in CSS so it cannot go
+  stale, but a genuine capture of the canvas would be more convincing. Wants a
+  capture pipeline that reruns when the UI changes.
+- **Social proof.** The pill says "Now in early access" because there is no user
+  count to quote yet. Put a real figure in when there is one.
+- **Pricing is illustrative.** The tiers and prices are placeholders shaped
+  around the credit system; they are not wired to Polar.
+
 ## Chapters not built
 
 - **24 — Polar billing.** Credits exist as a real balance in Convex with a
