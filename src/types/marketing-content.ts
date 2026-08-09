@@ -1,0 +1,58 @@
+export interface Project {
+  slug: string;
+  name: string;
+  /** Portrait tile used in marquees (349×620 on the reference). */
+  image: string;
+  /** Large landscape image used by the Featured Works stack. */
+  featureImage?: string;
+}
+
+export interface ServiceCard {
+  /** Two-line label, exactly as the reference splits it. */
+  lines: [string, string];
+  icon:
+    | "globe"
+    | "edit"
+    | "cart"
+    | "bars"
+    | "plane"
+    | "puzzle"
+    | "bolt"
+    | "navigation"
+    | "rocket"
+    | "tools";
+}
+
+export interface PlatformLogo {
+  name: string;
+  image: string;
+}
+
+export interface ApproachStep {
+  title: string;
+  /** Paragraph split into runs so the reference's inline bolding is preserved. */
+  body: { text: string; bold?: boolean }[];
+  visual:
+    | "marquee"
+    | "phones"
+    | "dashboard"
+    | "editor"
+    | "cms-table"
+    | "clock";
+}
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface BlogPost {
+  slug: string;
+  title: string;
+  date: string;
+  excerpt: string;
+  category: string;
+  readTime: string;
+  cover: string;
+  body: string[];
+}
