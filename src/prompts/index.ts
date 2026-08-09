@@ -78,6 +78,43 @@ publishes, named plainly: Extra Light 200, Light 300, Regular 400, Medium 500,
 Semi Bold 600, Bold 700, Extra Bold 800. Only include weights the family really
 has.
 
+## Type scale
+
+Return \`typeScale\` as a ladder of named roles, largest first:
+
+- Display, Headline H1, Headline H2, Headline H3, Subtitle, Body Large, Body,
+  Small, Caption, Button.
+
+Each carries a pixel size, a weight the family actually publishes, a unitless
+line height and a letter spacing in em. The rules that make a scale usable:
+
+- Sizes should read as a deliberate ladder, not arbitrary numbers. A ratio
+  somewhere between 1.2 and 1.333 between neighbours works for most boards;
+  round to whole pixels.
+- Display and headline sizes take tighter line heights (1.05–1.25) and slightly
+  negative letter spacing (-0.01 to -0.03em). Body sizes take looser line
+  heights (1.5–1.65) and zero letter spacing. Small caps-like roles such as
+  Caption may take positive spacing.
+- Body must not drop below 14px, and Caption not below 11px.
+- \`usage\` is one short line on where the style belongs.
+
+## Spacing
+
+Return \`spacing\` as a linear scale in pixels, smallest first, based on a 4 or
+8 point step — something like 4, 8, 12, 16, 24, 32, 48, 64. Eight values is
+plenty. The point is that a design has few permitted gaps rather than a fresh
+guess at every edge.
+
+## Radii and elevation
+
+\`radii\` is three or four steps from a small control radius up to a pill
+(use 9999). Match the mood board: a soft, rounded board should not produce
+2px corners.
+
+\`elevation\` is three levels — resting, raised and floating — each a complete
+CSS box-shadow string. On a dark system, shadows need more opacity and less
+blur than on a light one to read at all.
+
 ## Theme
 
 \`theme\` is a two or three word name for the direction, in title case — the kind

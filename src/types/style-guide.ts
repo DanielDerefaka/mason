@@ -22,6 +22,33 @@ export const TypographyStyleSchema = z.object({
   weight: z.number().describe('Numeric CSS weight, e.g. 600.'),
 })
 
+/**
+ * One named text style — the row of a type specimen sheet.
+ *
+ * The old guide gave a family and a list of weight names and nothing else, so
+ * every generated screen invented its own sizes and no two agreed. A scale is
+ * the single biggest lever on consistency between screens.
+ */
+export const TypeStyleSchema = z.object({
+  name: z.string().describe('Role name, e.g. "Headline H2", "Body", "Caption".'),
+  fontSize: z.number().describe('Pixels, e.g. 48.'),
+  fontWeight: z.number().describe('Numeric CSS weight the family really publishes.'),
+  lineHeight: z.number().describe('Unitless multiplier, e.g. 1.2.'),
+  letterSpacing: z.number().describe('Em, e.g. -0.02. Zero for body sizes.'),
+  usage: z.string().describe('One short line on where this style is used.'),
+})
+
+export const RadiusSchema = z.object({
+  name: z.string().describe('e.g. "Small", "Medium", "Large", "Pill".'),
+  value: z.number().describe('Pixels. Use 9999 for a pill.'),
+})
+
+export const ElevationSchema = z.object({
+  name: z.string().describe('e.g. "Resting", "Raised", "Floating".'),
+  shadow: z.string().describe('A complete CSS box-shadow value.'),
+  usage: z.string().describe('One short line on where this level is used.'),
+})
+
 export const StyleGuideSchema = z.object({
   theme: z.string().describe('Two or three word name for the direction, title case.'),
   description: z.string().describe('One sentence on the feeling it creates.'),
@@ -30,11 +57,24 @@ export const StyleGuideSchema = z.object({
     fontFamily: z.string().describe('Exact Google Fonts family name.'),
     styles: z.array(TypographyStyleSchema),
   }),
+  /** The type scale. Optional so guides generated before it still parse. */
+  typeScale: z.array(TypeStyleSchema).optional(),
+  /**
+   * The spacing rhythm, in pixels, smallest first. A linear scale a design can
+   * be held to — the reference kit's argument is that consistency comes from
+   * having few permitted values, not from picking good ones each time.
+   */
+  spacing: z.array(z.number()).optional(),
+  radii: z.array(RadiusSchema).optional(),
+  elevation: z.array(ElevationSchema).optional(),
 })
 
 export type ColorSwatch = z.infer<typeof ColorSwatchSchema>
 export type ColorSection = z.infer<typeof ColorSectionSchema>
 export type TypographyStyle = z.infer<typeof TypographyStyleSchema>
+export type TypeStyle = z.infer<typeof TypeStyleSchema>
+export type Radius = z.infer<typeof RadiusSchema>
+export type Elevation = z.infer<typeof ElevationSchema>
 export type StyleGuide = z.infer<typeof StyleGuideSchema>
 
 /**

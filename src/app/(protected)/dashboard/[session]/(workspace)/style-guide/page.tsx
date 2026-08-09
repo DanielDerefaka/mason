@@ -1,15 +1,19 @@
 'use client'
 
-import { Hash, Image as ImageIcon, Type } from 'lucide-react'
+import { Component, Hash, Image as ImageIcon, Ruler, Type } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Colours } from '@/components/style-guide/colours'
 import { Typography } from '@/components/style-guide/typography'
+import { Tokens } from '@/components/style-guide/tokens'
+import { Components } from '@/components/style-guide/components'
 import { MoodBoard } from '@/components/style/mood-board'
 import { useStyles } from '@/hooks/use-styles'
 
 const TABS = [
   { value: 'colours', label: 'colours', Icon: Hash },
   { value: 'typography', label: 'typography', Icon: Type },
+  { value: 'tokens', label: 'scale', Icon: Ruler },
+  { value: 'components', label: 'components', Icon: Component },
   { value: 'moodboard', label: 'moodboard', Icon: ImageIcon },
 ]
 
@@ -46,6 +50,12 @@ export default function StyleGuidePage() {
         </TabsContent>
         <TabsContent value="typography">
           <Typography guide={styleGuide} />
+        </TabsContent>
+        <TabsContent value="tokens">
+          <Tokens guide={styleGuide} />
+        </TabsContent>
+        <TabsContent value="components">
+          <Components guide={styleGuide} />
         </TabsContent>
         <TabsContent value="moodboard">
           <MoodBoard guideImages={guideImages} />

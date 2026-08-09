@@ -22,11 +22,52 @@ export const describeStyleGuide = (
     .map((swatch) => `  ${swatch.token}: ${swatch.color} — ${swatch.name}${swatch.description ? `. ${swatch.description}` : ''}`)
     .join('\n')
 
+  /**
+   * The scale is the part that makes two screens look like one product. A
+   * palette alone never did: every generation used to pick its own sizes and
+   * spacing, so a flow came back as five designs that merely shared colours.
+   */
+  const typeScale = guide.typeScale?.length
+    ? [
+        'Type scale — use these exact sizes. Do not invent intermediate ones:',
+        ...guide.typeScale.map(
+          (style) =>
+            `  ${style.name}: ${style.fontSize}px / weight ${style.fontWeight} / ` +
+            `line-height ${style.lineHeight} / letter-spacing ${style.letterSpacing}em — ${style.usage}`,
+        ),
+      ].join('\n')
+    : null
+
+  const spacing = guide.spacing?.length
+    ? `Spacing scale — every padding, gap and margin comes from this set: ${guide.spacing
+        .map((step) => `${step}px`)
+        .join(', ')}.`
+    : null
+
+  const radii = guide.radii?.length
+    ? `Corner radii: ${guide.radii
+        .map((radius) => `${radius.name} ${radius.value === 9999 ? '9999px' : `${radius.value}px`}`)
+        .join(', ')}. Controls take the smallest, cards the middle.`
+    : null
+
+  const elevation = guide.elevation?.length
+    ? [
+        'Shadows — use these verbatim, and only these:',
+        ...guide.elevation.map((level) => `  ${level.name}: ${level.shadow} — ${level.usage}`),
+      ].join('\n')
+    : null
+
   return [
     `Theme: ${guide.theme} — ${guide.description}`,
     `Font family: ${guide.typography.fontFamily}`,
     `Weights available: ${guide.typography.styles.map((s) => s.weight).join(', ')}`,
     'Colours (already bound to the matching CSS variables):',
     swatches,
-  ].join('\n')
+    typeScale,
+    spacing,
+    radii,
+    elevation,
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
