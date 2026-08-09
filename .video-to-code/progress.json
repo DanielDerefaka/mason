@@ -21,9 +21,10 @@
     27,
     28,
     29,
-    30
+    30,
+    31
   ],
-  "current": 31,
+  "current": 32,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -115,7 +116,10 @@
     "Images are downloaded server-side and sent as file parts (src/lib/fetch-image.ts). Passing URLs fails on non-Anthropic models behind the gateway ('expected a base64-encoded data URL ... malformed MIME type') and the old 'image' part is deprecated.",
     "gpt-5.6-sol returns tool_use blocks with no id; the SDK rejects the whole message as Invalid JSON response. gatewayFetch in lib/anthropic.ts fills the id in.",
     "Inspiration references are vision-only and must NEVER be embedded \u2014 they are screenshots of websites, and rendering one puts a website inside the website. Photographic slots use loremflickr with keyword + lock. source.unsplash.com is retired (503).",
-    "His sketches are ANNOTATED (labels like 'Image should take full height of this section', 'Add To Cart', '$49.99'). That is a large part of why his output looks intentional. Our text tool only started working recently \u2014 tell the user to label sketches."
+    "His sketches are ANNOTATED (labels like 'Image should take full height of this section', 'Add To Cart', '$49.99'). That is a large part of why his output looks intentional. Our text tool only started working recently \u2014 tell the user to label sketches.",
+    "Ch31: Design Chat \u2014 per-shape conversation (redux slice/chat), /api/generate/revise streams a full replacement fragment, previous html restored on failure. 1 credit per revision.",
+    "Ch31 deviation: the video branches the endpoint by whether the screen is a workflow page and re-snapshots the source frame. A single revise route taking the current html is simpler and does the same job.",
+    "Remaining after 31: ch32 pre-deploy notes, ch33 Sevalla deploy, ch34 what's next. Plus everything in BACKLOG.md (ch24 Polar, annotated sketches, imagery keywords, reference fidelity, Google OAuth, Inngest, export design)."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
