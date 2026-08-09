@@ -14,10 +14,16 @@ import { DesignChat } from './shapes/design-chat'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
-import { Inspector } from './inspector'
+import { Inspector, ShapeInspector } from './inspector'
 import { FramePresetDialog } from './frame-presets'
 import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
-import { cssForTextStyle, textStyleOf } from '@/lib/text-style'
+import {
+  boxShadowFor,
+  cssForTextStyle,
+  dropShadowFor,
+  shapeStyleOf,
+  textStyleOf,
+} from '@/lib/text-style'
 
 type PointerHandler = (event: React.PointerEvent<Element>) => void
 
@@ -179,11 +185,12 @@ const ShapeView = ({
           d={d}
           fill="none"
           stroke={shape.fill}
-          strokeWidth={2}
+          strokeWidth={Math.max(1, shapeStyleOf(shape).strokeWidth || 2)}
           strokeLinecap="round"
           strokeLinejoin="round"
           markerEnd={shape.kind === 'arrow' ? `url(#arrow-${shape.id})` : undefined}
-          opacity={selected ? 1 : 0.9}
+          opacity={shapeStyleOf(shape).opacity * (selected ? 1 : 0.9)}
+          style={{ filter: dropShadowFor(shapeStyleOf(shape).shadow, shape.fill) }}
         />
       </svg>
     )
@@ -242,14 +249,23 @@ const ShapeView = ({
     )
   }
 
+  const shapeCss = shapeStyleOf(shape)
+
   return (
     <div
-      className={cn(
-        base,
-        shape.kind === 'ellipse' ? 'rounded-full' : 'rounded-md',
-        selected && 'ring-2 ring-white/80',
-      )}
-      style={{ ...style, background: shape.fill }}
+      className={cn(base, selected && 'ring-2 ring-white/80')}
+      style={{
+        ...style,
+        background: shape.fill,
+        opacity: shapeCss.opacity,
+        // An ellipse is round by definition; everything else takes its radius.
+        borderRadius: shape.kind === 'ellipse' ? '9999px' : shapeCss.radius,
+        border:
+          shapeCss.strokeWidth > 0
+            ? `${shapeCss.strokeWidth}px solid ${shapeCss.strokeColor}`
+            : undefined,
+        boxShadow: boxShadowFor(shapeCss.shadow, shape.fill),
+      }}
       onPointerDown={onGrab}
     />
   )
@@ -363,6 +379,12 @@ export const Canvas = () => {
   const gridSize = 24 * viewport.scale
   const selectedShape = shapes.find((shape) => shape.id === selectedId)
   const selectedText = selectedShape?.kind === 'text' ? selectedShape : undefined
+  // Generated designs render their own markup, so there is nothing here to
+  // restyle; frames and drawn shapes get the shape panel.
+  const selectedStyleable =
+    selectedShape && selectedShape.kind !== 'text' && selectedShape.kind !== 'generated-ui'
+      ? selectedShape
+      : undefined
 
   // Every family in play, so a shape keeps its face after a reload rather than
   // only once its inspector has been opened.
@@ -429,6 +451,7 @@ export const Canvas = () => {
       </div>
 
       {selectedText && <Inspector shape={selectedText} />}
+      {selectedStyleable && tool === 'select' && <ShapeInspector shape={selectedStyleable} />}
 
       <FramePresetDialog
         isOpen={frameDialogOpen}

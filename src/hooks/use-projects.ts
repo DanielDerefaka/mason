@@ -23,6 +23,7 @@ export const useProjects = () => {
   const data = useQuery(api.project.getProjects)
   const createProjectMutation = useMutation(api.project.createProject)
   const deleteProjectMutation = useMutation(api.project.deleteProject)
+  const renameProjectMutation = useMutation(api.project.renameProject)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -59,6 +60,14 @@ export const useProjects = () => {
     }
   }
 
+  const renameProject = async (projectId: Id<'projects'>, name: string) => {
+    try {
+      await renameProjectMutation({ projectId, name })
+    } catch {
+      toast.error('Could not rename that project.')
+    }
+  }
+
   return {
     projects: projectState.projects,
     projectsTotal: projectState.projectsTotal,
@@ -67,5 +76,6 @@ export const useProjects = () => {
     creating,
     createProject,
     deleteProject,
+    renameProject,
   }
 }

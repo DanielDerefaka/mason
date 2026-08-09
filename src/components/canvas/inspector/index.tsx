@@ -25,6 +25,10 @@ import {
 import type { Shape } from '@/redux/slice/shapes'
 import { snapshotHistory, updateTextStyle, updateTextStyleLive } from '@/redux/slice/shapes'
 
+import { Field, InspectorPanel } from './parts'
+
+export { ShapeInspector } from './shape'
+
 /**
  * Text inspector.
  *
@@ -62,13 +66,7 @@ export const Inspector = ({ shape }: { shape: Shape }) => {
   }
 
   return (
-    <aside
-      // The canvas treats a pointerdown on empty space as "deselect", which
-      // would close this panel the moment you reached for a slider.
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
-      className="absolute top-1/2 right-6 z-30 flex w-[272px] -translate-y-1/2 flex-col gap-5 rounded-xl border border-white/10 bg-[#141416]/95 p-4 shadow-2xl backdrop-blur"
-    >
+    <InspectorPanel>
       <Field label="Font Family">
         <Select value={style.fontFamily} onValueChange={(value) => set({ fontFamily: value })}>
           <SelectTrigger className="h-9 w-full border-white/10 bg-white/[0.04] text-xs">
@@ -196,16 +194,10 @@ export const Inspector = ({ shape }: { shape: Shape }) => {
           </label>
         </div>
       </Field>
-    </aside>
+    </InspectorPanel>
   )
 }
 
-const Field = ({ label, children }: { label: React.ReactNode; children: React.ReactNode }) => (
-  <div className="space-y-2">
-    <span className="block text-[11px] text-white/70">{label}</span>
-    {children}
-  </div>
-)
 
 const StyleToggle = ({
   label,

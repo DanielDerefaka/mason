@@ -121,3 +121,24 @@ export const updateProjectSketches = mutation({
     return { success: true }
   },
 })
+
+export const renameProject = mutation({
+  args: {
+    projectId: v.id('projects'),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    const name = args.name.trim()
+    if (!name) throw new Error('Name cannot be empty')
+    if (name.length > 80) throw new Error('Name is too long')
+
+    await ctx.db.patch(args.projectId, { name, lastModified: Date.now() })
+    return name
+  },
+})

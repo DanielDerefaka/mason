@@ -1,6 +1,6 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
-import type { TextStyle } from '@/lib/text-style'
+import type { ShapeStyle, TextStyle } from '@/lib/text-style'
 
 export type Point = { x: number; y: number }
 export type ShapeKind =
@@ -38,6 +38,8 @@ export type Shape = {
    * was actually changed; the rest comes from `DEFAULT_TEXT_STYLE`.
    */
   text?: Partial<TextStyle>
+  /** Fill/stroke/shadow, for every kind except `text`. */
+  style?: Partial<ShapeStyle>
 }
 
 export type Viewport = {
@@ -165,6 +167,20 @@ export const shapesSlice = createSlice({
     ) => {
       const shape = state.entities.entities[action.payload.id]
       if (shape) shape.text = { ...shape.text, ...action.payload.changes }
+    },
+    /** The `style` equivalent of `updateTextStyle` — merges, and commits. */
+    updateShapeStyle: (state, action: PayloadAction<{ id: string; changes: Partial<ShapeStyle> }>) => {
+      commit(state)
+      const shape = state.entities.entities[action.payload.id]
+      if (shape) shape.style = { ...shape.style, ...action.payload.changes }
+    },
+    /** The same merge without a history entry — for a slider mid-drag. */
+    updateShapeStyleLive: (
+      state,
+      action: PayloadAction<{ id: string; changes: Partial<ShapeStyle> }>,
+    ) => {
+      const shape = state.entities.entities[action.payload.id]
+      if (shape) shape.style = { ...shape.style, ...action.payload.changes }
     },
     updateShapeLive: (state, action: PayloadAction<{ id: string; changes: Partial<Shape> }>) => {
       shapesAdapter.updateOne(state.entities, action.payload)
@@ -294,6 +310,8 @@ export const {
   updateShapeLive,
   updateTextStyle,
   updateTextStyleLive,
+  updateShapeStyle,
+  updateShapeStyleLive,
   addGeneratedUI,
   setGeneratedHtml,
   resizeGeneratedUI,

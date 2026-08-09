@@ -1,34 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+
+import { useProjects } from '@/hooks/use-projects'
 import type { Doc } from '../../../convex/_generated/dataModel'
-
-/**
- * Warm gradients standing in for a project's rendered preview. Picked by
- * hashing the id so a project keeps the same swatch across reloads instead of
- * flickering to a new colour on every render.
- */
-const SWATCHES = [
-  // golden → coral, the warmest of the set
-  'from-[#FFC46B] via-[#FBA07C] to-[#F1849B]',
-  // cream → peach
-  'from-[#FFE1C0] via-[#FBC7A8] to-[#F4AC9F]',
-  // blush
-  'from-[#FBC0B4] via-[#F4A7A5] to-[#E890A4]',
-  // amber → rose
-  'from-[#FFD79A] via-[#F9B393] to-[#EE95A6]',
-  // pale sand
-  'from-[#FFEFD8] via-[#FBD8BC] to-[#F2B8AC]',
-  // apricot
-  'from-[#FFCF9E] via-[#F9AE92] to-[#EC8F9E]',
-]
-
-const swatchFor = (id: string) => {
-  let hash = 0
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  return SWATCHES[hash % SWATCHES.length]
-}
 
 export const ProjectCard = ({
   project,
@@ -37,21 +15,81 @@ export const ProjectCard = ({
   project: Doc<'projects'>
   session: string
 }) => {
-  return (
-    <Link href={`/dashboard/${session}/canvas?project=${project._id}`} className="group block">
-      <div
-        className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br ${swatchFor(project._id)} transition-transform duration-300 group-hover:scale-[1.01]`}
-      >
-        {/* The soft light disc that sits at the centre of every preview tile. */}
-        <div className="absolute inset-0 grid place-items-center">
-          <div className="h-16 w-16 rounded-full bg-white/70 blur-[2px] shadow-[0_0_40px_12px_rgba(255,255,255,0.45)]" />
-        </div>
-      </div>
+  const { renameProject } = useProjects()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(project.name)
+  const input = useRef<HTMLInputElement | null>(null)
 
-      <p className="mt-3 truncate text-sm font-medium">{project.name}</p>
-      <p className="text-muted-foreground mt-0.5 text-xs">
+  useEffect(() => {
+    if (!editing) setDraft(project.name)
+  }, [project.name, editing])
+
+  useEffect(() => {
+    if (editing) input.current?.select()
+  }, [editing])
+
+  const commit = () => {
+    setEditing(false)
+    const next = draft.trim()
+    if (next && next !== project.name) void renameProject(project._id, next)
+    else setDraft(project.name)
+  }
+
+  return (
+    <div className="group block">
+      <Link
+        href={`/dashboard/${session}/canvas?project=${project._id}`}
+        className="block"
+        aria-label={`Open ${project.name}`}
+      >
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl transition-transform duration-300 group-hover:scale-[1.01]">
+          <Image
+            src="/images/project-cover.webp"
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
+            className="object-cover"
+          />
+        </div>
+      </Link>
+
+      {editing ? (
+        <input
+          ref={input}
+          value={draft}
+          autoFocus
+          maxLength={80}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              setDraft(project.name)
+              setEditing(false)
+            }
+          }}
+          className="mt-3 w-full rounded-md border border-white/15 bg-white/[0.06] px-2 py-1 text-sm font-medium outline-none focus:border-white/35"
+        />
+      ) : (
+        /* A button, not the Link: double-clicking a link to rename it would
+           also follow it. The card image stays the way into the project. */
+        <button
+          type="button"
+          onDoubleClick={() => setEditing(true)}
+          title="Double-click to rename"
+          className="mt-3 block w-full truncate rounded-md px-2 py-1 text-left text-sm font-medium transition-colors hover:bg-white/[0.06]"
+        >
+          {project.name}
+        </button>
+      )}
+
+      <p className="text-muted-foreground mt-0.5 px-2 text-xs">
         {formatDistanceToNow(new Date(project.lastModified), { addSuffix: true })}
       </p>
-    </Link>
+    </div>
   )
 }
