@@ -17,9 +17,10 @@
     20,
     21,
     23,
-    26
+    26,
+    27
   ],
-  "current": 27,
+  "current": 28,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -79,7 +80,13 @@
     "Ch26 prompt is ours (src/prompts/index.ts) \u2014 the creator's is in a paid kit and never on screen [578:02].",
     "Canvas toolbar audit: undo/redo, tools and zoom were all present and correctly placed, but ZoomBar called useInfiniteCanvas itself and got an unattached second canvasRef \u2014 viewportCenter returned (0,0) so zoom anchored on the canvas corner. Fixed by passing zoom handlers down from Canvas.",
     "Removed ml-14 from the undo/redo group and set devIndicators:false \u2014 the offset only existed to dodge the Next dev badge, which was shifting the production layout for a dev-only overlay.",
-    "Verification tooling: Chrome can be driven over CDP with plain Node (global WebSocket, no npm). /json/new needs PUT, not GET. Scripts in the session scratchpad (cdp.mjs, drive.mjs). Test user toolbar.check@example.com exists in the dev Convex deployment."
+    "Verification tooling: Chrome can be driven over CDP with plain Node (global WebSocket, no npm). /json/new needs PUT, not GET. Scripts in the session scratchpad (cdp.mjs, drive.mjs). Test user toolbar.check@example.com exists in the dev Convex deployment.",
+    "Ch27 'Stylesheet' is mostly ch26 leftovers: install @ai-sdk/anthropic, write the Zod StyleGuideSchema, consumeCredits, updateProjectStyleGuide, register styleGuideApi. All of that already landed in 26, so ch27's real work here was rendering the guide.",
+    "Ch27: Colours/Typography now read project.styleGuide with a fallback to the static theme; Typography injects a Google Fonts link for the generated family (without it every weight renders in the app font and looks broken).",
+    "Ch27 deviation: kept our Theme box (shows the generated theme name + description). His generated Colours tab goes straight to 'Primary Colours' with no theme box.",
+    "Ch27: the rest of his chapter is buying Anthropic credits and re-pointing ngrok/Convex SITE_URL after his tunnel changed \u2014 not applicable locally.",
+    "Credits: own Convex table (credits.balance), 10 to start, spend 1 per generation. His version hangs credits off a Polar subscription with a ledger and idempotency keys \u2014 that arrives with ch24.",
+    "Radix tabs ignore synthetic el.click(); CDP tests must dispatch Input.dispatchMouseEvent at the element's centre."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
