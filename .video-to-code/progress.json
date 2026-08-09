@@ -20,9 +20,10 @@
     26,
     27,
     28,
-    29
+    29,
+    30
   ],
-  "current": 30,
+  "current": 31,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -102,7 +103,11 @@
     "Ch29 fix: the no-style-guide fallback in the generate route told the model to stay neutral, which cancelled out the reference images. Now it defers to the references when any are present. Verified greyscale-before / neon-after.",
     "Ch30 next: Workflows Ai generation (42.7m). Ch31 chat, ch32 pre-deploy note, ch33 Sevalla deploy.",
     "Text tool (user-reported): click-to-type now works. Three causes \u2014 setTool clears editingId and was dispatched after setEditingId; the draft shape lived only in React state so a click (no render between pointerdown/up) created nothing; beginMove stopped the event for every shape click before checking the tool, making the area over any shape dead for drawing.",
-    "Draft shape is mirrored in draftRef and updated synchronously via putDraft \u2014 React state alone is not safe to read in the pointerup of the same click."
+    "Draft shape is mirrored in draftRef and updated synchronously via putDraft \u2014 React state alone is not safe to read in the pointerup of the same click.",
+    "Ch30 deviation: video hardcodes 4 page types and says on camera not to do it that way. Implemented his recommended version \u2014 /api/generate/workflow/plan asks the model to plan the flow from the source screen, then /api/generate/workflow streams each page.",
+    "Ch30: pages generated sequentially, 1 credit each; the plan route refuses up front unless the whole flow can be paid for.",
+    "REGRESSION FOUND in ch30 testing: beginMove calls setPointerCapture on the shape, and a captured pointer sends the following click to the capturing element \u2014 so the frame's Inspiration/Generate pills stopped firing after the canvas-manipulation commit. Controls on a shape now stopPropagation on pointerdown.",
+    "Testing note: pipe CDP scripts to a file, not through `tail` \u2014 node buffers stdout when piped and the output only appears at exit, which hides where a long run is stuck."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
