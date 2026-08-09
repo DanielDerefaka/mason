@@ -1,5 +1,7 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
+import type { TextStyle } from '@/lib/text-style'
+
 export type Point = { x: number; y: number }
 export type ShapeKind =
   | 'rectangle'
@@ -31,6 +33,11 @@ export type Shape = {
   sourceFrameId?: string
   /** True while the model is still streaming into `html`. */
   streaming?: boolean
+  /**
+   * Typography, for `text` shapes only. Partial so a shape carries only what
+   * was actually changed; the rest comes from `DEFAULT_TEXT_STYLE`.
+   */
+  text?: Partial<TextStyle>
 }
 
 export type Viewport = {
@@ -134,6 +141,24 @@ export const shapesSlice = createSlice({
     },
 
     /** Mid-gesture update. Deliberately no history — see snapshotHistory. */
+    /**
+     * Merges into `text` rather than replacing it, so a control can send just
+     * the property it owns. `commit` makes one change one undo step — sliders
+     * use `updateTextStyleLive` while dragging and snapshot once on grab.
+     */
+    updateTextStyle: (state, action: PayloadAction<{ id: string; changes: Partial<TextStyle> }>) => {
+      commit(state)
+      const shape = state.entities.entities[action.payload.id]
+      if (shape) shape.text = { ...shape.text, ...action.payload.changes }
+    },
+    /** The same merge without a history entry — for a slider mid-drag. */
+    updateTextStyleLive: (
+      state,
+      action: PayloadAction<{ id: string; changes: Partial<TextStyle> }>,
+    ) => {
+      const shape = state.entities.entities[action.payload.id]
+      if (shape) shape.text = { ...shape.text, ...action.payload.changes }
+    },
     updateShapeLive: (state, action: PayloadAction<{ id: string; changes: Partial<Shape> }>) => {
       shapesAdapter.updateOne(state.entities, action.payload)
     },
@@ -225,6 +250,8 @@ export const {
   setEditingId,
   snapshotHistory,
   updateShapeLive,
+  updateTextStyle,
+  updateTextStyleLive,
   addGeneratedUI,
   setGeneratedHtml,
   resizeGeneratedUI,

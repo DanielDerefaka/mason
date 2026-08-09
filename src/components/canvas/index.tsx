@@ -14,6 +14,9 @@ import { DesignChat } from './shapes/design-chat'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
+import { Inspector } from './inspector'
+import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
+import { cssForTextStyle, textStyleOf } from '@/lib/text-style'
 
 type PointerHandler = (event: React.PointerEvent<Element>) => void
 
@@ -187,6 +190,7 @@ const ShapeView = ({
 
   if (shape.kind === 'text') {
     const value = shape.label ?? ''
+    const textCss = cssForTextStyle(textStyleOf(shape))
 
     if (editing) {
       return (
@@ -213,8 +217,8 @@ const ShapeView = ({
           }}
           // Stop the canvas turning a caret placement into a drag.
           onPointerDown={(event) => event.stopPropagation()}
-          className="absolute resize-none overflow-hidden bg-transparent p-0 text-sm leading-snug text-white outline-none ring-1 ring-sky-400 placeholder:text-white/30"
-          style={{ ...style, height: Math.max(shape.height, 24) }}
+          className="absolute resize-none overflow-hidden bg-transparent p-0 outline-none ring-1 ring-sky-400 placeholder:text-white/30"
+          style={{ ...style, ...textCss, height: Math.max(shape.height, 24) }}
         />
       )
     }
@@ -223,11 +227,12 @@ const ShapeView = ({
       <div
         className={cn(
           base,
-          'cursor-text text-sm leading-snug whitespace-pre-wrap',
-          !value && 'text-white/30',
+          'cursor-text whitespace-pre-wrap',
           selected && 'ring-1 ring-white/70',
         )}
-        style={style}
+        // The placeholder is dimmed inline rather than with a class, so it
+        // does not fight the chosen colour via specificity.
+        style={{ ...style, ...textCss, ...(value ? null : { color: 'rgb(255 255 255 / 0.3)' }) }}
         onPointerDown={onGrab}
         onDoubleClick={onBeginEdit}
       >
@@ -353,6 +358,13 @@ export const Canvas = () => {
   // scrolls with the content without needing a huge tiled element.
   const gridSize = 24 * viewport.scale
   const selectedShape = shapes.find((shape) => shape.id === selectedId)
+  const selectedText = selectedShape?.kind === 'text' ? selectedShape : undefined
+
+  // Every family in play, so a shape keeps its face after a reload rather than
+  // only once its inspector has been opened.
+  useCanvasFonts(
+    shapes.flatMap((shape) => (shape.kind === 'text' ? [textStyleOf(shape).fontFamily] : [])),
+  )
 
   return (
     <>
@@ -411,6 +423,8 @@ export const Canvas = () => {
           )}
         </div>
       </div>
+
+      {selectedText && <Inspector shape={selectedText} />}
 
       <InspirationSidebar isOpen={inspirationOpen} onClose={() => setInspirationOpen(false)} />
 
