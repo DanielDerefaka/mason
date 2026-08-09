@@ -8,10 +8,13 @@ import { Button } from '@/components/ui/button'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useProjects } from '@/hooks/use-projects'
+import { useDispatch } from 'react-redux'
 import { LogoMark } from '@/components/logo-mark'
+import { setFrameDialogOpen } from '@/redux/slice/shapes'
 import { cn } from '@/lib/utils'
 
 export const Navbar = ({ name, image }: { name?: string | null; image?: string | null }) => {
+  const dispatch = useDispatch()
   const { createProject, creating, projects } = useProjects()
   const credits = useQuery(api.credits.getBalance)
   const params = useParams<{ session: string }>()
@@ -97,7 +100,11 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
         </Avatar>
 
         {inWorkspace ? (
-          <Button className="rounded-full px-4" size="sm">
+          <Button
+            onClick={() => dispatch(setFrameDialogOpen(true))}
+            className="rounded-full px-4"
+            size="sm"
+          >
             <Frame className="size-4" />
             New Frame
           </Button>

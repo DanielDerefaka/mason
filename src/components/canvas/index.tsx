@@ -15,6 +15,7 @@ import { useDesignChat } from '@/hooks/use-design-chat'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 import { Inspector } from './inspector'
+import { FramePresetDialog } from './frame-presets'
 import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
 import { cssForTextStyle, textStyleOf } from '@/lib/text-style'
 
@@ -327,6 +328,9 @@ export const Canvas = () => {
     beginMove,
     beginResize,
     editingId,
+    frameDialogOpen,
+    closeFrameDialog,
+    addFrame,
     beginEdit,
     endEdit,
     setShapeText,
@@ -425,6 +429,12 @@ export const Canvas = () => {
       </div>
 
       {selectedText && <Inspector shape={selectedText} />}
+
+      <FramePresetDialog
+        isOpen={frameDialogOpen}
+        onClose={closeFrameDialog}
+        onPick={addFrame}
+      />
 
       <InspirationSidebar isOpen={inspirationOpen} onClose={() => setInspirationOpen(false)} />
 

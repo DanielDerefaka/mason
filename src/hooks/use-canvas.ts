@@ -8,8 +8,10 @@ import {
   redo,
   removeShape,
   undo,
+  focusOnRect,
   selectShape,
   setEditingId,
+  setFrameDialogOpen,
   setTool,
   shapesAdapter,
   snapshotHistory,
@@ -22,6 +24,7 @@ import {
   type ShapeKind,
   type Tool,
 } from '@/redux/slice/shapes'
+import type { FramePreset } from '@/lib/frame-presets'
 import type { RootState } from '@/redux/store'
 
 const selectors = shapesAdapter.getSelectors()
@@ -95,7 +98,7 @@ const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shap
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
   const state = useAppSelector((s: RootState) => s.shapes)
-  const { viewport, tool, selectedId, editingId } = state
+  const { viewport, tool, selectedId, editingId, frameDialogOpen } = state
   const shapes = selectors.selectAll(state.entities)
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -344,6 +347,44 @@ export const useInfiniteCanvas = () => {
     return { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 }
   }
 
+  /**
+   * Drops a preset-sized frame into the middle of the view and fits the
+   * viewport to it. Placed in world coordinates so it lands where you are
+   * looking rather than at the origin.
+   */
+  const addFrame = (preset: FramePreset) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    const view = { width: rect?.width ?? 0, height: rect?.height ?? 0 }
+    const centre = screenToWorld({ x: view.width / 2, y: view.height / 2 })
+
+    const id = crypto.randomUUID()
+    dispatch(
+      addShape({
+        id,
+        kind: 'frame',
+        x: Math.round(centre.x - preset.width / 2),
+        y: Math.round(centre.y - preset.height / 2),
+        width: preset.width,
+        height: preset.height,
+        fill: FILLS.frame,
+        label: preset.name,
+      }),
+    )
+    dispatch(
+      focusOnRect({
+        x: centre.x - preset.width / 2,
+        y: centre.y - preset.height / 2,
+        width: preset.width,
+        height: preset.height,
+        viewWidth: view.width,
+        viewHeight: view.height,
+      }),
+    )
+    dispatch(setTool('select'))
+    dispatch(selectShape(id))
+    dispatch(setFrameDialogOpen(false))
+  }
+
   const eraseShape = (id: string) => dispatch(removeShape(id))
   const deleteSelected = () => {
     if (selectedId) dispatch(removeShape(selectedId))
@@ -364,6 +405,10 @@ export const useInfiniteCanvas = () => {
     setTool: (next: Tool) => dispatch(setTool(next)),
     selectShape: (id: string | null) => dispatch(selectShape(id)),
     editingId,
+    frameDialogOpen,
+    openFrameDialog: () => dispatch(setFrameDialogOpen(true)),
+    closeFrameDialog: () => dispatch(setFrameDialogOpen(false)),
+    addFrame,
     beginEdit: (id: string) => {
       // One snapshot per editing session rather than per keystroke.
       dispatch(snapshotHistory())

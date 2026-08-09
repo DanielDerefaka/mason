@@ -61,6 +61,12 @@ type ShapesState = {
   selectedId: string | null
   /** The text shape currently being typed into, if any. */
   editingId: string | null
+  /**
+   * Whether the frame-size picker is open. Lives here rather than in the
+   * canvas because the button that opens it is in the navbar, which is a
+   * separate tree — the store is the only thing they share.
+   */
+  frameDialogOpen: boolean
   /** Snapshots of the entity table, newest last. Viewport is not part of history. */
   past: EntityState[]
   future: EntityState[]
@@ -72,6 +78,7 @@ const initialState: ShapesState = {
   tool: 'select',
   selectedId: null,
   editingId: null,
+  frameDialogOpen: false,
   past: [],
   future: [],
 }
@@ -185,6 +192,39 @@ export const shapesSlice = createSlice({
      * point under the cursor stationary is what makes zoom feel anchored rather
      * than sliding toward the origin.
      */
+    setFrameDialogOpen: (state, action: PayloadAction<boolean>) => {
+      state.frameDialogOpen = action.payload
+    },
+    /**
+     * Centres a world rectangle in the viewport and scales so it fits with a
+     * margin. Used after adding a frame from a preset: a 1512-wide frame at
+     * 100% is wider than the canvas, so dropping one in without this leaves
+     * you looking at the inside of an edge.
+     */
+    focusOnRect: (
+      state,
+      action: PayloadAction<{
+        x: number
+        y: number
+        width: number
+        height: number
+        viewWidth: number
+        viewHeight: number
+      }>,
+    ) => {
+      const { x, y, width, height, viewWidth, viewHeight } = action.payload
+      if (viewWidth <= 0 || viewHeight <= 0) return
+
+      const margin = 0.82
+      const scale = clampScale(
+        Math.min((viewWidth * margin) / width, (viewHeight * margin) / height),
+      )
+      state.viewport.scale = scale
+      state.viewport.translate = {
+        x: viewWidth / 2 - (x + width / 2) * scale,
+        y: viewHeight / 2 - (y + height / 2) * scale,
+      }
+    },
     zoomWheel: (state, action: PayloadAction<{ deltaY: number; origin: Point }>) => {
       const { deltaY, origin } = action.payload
       const current = state.viewport.scale
@@ -248,6 +288,8 @@ export const shapesSlice = createSlice({
 export const {
   addShape,
   setEditingId,
+  setFrameDialogOpen,
+  focusOnRect,
   snapshotHistory,
   updateShapeLive,
   updateTextStyle,
