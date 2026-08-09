@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { Download, Loader2, MessageSquare, Workflow } from 'lucide-react'
+import { Download, Loader2, MessageSquare, PenLine, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { sanitisePartialHtml } from '@/lib/sanitise'
@@ -25,6 +25,7 @@ export const GeneratedUI = ({
   onGenerateWorkflow,
   onOpenChat,
   onExport,
+  onEdit,
   workflowRunning,
 }: {
   shape: Shape
@@ -33,6 +34,7 @@ export const GeneratedUI = ({
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
   onExport?: () => void
+  onEdit?: () => void
   workflowRunning?: boolean
 }) => {
   const dispatch = useAppDispatch()
@@ -92,8 +94,10 @@ export const GeneratedUI = ({
           {shape.label}
         </span>
       )}
+      {/* Below the design, not above: the caption, the frame's own pills and
+          four actions were all competing for the same strip of canvas. */}
       {onGenerateWorkflow && !shape.streaming && (
-        <div className="absolute -top-7 right-0 flex items-center gap-2">
+        <div className="absolute -bottom-8 right-0 flex items-center gap-2">
           <button
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
@@ -122,6 +126,18 @@ export const GeneratedUI = ({
             >
               <MessageSquare className="size-3" />
               Design Chat
+            </button>
+          )}
+          {onEdit && (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onEdit}
+              title="Open this design in the editor"
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.14] px-2.5 py-1 text-[11px] text-foreground transition-colors hover:bg-white/[0.2]"
+            >
+              <PenLine className="size-3" />
+              Edit
             </button>
           )}
           {onExport && (

@@ -11,6 +11,7 @@ import { useWorkflow } from '@/hooks/use-workflow'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { useStyles } from '@/hooks/use-styles'
 import { exportDesignHtml, exportFramePng } from '@/lib/export'
@@ -55,6 +56,7 @@ const ShapeView = ({
   onGenerateWorkflow,
   onOpenChat,
   onExport,
+  onEdit,
   workflowRunning,
   onBeginEdit,
   onEndEdit,
@@ -70,6 +72,7 @@ const ShapeView = ({
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
   onExport?: () => void
+  onEdit?: () => void
   workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
@@ -86,6 +89,7 @@ const ShapeView = ({
         onGenerateWorkflow={onGenerateWorkflow}
         onOpenChat={onOpenChat}
         onExport={onExport}
+        onEdit={onEdit}
         workflowRunning={workflowRunning}
       />
     )
@@ -399,8 +403,16 @@ export const Canvas = () => {
     setTool,
     zoomToScale,
   } = useInfiniteCanvas()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { generateDesign, generatingFrameId } = useFrame()
   const { styleGuide } = useStyles()
+
+  /** Hands a generated design to the editor, which is its own full screen. */
+  const openEditor = (shape: Shape) => {
+    const project = searchParams.get('project')
+    router.push(`editor?project=${project ?? ''}&design=${shape.id}`)
+  }
 
   /** Frames leave as a PNG of the sketch; designs leave as a standalone page. */
   const onExport = (shape: Shape) => {
@@ -573,6 +585,7 @@ export const Canvas = () => {
               onGenerateWorkflow={() => void generateWorkflow(shape)}
               onOpenChat={() => toggleDesignChat(shape.id)}
               onExport={() => onExport(shape)}
+              onEdit={() => openEditor(shape)}
               workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}
