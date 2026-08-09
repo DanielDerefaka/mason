@@ -11,6 +11,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery } from '@/lib/imagery-brief'
 
@@ -19,6 +20,14 @@ export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = await checkRateLimit()
+    if (!limit.ok) {
+      return NextResponse.json(
+        { message: `Too many requests — try again in ${limit.retryAfter}s` },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+      )
+    }
+
     const { projectId, html, instruction } = (await request.json()) as {
       projectId?: string
       html?: string

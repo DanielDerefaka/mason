@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { generateText, tool } from 'ai'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery } from '@/convex/query.config'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
 import { WorkflowPlanSchema } from '@/types/workflow'
 
@@ -10,6 +11,14 @@ export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = await checkRateLimit()
+    if (!limit.ok) {
+      return NextResponse.json(
+        { message: `Too many requests — try again in ${limit.retryAfter}s` },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+      )
+    }
+
     const { sourceHtml, pageCount = 3 } = (await request.json()) as {
       sourceHtml?: string
       pageCount?: number

@@ -6,6 +6,7 @@ import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
 import { fetchImageParts } from '@/lib/fetch-image'
 import { StyleGuideSchema } from '@/types/style-guide'
@@ -19,6 +20,14 @@ export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = await checkRateLimit()
+    if (!limit.ok) {
+      return NextResponse.json(
+        { message: `Too many requests — try again in ${limit.retryAfter}s` },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+      )
+    }
+
     const body = (await request.json()) as { projectId?: string }
     const projectId = body.projectId as Id<'projects'> | undefined
 

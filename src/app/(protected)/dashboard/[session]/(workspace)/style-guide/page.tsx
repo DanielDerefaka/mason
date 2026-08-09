@@ -31,7 +31,11 @@ export default function StyleGuidePage() {
             </p>
           </div>
 
-          <TabsList className="rounded-full bg-white/[0.04] p-1">
+          {/* The strip scrolls inside its own box. Five tabs measure 555px,
+              so at 390px it was pushing the page sideways and taking colours
+              and moodboard off-screen with it. */}
+          <div className="max-w-full overflow-x-auto">
+            <TabsList className="w-max rounded-full bg-white/[0.04] p-1">
             {TABS.map(({ value, label, Icon }) => (
               <TabsTrigger
                 key={value}
@@ -42,7 +46,8 @@ export default function StyleGuidePage() {
                 {label}
               </TabsTrigger>
             ))}
-          </TabsList>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="colours">

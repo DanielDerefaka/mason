@@ -969,10 +969,12 @@ export const DesignEditor = () => {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         {/* Layers */}
-        <aside className="hidden w-[210px] shrink-0 flex-col overflow-y-auto border-r border-white/[0.08] py-2 md:flex">
-          <span className="px-3 pb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase">
+        {/* Below md the layer list becomes a strip along the top: hiding it
+            left no way to reach a node that was not visible on the artboard. */}
+        <aside className="flex max-h-[22vh] w-full shrink-0 flex-row overflow-x-auto border-b border-white/[0.08] py-2 md:max-h-none md:w-[210px] md:flex-col md:overflow-x-visible md:overflow-y-auto md:border-r md:border-b-0">
+          <span className="hidden px-3 pb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase md:block">
             Layers
           </span>
           {tree.map((row) => (
@@ -992,7 +994,7 @@ export const DesignEditor = () => {
                 // shrink-0: these are flex children in a fixed-height column,
                 // and without it sixty rows compress into each other rather
                 // than overflowing into the scroll.
-                'shrink-0 cursor-grab truncate py-1.5 pr-3 text-left text-[12px] transition-colors active:cursor-grabbing',
+                'shrink-0 cursor-grab truncate py-1.5 pr-3 text-left text-[12px] whitespace-nowrap transition-colors active:cursor-grabbing',
                 dragId === row.id && 'opacity-40',
                 selectedId === row.id
                   ? 'bg-white/[0.12] text-white'
@@ -1093,7 +1095,9 @@ export const DesignEditor = () => {
         </main>
 
         {/* Properties */}
-        <aside className="w-[264px] shrink-0 overflow-y-auto border-l border-white/[0.08]">
+        {/* A bottom sheet under md, the way the canvas inspectors already are
+            — 264px anchored right is 68% of a 390px screen. */}
+        <aside className="absolute inset-x-0 bottom-0 z-30 max-h-[46vh] overflow-y-auto border-t border-white/[0.08] bg-[#0B0B0C] md:static md:inset-auto md:max-h-none md:w-[264px] md:shrink-0 md:border-t-0 md:border-l">
           <div className="border-b border-white/[0.08] p-3">
             <h3 className="mb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase">
               Insert
