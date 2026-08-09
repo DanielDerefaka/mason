@@ -102,6 +102,25 @@ language, the feel of their components — but never their content or layout.
 The sketch decides what goes where; the references decide how it feels. Where a
 reference and the design system disagree on colour, the design system wins.
 
+## Imagery
+
+A design carried entirely by flat blocks and icons reads as a wireframe, not a
+product. Where the reference leans on photography — a hero, a feature card, an
+avatar, a background — use a real image.
+
+The reference URLs are listed below. Put them in \`<img>\` tags with a
+\`style\` that sets width, height and \`object-fit: cover\`, inside a container
+with \`overflow:hidden\` and the right border radius. Reuse the same URL more
+than once if the layout wants more pictures than you were given, and crop each
+use differently through the container's aspect ratio so it does not read as a
+repeat.
+
+Two rules. Never invent a URL — only the ones listed exist, and anything else
+renders as a broken image. And never use a photograph where a UI element
+belongs: buttons, inputs, nav items and stat blocks are built, not pictured. If
+no URLs are listed, design without photography and lean on type, surface and
+space instead.
+
 ## Output
 
 Return a single HTML fragment and nothing else. No markdown fence, no
@@ -135,8 +154,7 @@ Design at the standard of a senior product designer, not a wireframe:
 - Use border-radius and borders consistently; prefer var(--border) for rules.
 - Depth comes from surface colour (var(--card) above var(--background)) rather
   than heavy shadows.
-- Icons: inline SVG with \`currentColor\`, 16–20px. No icon fonts, no external
-  images.
+- Icons: inline SVG with \`currentColor\`, 16–20px. No icon fonts.
 - Text must sit on its matching foreground token so it stays legible.`
 
 const workflowPlanSystem = `You are a product designer planning the rest of a product around one screen

@@ -12,6 +12,7 @@ import {
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
+import { describeImagery } from '@/lib/imagery-brief'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -50,7 +51,11 @@ export async function POST(request: NextRequest) {
       model: anthropicProvider(MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 16000,
-      system: `${prompts.generatedUi.system}\n\n## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
+      system: [
+        prompts.generatedUi.system,
+        `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
+        `## Reference image URLs\n\n${describeImagery(inspirationUrls)}`,
+      ].join('\n\n'),
       messages: [
         {
           role: 'user',

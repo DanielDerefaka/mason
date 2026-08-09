@@ -5,9 +5,14 @@ import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
-import { CreditsBalanceQuery, StyleGuideQuery } from '@/convex/query.config'
+import {
+  CreditsBalanceQuery,
+  InspirationImagesQuery,
+  StyleGuideQuery,
+} from '@/convex/query.config'
 import { prompts } from '@/prompts'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
+import { describeImagery } from '@/lib/imagery-brief'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -32,7 +37,10 @@ export async function POST(request: NextRequest) {
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
     if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
 
-    const styleGuide = await StyleGuideQuery(projectId as Id<'projects'>)
+    const [styleGuide, inspirationUrls] = await Promise.all([
+      StyleGuideQuery(projectId as Id<'projects'>),
+      InspirationImagesQuery(projectId as Id<'projects'>),
+    ])
 
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
@@ -45,6 +53,7 @@ export async function POST(request: NextRequest) {
         prompts.generatedUi.system,
         `## The screen you are designing now\n\n${prompts.workflow.page.system}`,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, 0)}`,
+        `## Reference image URLs\n\n${describeImagery(inspirationUrls)}`,
       ].join('\n\n'),
       messages: [
         {
