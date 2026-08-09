@@ -4,7 +4,7 @@ import { fetchMutation } from 'convex/nextjs'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { api } from '../../../../convex/_generated/api'
 import type { Id } from '../../../../convex/_generated/dataModel'
-import { anthropicProvider, MODEL } from '@/lib/anthropic'
+import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
 import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
@@ -13,6 +13,7 @@ import {
 import { prompts } from '@/prompts'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery } from '@/lib/imagery-brief'
+import { fetchImageParts } from '@/lib/fetch-image'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -47,14 +48,16 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
 
+    const inspirationParts = await fetchImageParts(inspirationUrls)
+
     const result = streamText({
-      model: anthropicProvider(MODEL),
+      model: anthropicProvider(UI_MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 16000,
       system: [
         prompts.generatedUi.system,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
-        `## Reference image URLs\n\n${describeImagery(inspirationUrls)}`,
+        `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
       ].join('\n\n'),
       messages: [
         {
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
             { type: 'file', mediaType: image.type, data: sketch },
             // Order matters: the prompt tells the model the first image is the
             // sketch and the rest are references to borrow style from.
-            ...inspirationUrls.map((url) => ({ type: 'image' as const, image: new URL(url) })),
+            ...inspirationParts,
           ],
         },
       ],

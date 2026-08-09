@@ -1,16 +1,20 @@
 /**
- * The reference URLs a generated design may embed.
+ * What the model is told about pictures.
  *
- * Passing the images as vision input tells the model what the look should be;
- * it takes the URLs as well before it can put an actual photograph on the page.
- * Without this a design comes out as flat blocks and SVG placeholders.
+ * The inspiration board is deliberately *not* offered as an asset library: the
+ * references are nearly always screenshots of other sites, and embedding one
+ * puts a picture of a website inside the website. They stay vision-only input
+ * that shapes the look; anything the layout needs to show comes from stock.
  */
-export const describeImagery = (urls: string[]) => {
-  if (urls.length === 0) return 'No reference images are available. Design without photography.'
+export const describeImagery = (referenceCount: number) => {
+  const references =
+    referenceCount > 0
+      ? `${referenceCount} inspiration image${referenceCount === 1 ? '' : 's'} were supplied for style. Do not embed them.`
+      : 'No inspiration images were supplied.'
 
   return [
-    `${urls.length} reference image${urls.length === 1 ? '' : 's'} are hosted and ready to embed.`,
-    'Use these exact URLs, verbatim:',
-    ...urls.map((url) => `- ${url}`),
-  ].join('\n')
+    references,
+    'For photographic slots use https://loremflickr.com/{width}/{height}/{keywords}?lock={n}',
+    'with keywords drawn from the product and a different lock number per image.',
+  ].join(' ')
 }

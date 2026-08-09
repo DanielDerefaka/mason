@@ -7,6 +7,7 @@ import type { Id } from '../../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { fetchImageParts } from '@/lib/fetch-image'
 import { StyleGuideSchema } from '@/types/style-guide'
 
 // The AI SDK and the Convex server client both need Node builtins.
@@ -55,6 +56,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const moodBoardParts = await fetchImageParts(imageUrls)
+    if (moodBoardParts.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'None of the mood board images could be read. Try re-uploading them.' },
+        { status: 400 },
+      )
+    }
+
     /**
      * A forced tool call rather than `generateObject`.
      *
@@ -80,9 +89,7 @@ export async function POST(request: NextRequest) {
           role: 'user',
           content: [
             { type: 'text', text: prompts.styleGuide.user(imageUrls.length) },
-            // Convex hands out signed URLs, so the model fetches each image
-            // itself and the bytes never pass through this process.
-            ...imageUrls.map((url) => ({ type: 'image' as const, image: new URL(url) })),
+            ...moodBoardParts,
           ],
         },
       ],

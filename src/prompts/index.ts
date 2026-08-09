@@ -104,22 +104,29 @@ reference and the design system disagree on colour, the design system wins.
 
 ## Imagery
 
-A design carried entirely by flat blocks and icons reads as a wireframe, not a
-product. Where the reference leans on photography — a hero, a feature card, an
-avatar, a background — use a real image.
+The inspiration board images are **style references only**. Never put one in an
+\`<img>\` tag. They are usually screenshots of other websites, and a screenshot
+of a website rendered inside a website is the single clearest sign of a
+generated design. Read them, then leave them out of the markup.
 
-The reference URLs are listed below. Put them in \`<img>\` tags with a
-\`style\` that sets width, height and \`object-fit: cover\`, inside a container
-with \`overflow:hidden\` and the right border radius. Reuse the same URL more
-than once if the layout wants more pictures than you were given, and crop each
-use differently through the container's aspect ratio so it does not read as a
-repeat.
+A layout carried entirely by flat blocks also reads as a wireframe. Where the
+design wants a photograph — a hero, a feature card, an avatar, a background —
+use a stock photo:
 
-Two rules. Never invent a URL — only the ones listed exist, and anything else
-renders as a broken image. And never use a photograph where a UI element
-belongs: buttons, inputs, nav items and stat blocks are built, not pictured. If
-no URLs are listed, design without photography and lean on type, surface and
-space instead.
+    https://loremflickr.com/{width}/{height}/{keywords}?lock={n}
+
+Choose keywords from what the product actually is: \`windturbine\`,
+\`solarpanel,field\`, \`architecture,office\`, \`portrait,woman\`. Comma-separate
+to narrow. Give every image on the page a different \`lock\` number so they are
+different photographs, and ask for roughly the pixel size the slot will render
+at.
+
+Put each one in an \`<img>\` with \`object-fit: cover\` and explicit width and
+height, inside a container with \`overflow:hidden\` and the right radius. Put an
+overlay behind any text that sits on a photograph so it stays readable.
+
+Photographs belong in heroes, cards, avatars and backgrounds. They never belong
+in buttons, inputs, nav items, stat blocks or logos — those are built.
 
 ## Output
 

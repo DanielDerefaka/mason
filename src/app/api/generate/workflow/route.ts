@@ -4,7 +4,7 @@ import { fetchMutation } from 'convex/nextjs'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
-import { anthropicProvider, MODEL } from '@/lib/anthropic'
+import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
 import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
@@ -46,14 +46,14 @@ export async function POST(request: NextRequest) {
     await fetchMutation(api.credits.spend, {}, { token })
 
     const result = streamText({
-      model: anthropicProvider(MODEL),
+      model: anthropicProvider(UI_MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 16000,
       system: [
         prompts.generatedUi.system,
         `## The screen you are designing now\n\n${prompts.workflow.page.system}`,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, 0)}`,
-        `## Reference image URLs\n\n${describeImagery(inspirationUrls)}`,
+        `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
       ].join('\n\n'),
       messages: [
         {

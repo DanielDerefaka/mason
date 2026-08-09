@@ -21,6 +21,13 @@ export const anthropic = new Anthropic({ defaultHeaders: headers })
 export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5'
 
 /**
+ * The model that writes designs. Separate from MODEL because design generation
+ * and structured extraction reward different things, and swapping one should
+ * not silently change the other.
+ */
+export const UI_MODEL = process.env.ANTHROPIC_UI_MODEL ?? MODEL
+
+/**
  * Thinking is on by default on Opus 5, and its raw reasoning is never returned —
  * asking for summaries is what makes the thinking blocks carry readable text
  * instead of an empty string.
@@ -37,17 +44,54 @@ const baseURL = process.env.ANTHROPIC_BASE_URL
   : undefined
 
 /**
- * The AI SDK stamps its own `user-agent` after merging the `headers` option, so
- * passing one there is silently overwritten. Rewriting the header on the way
- * out is the only place the override survives.
+ * Adds a synthetic id to any tool_use block missing one.
+ *
+ * Not every model behind a gateway emits a conforming Anthropic response: the
+ * OpenAI-family ones return tool_use blocks with no `id`, and the SDK validates
+ * the response against a schema that requires it — so a perfectly good tool
+ * call is thrown away as "Invalid JSON response". The ids only have to be
+ * unique within the message, which is all the SDK uses them for.
  */
-const gatewayFetch: typeof fetch = (input, init) => {
-  const merged = new Headers(init?.headers)
-  merged.set('User-Agent', clientUserAgent as string)
-  return fetch(input, { ...init, headers: merged })
+const repairToolUseIds = (payload: unknown) => {
+  if (typeof payload !== 'object' || payload === null) return { payload, changed: false }
+  const message = payload as { content?: Array<{ type?: string; id?: string }> }
+  if (!Array.isArray(message.content)) return { payload, changed: false }
+
+  let changed = false
+  message.content.forEach((block, index) => {
+    if (block?.type === 'tool_use' && typeof block.id !== 'string') {
+      block.id = `toolu_gateway_${index}`
+      changed = true
+    }
+  })
+  return { payload, changed }
 }
 
-export const anthropicProvider = createAnthropic({
-  baseURL,
-  ...(clientUserAgent ? { fetch: gatewayFetch } : {}),
-})
+/**
+ * The AI SDK stamps its own `user-agent` after merging the `headers` option, so
+ * passing one there is silently overwritten. Rewriting the header on the way
+ * out is the only place the override survives — and the response comes back
+ * through here too, which is where the tool_use repair happens.
+ */
+const gatewayFetch: typeof fetch = async (input, init) => {
+  const merged = new Headers(init?.headers)
+  if (clientUserAgent) merged.set('User-Agent', clientUserAgent)
+
+  const response = await fetch(input, { ...init, headers: merged })
+
+  // Streaming responses pass straight through; only a buffered JSON body can
+  // be inspected without breaking the stream.
+  if (!response.ok) return response
+  if (!(response.headers.get('content-type') ?? '').includes('application/json')) return response
+
+  const text = await response.text()
+  try {
+    const { payload, changed } = repairToolUseIds(JSON.parse(text))
+    if (!changed) return new Response(text, response)
+    return new Response(JSON.stringify(payload), response)
+  } catch {
+    return new Response(text, response)
+  }
+}
+
+export const anthropicProvider = createAnthropic({ baseURL, fetch: gatewayFetch })
