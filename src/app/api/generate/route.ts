@@ -5,16 +5,27 @@ import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { api } from '../../../../convex/_generated/api'
 import type { Id } from '../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
-import { CreditsBalanceQuery, StyleGuideQuery } from '@/convex/query.config'
+import {
+  CreditsBalanceQuery,
+  InspirationImagesQuery,
+  StyleGuideQuery,
+} from '@/convex/query.config'
 import { prompts } from '@/prompts'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 /** Turns the stored guide into the block of facts the model designs against. */
-const describeStyleGuide = (guide: Awaited<ReturnType<typeof StyleGuideQuery>>) => {
+const describeStyleGuide = (
+  guide: Awaited<ReturnType<typeof StyleGuideQuery>>,
+  referenceCount: number,
+) => {
   if (!guide) {
-    return 'No style guide has been generated for this project. Choose a restrained, neutral palette and a common sans-serif.'
+    // Without a guide the references are the only steer there is, so telling
+    // the model to stay neutral here would quietly cancel them out.
+    return referenceCount > 0
+      ? 'No style guide has been generated for this project, so the CSS variables are unset — write literal colours instead, and take the palette from the reference images.'
+      : 'No style guide has been generated for this project, so the CSS variables are unset — write literal colours instead. Choose a restrained, confident palette and a common sans-serif.'
   }
 
   const swatches = guide.colorSections
@@ -49,7 +60,10 @@ export async function POST(request: NextRequest) {
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
     if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
 
-    const styleGuide = await StyleGuideQuery(projectId)
+    const [styleGuide, inspirationUrls] = await Promise.all([
+      StyleGuideQuery(projectId),
+      InspirationImagesQuery(projectId),
+    ])
     const sketch = new Uint8Array(await image.arrayBuffer())
 
     // Charged up front: the response streams, so by the time it finishes there
@@ -61,13 +75,16 @@ export async function POST(request: NextRequest) {
       model: anthropicProvider(MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 16000,
-      system: `${prompts.generatedUi.system}\n\n## The project's design system\n\n${describeStyleGuide(styleGuide)}`,
+      system: `${prompts.generatedUi.system}\n\n## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
       messages: [
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompts.generatedUi.user(frameLabel) },
+            { type: 'text', text: prompts.generatedUi.user(frameLabel, inspirationUrls.length) },
             { type: 'file', mediaType: image.type, data: sketch },
+            // Order matters: the prompt tells the model the first image is the
+            // sketch and the rest are references to borrow style from.
+            ...inspirationUrls.map((url) => ({ type: 'image' as const, image: new URL(url) })),
           ],
         },
       ],

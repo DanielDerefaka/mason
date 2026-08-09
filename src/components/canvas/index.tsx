@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
 import { GeneratedUI } from './shapes/generated-ui'
+import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 
@@ -18,12 +19,14 @@ const ShapeView = ({
   selected,
   onGrab,
   onGenerate,
+  onInspiration,
   generating,
 }: {
   shape: Shape
   selected?: boolean
   onGrab?: PointerHandler
   onGenerate?: () => void
+  onInspiration?: () => void
   generating?: boolean
 }) => {
   if (shape.kind === 'generated-ui') return <GeneratedUI shape={shape} />
@@ -46,10 +49,14 @@ const ShapeView = ({
         )}
         {/* Frame actions sit above the top-right corner, outside the frame. */}
         <div className="absolute -top-7 right-0 flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground">
+          <button
+            type="button"
+            onClick={onInspiration}
+            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
+          >
             <Sparkles className="size-3" />
             Inspiration
-          </span>
+          </button>
           <button
             type="button"
             onClick={onGenerate}
@@ -246,6 +253,7 @@ export const Canvas = () => {
     zoomToScale,
   } = useInfiniteCanvas()
   const { generateDesign, generatingFrameId } = useFrame()
+  const [inspirationOpen, setInspirationOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -297,6 +305,7 @@ export const Canvas = () => {
               shape={shape}
               selected={shape.id === selectedId}
               onGenerate={() => void generateDesign(shape)}
+              onInspiration={() => setInspirationOpen((open) => !open)}
               generating={generatingFrameId === shape.id}
               onGrab={(event) => beginMove(shape, event)}
             />
@@ -312,6 +321,8 @@ export const Canvas = () => {
           )}
         </div>
       </div>
+
+      <InspirationSidebar isOpen={inspirationOpen} onClose={() => setInspirationOpen(false)} />
 
       <div className="pointer-events-none absolute top-4 right-5 z-50">
         <AutoSave />

@@ -55,6 +55,13 @@ export const StyleGuideQuery = async (projectId: Id<'projects'>) => {
   return parsed.success ? parsed.data : null
 }
 
+/** Reference images the design generation should take its look from. */
+export const InspirationImagesQuery = async (projectId: Id<'projects'>) => {
+  const token = await convexAuthNextjsToken()
+  const images = await fetchQuery(api.inspiration.getInspirationImages, { projectId }, { token })
+  return images.map((image) => image.url).filter(Boolean)
+}
+
 /** The mood board images a generation run should look at. */
 export const MoodBoardImagesQuery = async (projectId: Id<'projects'>) => {
   const token = await convexAuthNextjsToken()

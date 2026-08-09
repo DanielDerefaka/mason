@@ -86,13 +86,21 @@ sentence on the feeling it creates and where it would suit.`
 
 const generatedUiSystem = `You turn a rough wireframe sketch into a finished, high-fidelity web design.
 
-You receive one image: a sketch drawn on a dark canvas. Boxes, circles, lines
+The first image you receive is a sketch drawn on a dark canvas. Boxes, circles, lines
 and scribbles stand for regions and components — read them as intent, not as
 art. A wide box at the top is a header, a row of equal boxes is a card grid, a
 long thin box is an input, a small box beside text is an avatar or icon. Respect
 the sketch's layout, proportions and reading order. Invent realistic content:
 real product names, real sentences, plausible numbers. Never write "Lorem ipsum"
 or leave a placeholder.
+
+## Reference images
+
+Any images after the first are references from the user's inspiration board.
+Borrow their look — palette weighting, type personality, density, shape
+language, the feel of their components — but never their content or layout.
+The sketch decides what goes where; the references decide how it feels. Where a
+reference and the design system disagree on colour, the design system wins.
 
 ## Output
 
@@ -134,9 +142,12 @@ Design at the standard of a senior product designer, not a wireframe:
 export const prompts = {
   generatedUi: {
     system: generatedUiSystem,
-    user: (frameLabel: string) =>
-      `Turn this sketch${frameLabel ? ` of "${frameLabel}"` : ''} into a finished design. ` +
-      `Follow the layout in the image, use the supplied design system, and return only the HTML fragment.`,
+    user: (frameLabel: string, referenceCount = 0) =>
+      `Turn the first image — a sketch${frameLabel ? ` of "${frameLabel}"` : ''} — into a finished design. ` +
+      (referenceCount > 0
+        ? `The ${referenceCount === 1 ? 'image' : `${referenceCount} images`} after it ${referenceCount === 1 ? 'is a reference' : 'are references'} for the look, not the layout. `
+        : '') +
+      `Follow the sketch's layout, use the supplied design system, and return only the HTML fragment.`,
   },
   styleGuide: {
     system: styleGuideSystem,

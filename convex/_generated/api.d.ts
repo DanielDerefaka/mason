@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as credits from "../credits.js";
 import type * as http from "../http.js";
+import type * as inspiration from "../inspiration.js";
 import type * as moodboard from "../moodboard.js";
 import type * as project from "../project.js";
 import type * as user from "../user.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   credits: typeof credits;
   http: typeof http;
+  inspiration: typeof inspiration;
   moodboard: typeof moodboard;
   project: typeof project;
   user: typeof user;
