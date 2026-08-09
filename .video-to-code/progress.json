@@ -19,9 +19,10 @@
     23,
     26,
     27,
-    28
+    28,
+    29
   ],
-  "current": 29,
+  "current": 30,
   "deferred": {
     "3": "Deploy on Sevalla. Opens 'is sponsored by Sevalla' [21:18] and needs a Sevalla account. Deploying an empty skeleton can wait until there is something to deploy.",
     "6": "Design & theming. He pastes a pre-made globals.css from his Figma design [91:04]; the colour values are never shown on screen. His own fallback at [88:57] is to grab a shadcn theme, which is what the project currently has.",
@@ -94,7 +95,12 @@
     "Ch28: stream updates use setGeneratedHtml which does NOT commit history \u2014 one snapshot per chunk would flush the 50-deep undo stack in seconds.",
     "Ch28: credit is charged up front, before the stream opens \u2014 once bytes are flowing there is no clean way to fail the request.",
     "Ch28: Google font loading moved to src/hooks/use-google-font.ts and called from GeneratedUI too; previously only the Typography tab loaded it, so designs on the canvas referenced a font that was never fetched.",
-    "Ch28 NOT built (later chapters): inspiration images (29), workflow generation (30), per-frame chat (31), export design."
+    "Ch28 NOT built (later chapters): inspiration images (29), workflow generation (30), per-frame chat (31), export design.",
+    "Canvas fixes (user-reported): stroke shapes were unclickable (svg pointer-events-none) so the eraser could never hit them \u2014 added a transparent 14-wide hit stroke; selection cleared itself because the shape's pointerdown bubbled to the canvas handler \u2014 shapes now stopPropagation; added drag-to-move and corner-grip resize, with paths translated/scaled through the same transform.",
+    "Drag gestures snapshot history once at pointerdown then use updateShapeLive (no commit) \u2014 committing per pointermove would spend the whole 50-step history on one drag.",
+    "Ch29: convex/inspiration.ts + use-inspiration + InspirationSidebar; max 6 references per project; route sends them after the sketch.",
+    "Ch29 fix: the no-style-guide fallback in the generate route told the model to stay neutral, which cancelled out the reference images. Now it defers to the references when any are present. Verified greyscale-before / neon-after.",
+    "Ch30 next: Workflows Ai generation (42.7m). Ch31 chat, ch32 pre-deploy note, ch33 Sevalla deploy."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
