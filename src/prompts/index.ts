@@ -243,7 +243,29 @@ replaces the design outright, so anything you leave out is deleted.
 Everything in the output rules above still applies — inline styles, the design
 system's CSS variables, no class names, no script.`
 
+const nodeSystem = `You are editing one element inside a design that already exists. Its current
+HTML is supplied — a single element and its children, not a whole page.
+
+Apply what was asked and change nothing else. Everything the request does not
+mention comes back exactly as it was: the same tag, the same children in the
+same order, the same copy unless the copy is what was asked about.
+
+Return only that element, from its opening tag to its closing tag. No wrapper,
+no explanation, no markdown fence, no other elements beside it. Whatever you
+return replaces the element outright, so anything you leave out is deleted.
+
+Keep the element's own tag unless the request is explicitly about changing what
+kind of element it is. If it carries a data attribute, leave it untouched.
+
+Everything in the output rules above still applies — inline styles, the design
+system's CSS variables, no class names, no script.`
+
 export const prompts = {
+  node: {
+    system: nodeSystem,
+    user: (instruction: string, html: string) =>
+      [`Requested change: ${instruction}`, '', 'Current element:', '', html].join('\n'),
+  },
   revise: {
     system: revisionSystem,
     user: (instruction: string, html: string) =>

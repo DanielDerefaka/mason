@@ -89,3 +89,19 @@ export const getMoodboardImages = query({
     return images.filter((image): image is { id: string; url: string } => image.url !== null)
   },
 })
+
+/**
+ * Resolves an uploaded file to a servable URL.
+ *
+ * A mutation rather than a query because the editor needs it once, straight
+ * after an upload, in an imperative flow — a query would mean a hook keyed on
+ * a value that does not exist yet.
+ */
+export const resolveStorageUrl = mutation({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+    return await ctx.storage.getUrl(storageId as Id<'_storage'>)
+  },
+})

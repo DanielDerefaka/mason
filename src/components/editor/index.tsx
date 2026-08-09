@@ -1,6 +1,17 @@
 'use client'
 
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Loader2, Redo2, Trash2, Undo2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Loader2,
+  Redo2,
+  Sparkles,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -10,9 +21,15 @@ import { useGoogleFont } from '@/hooks/use-google-font'
 import { sanitiseHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 
+import { useMutation } from 'convex/react'
+import { toast } from 'sonner'
+
+import { api } from '../../../convex/_generated/api'
 import {
   NODE_ATTR,
   assignNodeIds,
+  canEditInline,
+  stripRings,
   duplicateNode,
   findNode,
   labelFor,
@@ -20,6 +37,7 @@ import {
   serialise,
   siblingIndex,
 } from './node'
+import { AiPanel } from './ai'
 import { Properties } from './properties'
 
 /**
@@ -42,6 +60,13 @@ export const DesignEditor = () => {
   const stage = useRef<HTMLDivElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+
+  const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
+  const resolveStorageUrl = useMutation(api.moodboard.resolveStorageUrl)
   const [tree, setTree] = useState<{ id: string; depth: number; label: string }[]>([])
   const [zoom, setZoom] = useState(1)
 
@@ -85,6 +110,9 @@ export const DesignEditor = () => {
     if (!root || painted.current || !design?.html) return
     painted.current = true
     root.innerHTML = sanitiseHtml(design.html)
+    // Designs saved before the ring was stripped on the way out still carry
+    // one; clear it on the way in so it is gone after the next save.
+    stripRings(root)
     assignNodeIds(root)
     readTree()
   }, [design?.html, readTree])
@@ -175,6 +203,158 @@ export const DesignEditor = () => {
     snapshot()
     if (!moveNode(selected, direction)) return
     restamp(selected)
+  }
+
+  const onAttribute = (name: string, value: string) => {
+    if (!selected) return
+    snapshot()
+    selected.setAttribute(name, value)
+    commit()
+  }
+
+  /**
+   * Uploads a file and points the selected image at it.
+   *
+   * Stored rather than inlined as a data URL: a logo inlined at base64 lands
+   * in the design's markup, which is then carried through every save, every
+   * export and every prompt sent to the model.
+   */
+  const onUpload = async (file: File) => {
+    if (!selected) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('That is not an image')
+      return
+    }
+    if (file.size > 5_000_000) {
+      toast.error('Images need to be under 5MB')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const url = await generateUploadUrl({})
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!response.ok) throw new Error('upload failed')
+      const { storageId } = (await response.json()) as { storageId: string }
+      const served = await resolveStorageUrl({ storageId })
+      if (!served) throw new Error('no url')
+
+      snapshot()
+      selected.setAttribute('src', served)
+      commit()
+      toast.success('Image replaced')
+    } catch {
+      toast.error('Could not upload that image')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /**
+   * Sends the selected element to the model and swaps in what comes back.
+   *
+   * The response replaces the element outright, so its id is restamped and the
+   * selection re-derived — the returned markup is a different node object even
+   * when it looks identical.
+   */
+  const onAsk = async (instruction: string) => {
+    if (!selected || !projectId) return
+    setAsking(true)
+    const target = selected
+
+    try {
+      const response = await fetch('/api/generate/node', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, instruction, html: target.outerHTML }),
+      })
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null
+        toast.error(body?.message ?? 'Could not apply that')
+        return
+      }
+
+      const markup = sanitiseHtml((await response.text()).replace(/^```html\s*|```\s*$/g, ''))
+      const holder = document.createElement('div')
+      holder.innerHTML = markup
+      const replacement = holder.firstElementChild as HTMLElement | null
+      if (!replacement) {
+        toast.error('The model returned nothing usable')
+        return
+      }
+
+      snapshot()
+      target.replaceWith(replacement)
+      restamp(replacement)
+      toast.success('Applied')
+    } catch {
+      toast.error('Could not reach the model')
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  /** Double-click types straight into the design rather than the side panel. */
+  const onStageDoubleClick = (event: React.MouseEvent) => {
+    const root = stage.current
+    if (!root) return
+    let node = event.target as HTMLElement | null
+    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
+    if (!node || node === root || !canEditInline(node)) return
+
+    event.stopPropagation()
+    setSelectedId(node.getAttribute(NODE_ATTR))
+    snapshot()
+
+    node.contentEditable = 'true'
+    node.focus()
+    // Put the caret where the pointer landed rather than at the start.
+    const selection = window.getSelection()
+    const range = document.caretRangeFromPoint?.(event.clientX, event.clientY)
+    if (selection && range) {
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    const finish = () => {
+      node.removeAttribute('contenteditable')
+      node.removeEventListener('blur', finish)
+      readTree()
+      commit()
+    }
+    node.addEventListener('blur', finish)
+  }
+
+  /** Right-click selects what is under the pointer, then offers its actions. */
+  const onStageContextMenu = (event: React.MouseEvent) => {
+    const root = stage.current
+    if (!root) return
+    event.preventDefault()
+    event.stopPropagation()
+
+    let node = event.target as HTMLElement | null
+    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
+    if (node && node !== root) setSelectedId(node.getAttribute(NODE_ATTR))
+    setMenu({ x: event.clientX, y: event.clientY })
+  }
+
+  /** Drops a dragged layer next to the one it was released on. */
+  const onDropLayer = (targetId: string) => {
+    const root = stage.current
+    if (!root || !dragId || dragId === targetId) return
+    const moving = findNode(root, dragId)
+    const target = findNode(root, targetId)
+    setDragId(null)
+    if (!moving || !target || moving.contains(target)) return
+
+    snapshot()
+    target.parentElement?.insertBefore(moving, target)
+    restamp(moving)
   }
 
   const onText = (text: string) => {
@@ -360,12 +540,18 @@ export const DesignEditor = () => {
               onClick={() => setSelectedId(row.id)}
               onMouseEnter={() => setHoverId(row.id)}
               onMouseLeave={() => setHoverId(null)}
+              draggable
+              onDragStart={() => setDragId(row.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => onDropLayer(row.id)}
+              onDragEnd={() => setDragId(null)}
               style={{ paddingLeft: 12 + row.depth * 12 }}
               className={cn(
                 // shrink-0: these are flex children in a fixed-height column,
                 // and without it sixty rows compress into each other rather
                 // than overflowing into the scroll.
-                'shrink-0 truncate py-1.5 pr-3 text-left text-[12px] transition-colors',
+                'shrink-0 cursor-grab truncate py-1.5 pr-3 text-left text-[12px] transition-colors active:cursor-grabbing',
+                dragId === row.id && 'opacity-40',
                 selectedId === row.id
                   ? 'bg-white/[0.12] text-white'
                   : 'text-muted-foreground hover:bg-white/[0.05] hover:text-foreground',
@@ -392,6 +578,8 @@ export const DesignEditor = () => {
             <div
               ref={stage}
               onClick={onStageClick}
+              onDoubleClick={onStageDoubleClick}
+              onContextMenu={onStageContextMenu}
               onMouseOver={onStageHover}
               onMouseLeave={() => setHoverId(null)}
               style={cssVars}
@@ -426,19 +614,110 @@ export const DesignEditor = () => {
                 guide={styleGuide}
                 onStyle={onStyle}
                 onText={onText}
+                onAttribute={onAttribute}
+                onUpload={(file) => void onUpload(file)}
+                uploading={uploading}
+              />
+              <AiPanel
+                label={labelFor(selected)}
+                busy={asking}
+                onAsk={(instruction) => void onAsk(instruction)}
               />
             </>
           ) : (
             <p className="text-muted-foreground p-4 text-xs leading-relaxed">
-              Click anything in the design to edit it — a heading, a button, a card. Its
-              properties appear here.
+              Click anything to edit it. Double-click text to type over it in place, and
+              drag a layer to move it.
             </p>
           )}
         </aside>
       </div>
+
+      {menu && selected && (
+        <>
+          {/* A full-screen catcher, so any click anywhere dismisses the menu. */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setMenu(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setMenu(null)
+            }}
+          />
+          <div
+            className="fixed z-50 w-48 overflow-hidden rounded-lg border border-white/10 bg-[#17171A] py-1 shadow-2xl"
+            style={{
+              // Kept inside the viewport — a right-click near the bottom edge
+              // would otherwise open a menu half off-screen.
+              left: Math.min(menu.x, window.innerWidth - 200),
+              top: Math.min(menu.y, window.innerHeight - 240),
+            }}
+          >
+            <MenuItem
+              onClick={() => {
+                setMenu(null)
+                document.querySelector<HTMLTextAreaElement>('aside textarea')?.focus()
+              }}
+            >
+              <Sparkles className="size-3.5" />
+              Ask AI…
+            </MenuItem>
+            <MenuItem onClick={() => { setMenu(null); onDuplicate() }}>
+              <Copy className="size-3.5" />
+              Duplicate
+            </MenuItem>
+            <MenuItem onClick={() => { setMenu(null); onMove(-1) }} disabled={atStart}>
+              <ChevronUp className="size-3.5" />
+              Move up
+            </MenuItem>
+            <MenuItem onClick={() => { setMenu(null); onMove(1) }} disabled={atEnd}>
+              <ChevronDown className="size-3.5" />
+              Move down
+            </MenuItem>
+            <span className="my-1 block h-px bg-white/10" />
+            <MenuItem onClick={() => { setMenu(null); undo() }} disabled={past.current.length === 0}>
+              <Undo2 className="size-3.5" />
+              Undo
+            </MenuItem>
+            <MenuItem onClick={() => { setMenu(null); redo() }} disabled={future.current.length === 0}>
+              <Redo2 className="size-3.5" />
+              Redo
+            </MenuItem>
+            <span className="my-1 block h-px bg-white/10" />
+            <MenuItem onClick={() => { setMenu(null); onDelete() }} danger>
+              <Trash2 className="size-3.5" />
+              Delete
+            </MenuItem>
+          </div>
+        </>
+      )}
     </div>
   )
 }
+
+const MenuItem = ({
+  onClick,
+  disabled,
+  danger,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  danger?: boolean
+  children: React.ReactNode
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      'flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs transition-colors disabled:opacity-30',
+      danger ? 'text-red-400 hover:bg-red-500/15' : 'text-white/80 hover:bg-white/[0.08]',
+    )}
+  >
+    {children}
+  </button>
+)
 
 const NodeAction = ({
   label,

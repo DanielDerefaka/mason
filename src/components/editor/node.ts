@@ -27,13 +27,34 @@ export const assignNodeIds = (root: HTMLElement) => {
   Array.from(root.children).forEach((child, index) => walk(child, String(index)))
 }
 
-/** Strips the editor's own bookkeeping before the markup is stored. */
+/**
+ * Strips the editor's own bookkeeping before the markup is stored.
+ *
+ * The selection ring is drawn as an inline `outline` on the node itself, which
+ * means it is part of `innerHTML` — without clearing it here, every design
+ * left the editor with a blue ring baked into it and carried that ring into
+ * the canvas, the export and the next prompt.
+ */
 export const serialise = (root: HTMLElement): string => {
   const clone = root.cloneNode(true) as HTMLElement
-  for (const element of Array.from(clone.querySelectorAll(`[${NODE_ATTR}]`))) {
+  for (const element of Array.from(clone.querySelectorAll<HTMLElement>(`[${NODE_ATTR}]`))) {
     element.removeAttribute(NODE_ATTR)
+    element.removeAttribute('contenteditable')
+    element.style.removeProperty('outline')
+    element.style.removeProperty('outline-offset')
+    // An element whose only inline style was the ring should not keep an
+    // empty style attribute behind.
+    if (!element.getAttribute('style')) element.removeAttribute('style')
   }
   return clone.innerHTML
+}
+
+/** Clears rings from a design that was saved with them before this was fixed. */
+export const stripRings = (root: HTMLElement) => {
+  for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style*="outline"]'))) {
+    element.style.removeProperty('outline')
+    element.style.removeProperty('outline-offset')
+  }
 }
 
 export const findNode = (root: HTMLElement, id: string): HTMLElement | null =>
@@ -142,4 +163,17 @@ export const duplicateNode = (element: HTMLElement): HTMLElement | null => {
   const copy = element.cloneNode(true) as HTMLElement
   parent.insertBefore(copy, element.nextSibling)
   return copy
+}
+
+/** Nodes whose content is text we can let the user type over in place. */
+export const canEditInline = (element: HTMLElement): boolean =>
+  element.children.length === 0 &&
+  (element.textContent ?? '').trim().length > 0 &&
+  !['IMG', 'INPUT', 'SVG', 'BR', 'HR'].includes(element.tagName)
+
+/** A CSS length as {value, unit}, for a control that has to round-trip it. */
+export const parseLength = (input: string): { value: number; unit: string } => {
+  const match = input.trim().match(/^(-?[\d.]+)(px|%|rem|em|vh|vw)?$/)
+  if (!match) return { value: 0, unit: 'auto' }
+  return { value: Number.parseFloat(match[1]), unit: match[2] ?? 'px' }
 }
