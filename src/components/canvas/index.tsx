@@ -15,6 +15,7 @@ import { useDesignChat } from '@/hooks/use-design-chat'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 import { Inspector, ShapeInspector } from './inspector'
+import { ArrangeBar } from './arrange'
 import { FramePresetDialog } from './frame-presets'
 import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
 import {
@@ -347,6 +348,13 @@ export const Canvas = () => {
     draft,
     tool,
     selectedId,
+    selectedIds,
+    selectAll,
+    marquee,
+    guides,
+    align,
+    distribute,
+    reorder,
     beginMove,
     beginResize,
     editingId,
@@ -396,6 +404,11 @@ export const Canvas = () => {
         event.preventDefault()
         if (event.shiftKey) redo()
         else undo()
+        return
+      }
+      if (mod && event.key.toLowerCase() === 'a') {
+        event.preventDefault()
+        selectAll()
         return
       }
       if (mod && event.key.toLowerCase() === 'd') {
@@ -453,12 +466,26 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [deleteSelected, duplicate, nudge, redo, setTool, undo, zoomToFit])
+  }, [deleteSelected, duplicate, nudge, redo, selectAll, setTool, undo, zoomToFit])
 
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
   const gridSize = 24 * viewport.scale
   const selectedShape = shapes.find((shape) => shape.id === selectedId)
+  const chosen = shapes.filter((shape) => selectedIds.includes(shape.id))
+  const selectionBounds =
+    chosen.length > 1
+      ? (() => {
+          const minX = Math.min(...chosen.map((shape) => shape.x))
+          const minY = Math.min(...chosen.map((shape) => shape.y))
+          return {
+            x: minX,
+            y: minY,
+            width: Math.max(...chosen.map((shape) => shape.x + shape.width)) - minX,
+            height: Math.max(...chosen.map((shape) => shape.y + shape.height)) - minY,
+          }
+        })()
+      : null
   const selectedText = selectedShape?.kind === 'text' ? selectedShape : undefined
   // Generated designs render their own markup, so there is nothing here to
   // restyle; frames and drawn shapes get the shape panel.
@@ -505,7 +532,7 @@ export const Canvas = () => {
             <ShapeView
               key={shape.id}
               shape={shape}
-              selected={shape.id === selectedId}
+              selected={selectedIds.includes(shape.id)}
               onGenerate={() => void generateDesign(shape)}
               onInspiration={() => setInspirationOpen((open) => !open)}
               onGenerateWorkflow={() => void generateWorkflow(shape)}
@@ -521,6 +548,8 @@ export const Canvas = () => {
           ))}
           {draft && <ShapeView shape={draft} />}
 
+          {/* Grips only make sense on a single shape; a plural selection gets
+              one outline around the lot. */}
           {selectedShape && tool === 'select' && (
             <SelectionBox
               shape={selectedShape}
@@ -528,8 +557,67 @@ export const Canvas = () => {
               onResize={(handle, event) => beginResize(selectedShape, handle, event)}
             />
           )}
+
+          {tool === 'select' && selectedIds.length > 1 && selectionBounds && (
+            <div
+              className="pointer-events-none absolute border border-sky-400/70"
+              style={{
+                left: selectionBounds.x,
+                top: selectionBounds.y,
+                width: selectionBounds.width,
+                height: selectionBounds.height,
+                borderWidth: 1 / viewport.scale,
+              }}
+            />
+          )}
+
+          {/* Snap guides. Drawn far past the viewport in world units so they
+              read as infinite rules rather than short ticks. */}
+          {guides.map((guide) => (
+            <div
+              key={`${guide.axis}-${guide.at}`}
+              className="pointer-events-none absolute bg-fuchsia-400"
+              style={
+                guide.axis === 'x'
+                  ? {
+                      left: guide.at,
+                      top: -100000,
+                      width: 1 / viewport.scale,
+                      height: 200000,
+                    }
+                  : {
+                      top: guide.at,
+                      left: -100000,
+                      height: 1 / viewport.scale,
+                      width: 200000,
+                    }
+              }
+            />
+          ))}
+
+          {marquee && (
+            <div
+              className="pointer-events-none absolute border border-sky-400 bg-sky-400/10"
+              style={{
+                left: Math.min(marquee.origin.x, marquee.current.x),
+                top: Math.min(marquee.origin.y, marquee.current.y),
+                width: Math.abs(marquee.current.x - marquee.origin.x),
+                height: Math.abs(marquee.current.y - marquee.origin.y),
+                borderWidth: 1 / viewport.scale,
+              }}
+            />
+          )}
         </div>
       </div>
+
+      {selectedIds.length > 0 && tool === 'select' && (
+        <ArrangeBar
+          count={selectedIds.length}
+          align={align}
+          distribute={distribute}
+          reorder={reorder}
+        />
+      )}
 
       {selectedText && <Inspector shape={selectedText} />}
       {selectedStyleable && tool === 'select' && <ShapeInspector shape={selectedStyleable} />}

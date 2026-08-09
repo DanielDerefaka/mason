@@ -60,7 +60,12 @@ type ShapesState = {
   entities: EntityState
   viewport: Viewport
   tool: Tool
-  selectedId: string | null
+  /**
+   * The selection, in no particular order. An array rather than a single id
+   * because align, distribute, group and "move these two together" are all
+   * downstream of being able to hold more than one.
+   */
+  selectedIds: string[]
   /** The text shape currently being typed into, if any. */
   editingId: string | null
   /**
@@ -78,7 +83,7 @@ const initialState: ShapesState = {
   entities: shapesAdapter.getInitialState(),
   viewport: { scale: 1, translate: { x: 0, y: 0 } },
   tool: 'select',
-  selectedId: null,
+  selectedIds: [],
   editingId: null,
   frameDialogOpen: false,
   past: [],
@@ -104,7 +109,7 @@ export const shapesSlice = createSlice({
     addShape: (state, action: PayloadAction<Shape>) => {
       commit(state)
       shapesAdapter.addOne(state.entities, action.payload)
-      state.selectedId = action.payload.id
+      state.selectedIds = [action.payload.id]
     },
     updateShape: (state, action: PayloadAction<{ id: string; changes: Partial<Shape> }>) => {
       commit(state)
@@ -113,7 +118,7 @@ export const shapesSlice = createSlice({
     removeShape: (state, action: PayloadAction<string>) => {
       commit(state)
       shapesAdapter.removeOne(state.entities, action.payload)
-      if (state.selectedId === action.payload) state.selectedId = null
+      state.selectedIds = state.selectedIds.filter((id) => id !== action.payload)
     },
     /** The AI's design, dropped next to the frame it came from. */
     addGeneratedUI: (state, action: PayloadAction<Shape>) => {
@@ -190,7 +195,7 @@ export const shapesSlice = createSlice({
       shapesAdapter.setAll(state.entities, action.payload)
     },
     selectShape: (state, action: PayloadAction<string | null>) => {
-      state.selectedId = action.payload
+      state.selectedIds = action.payload === null ? [] : [action.payload]
     },
     setTool: (state, action: PayloadAction<Tool>) => {
       state.tool = action.payload
@@ -284,7 +289,7 @@ export const shapesSlice = createSlice({
       // to this same state tree, and moving a draft into another branch of the
       // tree leaves Immer aliasing the old value instead of replacing it.
       state.entities = clone(previous)
-      state.selectedId = null
+      state.selectedIds = []
     },
 
     redo: (state) => {
@@ -292,7 +297,165 @@ export const shapesSlice = createSlice({
       if (!next) return
       state.past.push(clone(state.entities))
       state.entities = clone(next)
-      state.selectedId = null
+      state.selectedIds = []
+    },
+
+    /** Shift-click: add to or remove from the selection. */
+    toggleSelected: (state, action: PayloadAction<string>) => {
+      state.selectedIds = state.selectedIds.includes(action.payload)
+        ? state.selectedIds.filter((id) => id !== action.payload)
+        : [...state.selectedIds, action.payload]
+    },
+    /** Marquee result, and select-all. */
+    setSelection: (state, action: PayloadAction<string[]>) => {
+      state.selectedIds = action.payload
+    },
+    removeSelected: (state) => {
+      if (state.selectedIds.length === 0) return
+      commit(state)
+      shapesAdapter.removeMany(state.entities, state.selectedIds)
+      state.selectedIds = []
+    },
+    /** Moves the whole selection by a world-space delta. */
+    moveSelected: (
+      state,
+      action: PayloadAction<{ dx: number; dy: number; commit?: boolean }>,
+    ) => {
+      if (action.payload.commit) commit(state)
+      for (const id of state.selectedIds) {
+        const shape = state.entities.entities[id]
+        if (!shape) continue
+        shape.x += action.payload.dx
+        shape.y += action.payload.dy
+        if (shape.points) {
+          shape.points = shape.points.map((point) => ({
+            x: point.x + action.payload.dx,
+            y: point.y + action.payload.dy,
+          }))
+        }
+      }
+    },
+    /**
+     * Z-order.
+     *
+     * Paint order is the adapter's `ids` array, so reordering it is the whole
+     * implementation — there is no separate z index to keep in sync.
+     */
+    reorderSelected: (
+      state,
+      action: PayloadAction<'front' | 'back' | 'forward' | 'backward'>,
+    ) => {
+      const ids = state.entities.ids as string[]
+      const selected = new Set(state.selectedIds)
+      if (selected.size === 0) return
+      commit(state)
+
+      const picked = ids.filter((id) => selected.has(id))
+      const rest = ids.filter((id) => !selected.has(id))
+
+      if (action.payload === 'front') {
+        state.entities.ids = [...rest, ...picked]
+        return
+      }
+      if (action.payload === 'back') {
+        state.entities.ids = [...picked, ...rest]
+        return
+      }
+
+      // One step. Walk from the end for 'forward' so a contiguous run of
+      // selected shapes moves as a block instead of piling onto each other.
+      const next = [...ids]
+      const step = action.payload === 'forward' ? 1 : -1
+      const order = action.payload === 'forward' ? [...next.keys()].reverse() : [...next.keys()]
+      for (const index of order) {
+        const id = next[index]
+        if (!selected.has(id)) continue
+        const target = index + step
+        if (target < 0 || target >= next.length) continue
+        if (selected.has(next[target])) continue
+        ;[next[index], next[target]] = [next[target], next[index]]
+      }
+      state.entities.ids = next
+    },
+    /** Aligns every selected shape against the selection's bounding box. */
+    alignSelected: (
+      state,
+      action: PayloadAction<'left' | 'centre-x' | 'right' | 'top' | 'centre-y' | 'bottom'>,
+    ) => {
+      const shapes = state.selectedIds
+        .map((id) => state.entities.entities[id])
+        .filter((shape): shape is Shape => Boolean(shape))
+      if (shapes.length < 2) return
+      commit(state)
+
+      const minX = Math.min(...shapes.map((s) => s.x))
+      const maxX = Math.max(...shapes.map((s) => s.x + s.width))
+      const minY = Math.min(...shapes.map((s) => s.y))
+      const maxY = Math.max(...shapes.map((s) => s.y + s.height))
+
+      for (const shape of shapes) {
+        const before = { x: shape.x, y: shape.y }
+        switch (action.payload) {
+          case 'left':
+            shape.x = minX
+            break
+          case 'right':
+            shape.x = maxX - shape.width
+            break
+          case 'centre-x':
+            shape.x = (minX + maxX) / 2 - shape.width / 2
+            break
+          case 'top':
+            shape.y = minY
+            break
+          case 'bottom':
+            shape.y = maxY - shape.height
+            break
+          case 'centre-y':
+            shape.y = (minY + maxY) / 2 - shape.height / 2
+            break
+        }
+        if (shape.points) {
+          const dx = shape.x - before.x
+          const dy = shape.y - before.y
+          shape.points = shape.points.map((point) => ({ x: point.x + dx, y: point.y + dy }))
+        }
+      }
+    },
+    /** Evens the gaps between three or more shapes along one axis. */
+    distributeSelected: (state, action: PayloadAction<'x' | 'y'>) => {
+      const shapes = state.selectedIds
+        .map((id) => state.entities.entities[id])
+        .filter((shape): shape is Shape => Boolean(shape))
+      if (shapes.length < 3) return
+      commit(state)
+
+      const horizontal = action.payload === 'x'
+      const size = (s: Shape) => (horizontal ? s.width : s.height)
+      const pos = (s: Shape) => (horizontal ? s.x : s.y)
+
+      const ordered = [...shapes].sort((a, b) => pos(a) - pos(b))
+      const first = ordered[0]
+      const last = ordered[ordered.length - 1]
+      const span = pos(last) + size(last) - pos(first)
+      const used = ordered.reduce((total, shape) => total + size(shape), 0)
+      // The leftovers, spread evenly between them. Negative means they
+      // overlap, which is still the even answer.
+      const gap = (span - used) / (ordered.length - 1)
+
+      let cursor = pos(first)
+      for (const shape of ordered) {
+        const before = { x: shape.x, y: shape.y }
+        if (horizontal) shape.x = cursor
+        else shape.y = cursor
+        cursor += size(shape) + gap
+
+        if (shape.points) {
+          const dx = shape.x - before.x
+          const dy = shape.y - before.y
+          shape.points = shape.points.map((point) => ({ x: point.x + dx, y: point.y + dy }))
+        }
+      }
     },
 
     /** Restores a stored pan/zoom on load. */
@@ -304,42 +467,51 @@ export const shapesSlice = createSlice({
     },
     /** Nudges the selection by whole world units — arrow keys. */
     nudgeSelected: (state, action: PayloadAction<{ dx: number; dy: number }>) => {
-      if (!state.selectedId) return
+      if (state.selectedIds.length === 0) return
       commit(state)
-      const shape = state.entities.entities[state.selectedId]
-      if (!shape) return
-      shape.x += action.payload.dx
-      shape.y += action.payload.dy
-      // Freehand and arrows carry their own path, which has to move too.
-      if (shape.points) {
-        shape.points = shape.points.map((point) => ({
-          x: point.x + action.payload.dx,
-          y: point.y + action.payload.dy,
-        }))
+      for (const id of state.selectedIds) {
+        const shape = state.entities.entities[id]
+        if (!shape) continue
+        shape.x += action.payload.dx
+        shape.y += action.payload.dy
+        // Freehand and arrows carry their own path, which has to move too.
+        if (shape.points) {
+          shape.points = shape.points.map((point) => ({
+            x: point.x + action.payload.dx,
+            y: point.y + action.payload.dy,
+          }))
+        }
       }
     },
     /**
      * Copies the selection, offset so the new shape is visibly on top of the
      * old one rather than hidden exactly behind it.
      */
-    duplicateSelected: (state, action: PayloadAction<{ id: string; offset: number }>) => {
-      const source = state.entities.entities[state.selectedId ?? '']
-      if (!source) return
+    duplicateSelected: (state, action: PayloadAction<{ ids: string[]; offset: number }>) => {
+      const sources = state.selectedIds
+        .map((id) => state.entities.entities[id])
+        .filter((shape): shape is Shape => Boolean(shape))
+      if (sources.length === 0) return
       commit(state)
-      const copy: Shape = {
-        ...JSON.parse(JSON.stringify(source)),
-        id: action.payload.id,
-        x: source.x + action.payload.offset,
-        y: source.y + action.payload.offset,
-      }
-      if (copy.points) {
-        copy.points = copy.points.map((point) => ({
-          x: point.x + action.payload.offset,
-          y: point.y + action.payload.offset,
-        }))
-      }
-      shapesAdapter.addOne(state.entities, copy)
-      state.selectedId = copy.id
+
+      const copies = sources.map((source, index) => {
+        const copy: Shape = {
+          ...(JSON.parse(JSON.stringify(source)) as Shape),
+          id: action.payload.ids[index],
+          x: source.x + action.payload.offset,
+          y: source.y + action.payload.offset,
+        }
+        if (copy.points) {
+          copy.points = copy.points.map((point) => ({
+            x: point.x + action.payload.offset,
+            y: point.y + action.payload.offset,
+          }))
+        }
+        return copy
+      })
+
+      shapesAdapter.addMany(state.entities, copies)
+      state.selectedIds = copies.map((copy) => copy.id)
     },
     resetViewport: (state) => {
       state.viewport = { scale: 1, translate: { x: 0, y: 0 } }
@@ -375,6 +547,13 @@ export const {
   resetViewport,
   setViewport,
   nudgeSelected,
+  toggleSelected,
+  setSelection,
+  removeSelected,
+  moveSelected,
+  reorderSelected,
+  alignSelected,
+  distributeSelected,
   duplicateSelected,
 } = shapesSlice.actions
 

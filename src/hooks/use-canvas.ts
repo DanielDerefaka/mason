@@ -8,10 +8,17 @@ import {
   redo,
   removeShape,
   undo,
+  alignSelected,
+  distributeSelected,
   duplicateSelected,
   focusOnRect,
+  moveSelected,
   nudgeSelected,
+  removeSelected,
+  reorderSelected,
   selectShape,
+  setSelection,
+  toggleSelected,
   setEditingId,
   setFrameDialogOpen,
   setTool,
@@ -50,24 +57,17 @@ const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow', 'line']
 /** Corner grips, named for the corner they own. */
 export type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
 
+/** How close, in screen pixels, an edge has to be before it snaps. */
+const SNAP_PX = 6
+
+export type Guide = { axis: 'x' | 'y'; at: number }
+
 /** Stops a shape being dragged inside out. */
 const MIN_SIZE = 8
 
 /** A text box placed with a click rather than dragged out. */
 const TEXT_DEFAULT_WIDTH = 220
 const TEXT_DEFAULT_HEIGHT = 32
-
-/**
- * Moves a shape, carrying its path with it — a path's points are world
- * coordinates, so shifting only the bounding box would leave the stroke behind.
- */
-const translated = (shape: Shape, dx: number, dy: number): Partial<Shape> => ({
-  x: shape.x + dx,
-  y: shape.y + dy,
-  ...(shape.points
-    ? { points: shape.points.map((point) => ({ x: point.x + dx, y: point.y + dy })) }
-    : {}),
-})
 
 /** Resizes about the corner opposite the grip, scaling any path to match. */
 const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shape> => {
@@ -102,18 +102,35 @@ const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shap
 export const useInfiniteCanvas = () => {
   const dispatch = useAppDispatch()
   const state = useAppSelector((s: RootState) => s.shapes)
-  const { viewport, tool, selectedId, editingId, frameDialogOpen } = state
+  const { viewport, tool, selectedIds, editingId, frameDialogOpen } = state
+  /**
+   * The inspectors edit one shape at a time, so they key off a single id and
+   * disappear when a selection becomes plural.
+   */
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null
   const shapes = selectors.selectAll(state.entities)
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const onWheelRef = useRef<(event: WheelEvent) => void>(() => {})
   const gesture = useRef<
     | { kind: 'pan' | 'draw'; origin: Point }
-    | { kind: 'move'; origin: Point; shape: Shape }
+    | {
+        kind: 'move'
+        origin: Point
+        shape: Shape
+        /** How much of the pointer delta has already been dispatched. */
+        applied: Point
+        /** Selection bounds when the drag began, so snapping is drift-free. */
+        start: { minX: number; minY: number; maxX: number; maxY: number }
+      }
     | { kind: 'resize'; origin: Point; shape: Shape; handle: ResizeHandle }
+    | { kind: 'marquee'; origin: Point }
     | null
   >(null)
   const [draft, setDraft] = useState<Shape | null>(null)
+  /** The rubber band, in world coordinates. Null when not dragging one. */
+  const [marquee, setMarquee] = useState<{ origin: Point; current: Point } | null>(null)
+  const marqueeRef = useRef<{ origin: Point; current: Point } | null>(null)
   /**
    * The same draft, kept in a ref. State alone is not enough: a click fires
    * pointerdown and pointerup with no render in between, so the pointerup
@@ -124,6 +141,88 @@ export const useInfiniteCanvas = () => {
   const putDraft = (next: Shape | null) => {
     draftRef.current = next
     setDraft(next)
+  }
+
+  const putMarquee = (next: { origin: Point; current: Point } | null) => {
+    marqueeRef.current = next
+    setMarquee(next)
+  }
+
+  const [guides, setGuides] = useState<Guide[]>([])
+  const guidesRef = useRef<Guide[]>([])
+  const putGuides = (next: Guide[]) => {
+    // Same-value writes every frame would re-render the whole canvas at
+    // pointer rate for nothing.
+    const key = next.map((guide) => `${guide.axis}${guide.at}`).join('|')
+    const previous = guidesRef.current.map((guide) => `${guide.axis}${guide.at}`).join('|')
+    if (key === previous) return
+    guidesRef.current = next
+    setGuides(next)
+  }
+
+  /**
+   * Pulls a proposed move onto the nearest edge or centre of a shape that is
+   * not being dragged. Compares left/centre/right and top/middle/bottom, which
+   * is what makes a card line up with the one above it rather than merely
+   * landing near it.
+   */
+  const snapDelta = (
+    raw: Point,
+    start: { minX: number; minY: number; maxX: number; maxY: number },
+  ): { delta: Point; guides: Guide[] } => {
+    const threshold = SNAP_PX / viewport.scale
+    const others = shapes.filter((shape) => !selectedIds.includes(shape.id))
+    if (others.length === 0) return { delta: raw, guides: [] }
+
+    const proposed = {
+      minX: start.minX + raw.x,
+      maxX: start.maxX + raw.x,
+      minY: start.minY + raw.y,
+      maxY: start.maxY + raw.y,
+    }
+
+    const targetsX = others.flatMap((shape) => [
+      shape.x,
+      shape.x + shape.width / 2,
+      shape.x + shape.width,
+    ])
+    const targetsY = others.flatMap((shape) => [
+      shape.y,
+      shape.y + shape.height / 2,
+      shape.y + shape.height,
+    ])
+
+    const nearest = (edges: number[], targets: number[]) => {
+      let best: { at: number; shift: number } | null = null
+      for (const edge of edges) {
+        for (const target of targets) {
+          const distance = target - edge
+          if (Math.abs(distance) > threshold) continue
+          if (!best || Math.abs(distance) < Math.abs(best.shift)) {
+            best = { at: target, shift: distance }
+          }
+        }
+      }
+      return best
+    }
+
+    const x = nearest(
+      [proposed.minX, (proposed.minX + proposed.maxX) / 2, proposed.maxX],
+      targetsX,
+    )
+    const y = nearest(
+      [proposed.minY, (proposed.minY + proposed.maxY) / 2, proposed.maxY],
+      targetsY,
+    )
+
+    const lines: Guide[] = []
+    if (x) lines.push({ axis: 'x', at: x.at })
+    if (y) lines.push({ axis: 'y', at: y.at })
+
+    return {
+      delta: { x: raw.x + (x?.shift ?? 0), y: raw.y + (y?.shift ?? 0) },
+      guides: lines,
+    }
   }
 
   /** Screen pixels → world units. The inverse of the CSS transform. */
@@ -191,9 +290,37 @@ export const useInfiniteCanvas = () => {
 
     event.stopPropagation()
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    dispatch(selectShape(shape.id))
+
+    if (event.shiftKey) {
+      // Shift-click adds or removes, and never starts a drag — otherwise the
+      // click that extends a selection also nudges what it just added.
+      dispatch(toggleSelected(shape.id))
+      return
+    }
+
+    // Grabbing something already selected keeps the group; grabbing anything
+    // else replaces the selection, the way every canvas tool behaves.
+    if (!selectedIds.includes(shape.id)) dispatch(selectShape(shape.id))
+
     dispatch(snapshotHistory())
-    gesture.current = { kind: 'move', origin: screenToWorld(localPoint(event)), shape }
+
+    // Everything about to move, measured once. Snapping compares against
+    // these rather than live positions, so a snapped drag cannot drift.
+    const moving = shapes.filter((candidate) =>
+      selectedIds.includes(candidate.id) || candidate.id === shape.id,
+    )
+    gesture.current = {
+      kind: 'move',
+      origin: screenToWorld(localPoint(event)),
+      shape,
+      applied: { x: 0, y: 0 },
+      start: {
+        minX: Math.min(...moving.map((s) => s.x)),
+        minY: Math.min(...moving.map((s) => s.y)),
+        maxX: Math.max(...moving.map((s) => s.x + s.width)),
+        maxY: Math.max(...moving.map((s) => s.y + s.height)),
+      },
+    }
   }
 
   const beginResize = (
@@ -218,7 +345,12 @@ export const useInfiniteCanvas = () => {
     }
 
     if (tool === 'select' || tool === 'eraser') {
-      if (tool === 'select') dispatch(selectShape(null))
+      if (tool === 'select') {
+        // Shift keeps what is already selected so a marquee can extend it.
+        if (!event.shiftKey) dispatch(selectShape(null))
+        gesture.current = { kind: 'marquee', origin: screenToWorld(point) }
+        putMarquee({ origin: screenToWorld(point), current: screenToWorld(point) })
+      }
       return
     }
 
@@ -253,12 +385,25 @@ export const useInfiniteCanvas = () => {
 
     if (active.kind === 'move') {
       const world = screenToWorld(point)
-      const changes = translated(
-        active.shape,
-        world.x - active.origin.x,
-        world.y - active.origin.y,
+      const raw = { x: world.x - active.origin.x, y: world.y - active.origin.y }
+      const snapped = snapDelta(raw, active.start)
+
+      // Dispatch only the part not already applied. Sending the raw per-frame
+      // delta instead would accumulate the correction on every frame and walk
+      // the selection away from the pointer.
+      dispatch(
+        moveSelected({
+          dx: snapped.delta.x - active.applied.x,
+          dy: snapped.delta.y - active.applied.y,
+        }),
       )
-      dispatch(updateShapeLive({ id: active.shape.id, changes }))
+      putGuides(snapped.guides)
+      gesture.current = { ...active, applied: snapped.delta }
+      return
+    }
+
+    if (active.kind === 'marquee') {
+      putMarquee({ origin: active.origin, current: screenToWorld(point) })
       return
     }
 
@@ -313,6 +458,36 @@ export const useInfiniteCanvas = () => {
   const onPointerUp = () => {
     const active = gesture.current
     gesture.current = null
+    putGuides([])
+
+    if (active?.kind === 'marquee') {
+      const band = marqueeRef.current
+      putMarquee(null)
+      if (band) {
+        const box = {
+          x: Math.min(band.origin.x, band.current.x),
+          y: Math.min(band.origin.y, band.current.y),
+          width: Math.abs(band.current.x - band.origin.x),
+          height: Math.abs(band.current.y - band.origin.y),
+        }
+        // A click, not a drag — leave the deselect that already happened.
+        if (box.width > 3 || box.height > 3) {
+          // Touch, not enclose: catching a shape by clipping its corner is
+          // what people expect from a rubber band on a canvas.
+          const hit = shapes
+            .filter(
+              (shape) =>
+                shape.x < box.x + box.width &&
+                shape.x + shape.width > box.x &&
+                shape.y < box.y + box.height &&
+                shape.y + shape.height > box.y,
+            )
+            .map((shape) => shape.id)
+          dispatch(setSelection([...new Set([...selectedIds, ...hit])]))
+        }
+      }
+      return
+    }
 
     const draft = draftRef.current
     if (active?.kind === 'draw' && draft) {
@@ -415,9 +590,7 @@ export const useInfiniteCanvas = () => {
   }
 
   const eraseShape = (id: string) => dispatch(removeShape(id))
-  const deleteSelected = () => {
-    if (selectedId) dispatch(removeShape(selectedId))
-  }
+  const deleteSelected = () => dispatch(removeSelected())
 
   const zoomIn = () => dispatch(zoomTo({ scale: viewport.scale * 1.2, center: viewportCenter() }))
   const zoomOut = () => dispatch(zoomTo({ scale: viewport.scale / 1.2, center: viewportCenter() }))
@@ -433,6 +606,13 @@ export const useInfiniteCanvas = () => {
     screenToWorld,
     setTool: (next: Tool) => dispatch(setTool(next)),
     selectShape: (id: string | null) => dispatch(selectShape(id)),
+    selectedIds,
+    selectAll: () => dispatch(setSelection(shapes.map((shape) => shape.id))),
+    marquee,
+    guides,
+    align: (edge: Parameters<typeof alignSelected>[0]) => dispatch(alignSelected(edge)),
+    distribute: (axis: 'x' | 'y') => dispatch(distributeSelected(axis)),
+    reorder: (where: Parameters<typeof reorderSelected>[0]) => dispatch(reorderSelected(where)),
     editingId,
     frameDialogOpen,
     openFrameDialog: () => dispatch(setFrameDialogOpen(true)),
@@ -459,8 +639,13 @@ export const useInfiniteCanvas = () => {
     restoreViewport: (next: Viewport) => dispatch(setViewport(next)),
     nudge: (dx: number, dy: number) => dispatch(nudgeSelected({ dx, dy })),
     duplicate: () => {
-      if (!selectedId) return
-      dispatch(duplicateSelected({ id: crypto.randomUUID(), offset: 24 }))
+      if (selectedIds.length === 0) return
+      dispatch(
+        duplicateSelected({
+          ids: selectedIds.map(() => crypto.randomUUID()),
+          offset: 24,
+        }),
+      )
     },
     eraseShape,
     deleteSelected,
