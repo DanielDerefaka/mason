@@ -1,6 +1,6 @@
-import type { StyleGuide } from '@/types/style-guide'
+import type { StaticStyleGuide } from '@/types/style-guide'
 
-export const STYLE_GUIDE: StyleGuide = {
+export const STYLE_GUIDE: StaticStyleGuide = {
   theme: 'Monochrome',
   description: 'Lorem ipsum dolor sit amet consectetur.',
   colorSections: [

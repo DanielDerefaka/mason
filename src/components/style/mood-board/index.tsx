@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { GenerateStyleGuideButton } from '@/components/buttons/style-guide'
 import { useStyles, type GuideImage } from '@/hooks/use-styles'
 
 type Props = { guideImages: GuideImage[] }
@@ -20,7 +21,7 @@ const OVERLAP = 30
 const SPACING = IMAGE_WIDTH - OVERLAP // 162px between image centres
 
 export const MoodBoard = ({ guideImages }: Props) => {
-  const { upload, remove, uploading } = useStyles()
+  const { upload, remove, uploading, projectId } = useStyles()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
@@ -159,6 +160,14 @@ export const MoodBoard = ({ guideImages }: Props) => {
           multiple
           hidden
           onChange={(e) => e.target.files && void upload(e.target.files)}
+        />
+      </div>
+
+      <div className="relative pt-4">
+        <GenerateStyleGuideButton
+          images={images}
+          fileInputRef={inputRef}
+          projectId={projectId}
         />
       </div>
     </div>

@@ -80,6 +80,27 @@ export const getProject = query({
   },
 })
 
+export const saveStyleGuide = mutation({
+  args: {
+    projectId: v.id('projects'),
+    styleGuide: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    await ctx.db.patch(args.projectId, {
+      styleGuide: args.styleGuide,
+      lastModified: Date.now(),
+    })
+
+    return { success: true }
+  },
+})
+
 export const updateProjectSketches = mutation({
   args: {
     projectId: v.id('projects'),

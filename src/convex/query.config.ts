@@ -1,6 +1,7 @@
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
 
 /** URL-safe handle used as the /dashboard/[session] segment. */
 export const toSessionSlug = (value: string) =>
@@ -28,6 +29,30 @@ export const subscriptionEntitlementQuery = async () => {
     // Polar is wired up in a later chapter.
     entitled: true,
   }
+}
+
+/**
+ * What the generation routes charge against.
+ *
+ * Credits are Polar's job and Polar is not wired up yet (chapter 24), so this
+ * reports an unmetered balance for a signed-in user rather than inventing a
+ * ledger the billing chapter would only have to replace. The shape is already
+ * the real one, so only the middle of this function changes later.
+ */
+export const CreditsBalanceQuery = async () => {
+  const token = await convexAuthNextjsToken()
+  const profile = await fetchQuery(api.user.getCurrentUser, {}, { token })
+
+  if (!profile) return { ok: false, balance: 0, profile: null }
+
+  // TODO: read the real balance from Polar once billing lands.
+  return { ok: true, balance: Number.POSITIVE_INFINITY, profile }
+}
+
+/** The mood board images a generation run should look at. */
+export const MoodBoardImagesQuery = async (projectId: Id<'projects'>) => {
+  const token = await convexAuthNextjsToken()
+  return await fetchQuery(api.moodboard.getMoodboardImages, { projectId }, { token })
 }
 
 /** Server-side fetch for the dashboard: the signed-in profile and their projects. */

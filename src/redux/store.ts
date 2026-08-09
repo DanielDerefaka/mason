@@ -1,8 +1,8 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-import { APIS } from './api'
+import { APIS, apiReducers } from './api'
 import { slice } from './slice'
 
-const rootReducer = combineReducers({ ...slice })
+const rootReducer = combineReducers({ ...slice, ...apiReducers })
 
 export type RootState = ReturnType<typeof rootReducer>
 
