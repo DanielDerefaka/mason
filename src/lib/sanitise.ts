@@ -71,10 +71,26 @@ export const sanitiseHtml = (html: string): string => {
 }
 
 /**
+ * Drops a leading fragment of tag innards.
+ *
+ * A model that opens with its root tag split across lines can have a chunk
+ * boundary land inside it, and everything before the first `<` is then parsed
+ * as text — so the page renders with `style="width:100%;...">` printed across
+ * the top. Real content never starts with an attribute, so anything before the
+ * first tag carrying `="` is leftovers, not copy.
+ */
+const stripOrphanAttributes = (html: string): string => {
+  const firstTag = html.indexOf('<')
+  const head = firstTag === -1 ? html : html.slice(0, firstTag)
+  if (!/=\s*["']/.test(head)) return html
+  return firstTag === -1 ? '' : html.slice(firstTag)
+}
+
+/**
  * A stream is cut off mid-tag most of the time, and the parser closes whatever
  * is dangling — which is exactly what we want for a live preview.
  */
 export const sanitisePartialHtml = (html: string): string => {
-  const fenceless = html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/,'')
-  return sanitiseHtml(fenceless)
+  const fenceless = html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/, '')
+  return sanitiseHtml(stripOrphanAttributes(fenceless))
 }
