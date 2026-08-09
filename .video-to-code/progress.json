@@ -110,7 +110,12 @@
     "Testing note: pipe CDP scripts to a file, not through `tail` \u2014 node buffers stdout when piped and the output only appears at exit, which hides where a long run is stuck.",
     "Ch29 under-implementation, found by comparing our output to the user's Dribbble reference: inspiration images were sent as vision input only, and the prompt banned external images \u2014 so designs came out as flat blocks with SVG placeholders. The hosted Convex URLs now go into the brief as text (src/lib/imagery-brief.ts) for both the design and workflow routes, with rules on where photography belongs. Verified: 4 imgs from 2 URLs, none broken.",
     "credits:grant is an internalMutation for topping up while billing does not exist: npx convex run credits:grant '{\"amount\": 20}'. Applies to every user in the deployment.",
-    "Generated designs are now full shapes: draggable, selectable, resizable, deletable. The inner design is pointer-events-none so the wrapper receives the drag; auto-height is grow-only so it stops fighting a manual resize."
+    "Generated designs are now full shapes: draggable, selectable, resizable, deletable. The inner design is pointer-events-none so the wrapper receives the drag; auto-height is grow-only so it stops fighting a manual resize.",
+    "Model A/B on the same sketch + reference: claude-opus-5 = 13.4k markup in 65s; gpt-5.6-sol = 7.5k in 99s. Opus 5 kept. ANTHROPIC_UI_MODEL exists to switch the design model without touching the extraction model. Router serves only claude-opus-5, claude-opus-4-8, gpt-5.6-sol.",
+    "Images are downloaded server-side and sent as file parts (src/lib/fetch-image.ts). Passing URLs fails on non-Anthropic models behind the gateway ('expected a base64-encoded data URL ... malformed MIME type') and the old 'image' part is deprecated.",
+    "gpt-5.6-sol returns tool_use blocks with no id; the SDK rejects the whole message as Invalid JSON response. gatewayFetch in lib/anthropic.ts fills the id in.",
+    "Inspiration references are vision-only and must NEVER be embedded \u2014 they are screenshots of websites, and rendering one puts a website inside the website. Photographic slots use loremflickr with keyword + lock. source.unsplash.com is retired (503).",
+    "His sketches are ANNOTATED (labels like 'Image should take full height of this section', 'Add To Cart', '$49.99'). That is a large part of why his output looks intentional. Our text tool only started working recently \u2014 tell the user to label sketches."
   ],
   "blocked": [
     "Google OAuth still not set up: needs a Google Cloud OAuth client (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) plus ngrok, since Google will not call localhost [40:21]. The Google and Microsoft buttons are inert. Email/password works.",
