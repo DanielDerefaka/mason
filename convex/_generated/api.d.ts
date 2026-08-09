@@ -21,6 +21,7 @@ import type * as inspiration from "../inspiration.js";
 import type * as moodboard from "../moodboard.js";
 import type * as project from "../project.js";
 import type * as shares from "../shares.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as user from "../user.js";
 import type * as versions from "../versions.js";
 
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   moodboard: typeof moodboard;
   project: typeof project;
   shares: typeof shares;
+  subscriptions: typeof subscriptions;
   user: typeof user;
   versions: typeof versions;
 }>;

@@ -41,6 +41,30 @@ export default defineSchema({
     .index('by_token', ['token'])
     .index('by_project', ['projectId']),
 
+  /**
+   * What Polar tells us about a customer's subscription.
+   *
+   * A mirror, never the source of truth — Polar owns the billing state and
+   * this is the copy the app reads so a page render does not have to call
+   * their API. Keyed by their subscription id so a webhook arriving twice
+   * updates one row instead of inserting two.
+   */
+  subscriptions: defineTable({
+    userId: v.optional(v.id('users')),
+    /** Polar's ids, kept so a webhook can find the row without our user. */
+    polarSubscriptionId: v.string(),
+    polarCustomerId: v.optional(v.string()),
+    polarProductId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    status: v.string(),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  })
+    .index('by_polar_subscription', ['polarSubscriptionId'])
+    .index('by_user', ['userId'])
+    .index('by_email', ['email']),
+
   projects: defineTable({
     userId: v.id('users'),
     name: v.string(),

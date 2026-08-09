@@ -7,6 +7,9 @@
 export const isBypassRoute = [
   '/api/auth(.*)',
   '/api/webhooks(.*)',
+  // Polar signs its requests; the signature is the credential, and the auth
+  // middleware would otherwise redirect every event to the sign-in page.
+  '/api/polar/webhook',
   // The public site. Bypass rather than public: a public route bounces a
   // signed-in visitor to the dashboard, and reading the blog or the about page
   // should not depend on being signed out.

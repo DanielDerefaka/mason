@@ -14,6 +14,7 @@
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.88",
     "@hookform/resolvers": "^5.7.1",
+    "@polar-sh/sdk": "^0.49.0",
     "@reduxjs/toolkit": "^2.8.2",
     "ai": "^7.0.58",
     "class-variance-authority": "^0.7.1",

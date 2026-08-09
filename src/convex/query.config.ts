@@ -22,13 +22,26 @@ export const toSessionSlug = (value: string) =>
 export const subscriptionEntitlementQuery = async () => {
   const token = await convexAuthNextjsToken()
   const user = await fetchQuery(api.user.getCurrentUser, {}, { token })
+  if (!user) return { user: null, session: null, entitled: false, subscribed: false }
+
+  const subscribed = await fetchQuery(api.subscriptions.isEntitled, {}, { token })
+
+  /**
+   * Enforcement is opt-in.
+   *
+   * `subscribed` is the real answer and is always computed — the billing page
+   * shows it, and turning the gate on is a one-line environment change. But it
+   * only redirects when BILLING_ENFORCED is set, because switching it on by
+   * default would lock every existing account, including yours, out of an app
+   * that has been free until now.
+   */
+  const enforced = process.env.BILLING_ENFORCED === 'true'
 
   return {
     user,
-    session: user ? toSessionSlug(user.name ?? user.email ?? 'me') : null,
-    // TODO: add billing logic — replaced by the real entitlement check when
-    // Polar is wired up in a later chapter.
-    entitled: true,
+    session: toSessionSlug(user.name ?? user.email ?? 'me'),
+    subscribed,
+    entitled: enforced ? subscribed : true,
   }
 }
 
