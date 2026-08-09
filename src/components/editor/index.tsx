@@ -1,7 +1,8 @@
 'use client'
 
-import { ArrowLeft, Check, Loader2, Redo2, Undo2 } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Loader2, Redo2, Trash2, Undo2 } from 'lucide-react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
@@ -9,7 +10,16 @@ import { useGoogleFont } from '@/hooks/use-google-font'
 import { sanitiseHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 
-import { NODE_ATTR, assignNodeIds, findNode, labelFor, serialise } from './node'
+import {
+  NODE_ATTR,
+  assignNodeIds,
+  duplicateNode,
+  findNode,
+  labelFor,
+  moveNode,
+  serialise,
+  siblingIndex,
+} from './node'
 import { Properties } from './properties'
 
 /**
@@ -27,9 +37,11 @@ import { Properties } from './properties'
  */
 export const DesignEditor = () => {
   const { projectId, design, styleGuide, loading, status, saveHtml } = useDesignEditor()
+  const { session } = useParams<{ session: string }>()
 
   const stage = useRef<HTMLDivElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [hoverId, setHoverId] = useState<string | null>(null)
   const [tree, setTree] = useState<{ id: string; depth: number; label: string }[]>([])
   const [zoom, setZoom] = useState(1)
 
@@ -118,12 +130,51 @@ export const DesignEditor = () => {
   }
 
   const selected = selectedId && stage.current ? findNode(stage.current, selectedId) : null
+  const position = selected ? siblingIndex(selected) : null
+  const atStart = !position || position.index <= 0
+  const atEnd = !position || position.index >= position.total - 1
 
   const onStyle = (property: string, value: string) => {
     if (!selected) return
     snapshot()
     selected.style.setProperty(property, value)
     commit()
+  }
+
+  /**
+   * Restamps ids and re-derives the selection.
+   *
+   * Ids are positional, so anything that changes the shape of the tree
+   * invalidates them — including the id currently selected.
+   */
+  const restamp = (keep: HTMLElement | null) => {
+    const root = stage.current
+    if (!root) return
+    assignNodeIds(root)
+    setSelectedId(keep ? keep.getAttribute(NODE_ATTR) : null)
+    readTree()
+    commit()
+  }
+
+  const onDelete = () => {
+    if (!selected) return
+    snapshot()
+    selected.remove()
+    restamp(null)
+  }
+
+  const onDuplicate = () => {
+    if (!selected) return
+    snapshot()
+    const copy = duplicateNode(selected)
+    restamp(copy)
+  }
+
+  const onMove = (direction: -1 | 1) => {
+    if (!selected) return
+    snapshot()
+    if (!moveNode(selected, direction)) return
+    restamp(selected)
   }
 
   const onText = (text: string) => {
@@ -139,11 +190,26 @@ export const DesignEditor = () => {
     const root = stage.current
     if (!root) return
     event.preventDefault()
+    // Without this the click carries on to the artboard behind, whose job is
+    // to clear the selection — so every click selected and instantly
+    // deselected, and only the layer list appeared to work.
+    event.stopPropagation()
     let node = event.target as HTMLElement | null
     while (node && node !== root && !node.hasAttribute(NODE_ATTR)) {
       node = node.parentElement
     }
     setSelectedId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
+  }
+
+  /** Same walk as the click, so what lights up is exactly what will select. */
+  const onStageHover = (event: React.MouseEvent) => {
+    const root = stage.current
+    if (!root) return
+    let node = event.target as HTMLElement | null
+    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) {
+      node = node.parentElement
+    }
+    setHoverId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
   }
 
   // Outline the selection without touching its own styles — a ring drawn with
@@ -155,6 +221,13 @@ export const DesignEditor = () => {
       element.style.outline = ''
       element.style.outlineOffset = ''
     }
+    if (hoverId && hoverId !== selectedId) {
+      const node = findNode(root, hoverId)
+      if (node) {
+        node.style.outline = '1px solid rgba(56,189,248,0.5)'
+        node.style.outlineOffset = '1px'
+      }
+    }
     if (selectedId) {
       const node = findNode(root, selectedId)
       if (node) {
@@ -162,7 +235,7 @@ export const DesignEditor = () => {
         node.style.outlineOffset = '1px'
       }
     }
-  }, [selectedId, historyTick])
+  }, [selectedId, hoverId, historyTick])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -179,12 +252,25 @@ export const DesignEditor = () => {
         else undo()
       }
       if (event.key === 'Escape') setSelectedId(null)
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selected) {
+        event.preventDefault()
+        onDelete()
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && selected) {
+        event.preventDefault()
+        onDuplicate()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const back = projectId ? `?project=${projectId}` : ''
+  /**
+   * Absolute, and back to the canvas of the project being edited. A relative
+   * `../canvas` resolved against whatever the current path happened to be,
+   * which is how this ended up pointing at the project list.
+   */
+  const back = `/dashboard/${session}/canvas${projectId ? `?project=${projectId}` : ''}`
 
   if (loading) {
     return (
@@ -203,7 +289,7 @@ export const DesignEditor = () => {
             It may have been deleted from the canvas.
           </p>
           <Link
-            href={`../canvas${back}`}
+            href={back}
             className="mt-6 inline-flex items-center gap-2 text-sm text-sky-400 hover:underline"
           >
             <ArrowLeft className="size-4" />
@@ -219,7 +305,7 @@ export const DesignEditor = () => {
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] px-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
-            href={`../canvas${back}`}
+            href={back}
             aria-label="Back to the canvas"
             className="text-muted-foreground hover:text-foreground grid size-8 shrink-0 place-items-center rounded-md transition-colors hover:bg-white/[0.06]"
           >
@@ -272,6 +358,8 @@ export const DesignEditor = () => {
               key={row.id}
               type="button"
               onClick={() => setSelectedId(row.id)}
+              onMouseEnter={() => setHoverId(row.id)}
+              onMouseLeave={() => setHoverId(null)}
               style={{ paddingLeft: 12 + row.depth * 12 }}
               className={cn(
                 // shrink-0: these are flex children in a fixed-height column,
@@ -304,6 +392,8 @@ export const DesignEditor = () => {
             <div
               ref={stage}
               onClick={onStageClick}
+              onMouseOver={onStageHover}
+              onMouseLeave={() => setHoverId(null)}
               style={cssVars}
               className="[&_*]:cursor-pointer"
             />
@@ -313,12 +403,31 @@ export const DesignEditor = () => {
         {/* Properties */}
         <aside className="w-[264px] shrink-0 overflow-y-auto border-l border-white/[0.08]">
           {selected ? (
-            <Properties
-              element={selected}
-              guide={styleGuide}
-              onStyle={onStyle}
-              onText={onText}
-            />
+            <>
+              <div className="flex items-center gap-1 border-b border-white/[0.08] px-3 py-2">
+                <span className="text-muted-foreground mr-auto truncate text-[11px]">
+                  {labelFor(selected)}
+                </span>
+                <NodeAction label="Move up" onClick={() => onMove(-1)} disabled={atStart}>
+                  <ChevronUp className="size-3.5" />
+                </NodeAction>
+                <NodeAction label="Move down" onClick={() => onMove(1)} disabled={atEnd}>
+                  <ChevronDown className="size-3.5" />
+                </NodeAction>
+                <NodeAction label="Duplicate" onClick={onDuplicate}>
+                  <Copy className="size-3.5" />
+                </NodeAction>
+                <NodeAction label="Delete" onClick={onDelete} danger>
+                  <Trash2 className="size-3.5" />
+                </NodeAction>
+              </div>
+                <Properties
+                element={selected}
+                guide={styleGuide}
+                onStyle={onStyle}
+                onText={onText}
+              />
+            </>
           ) : (
             <p className="text-muted-foreground p-4 text-xs leading-relaxed">
               Click anything in the design to edit it — a heading, a button, a card. Its
@@ -330,6 +439,36 @@ export const DesignEditor = () => {
     </div>
   )
 }
+
+const NodeAction = ({
+  label,
+  onClick,
+  disabled,
+  danger,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  danger?: boolean
+  children: React.ReactNode
+}) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      'grid size-7 place-items-center rounded-md transition-colors disabled:opacity-25',
+      danger
+        ? 'text-red-400 hover:bg-red-500/15'
+        : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.08]',
+    )}
+  >
+    {children}
+  </button>
+)
 
 const HeaderButton = ({
   label,

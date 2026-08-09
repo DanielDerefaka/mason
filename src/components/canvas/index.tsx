@@ -11,7 +11,7 @@ import { useWorkflow } from '@/hooks/use-workflow'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { useStyles } from '@/hooks/use-styles'
 import { exportDesignHtml, exportFramePng } from '@/lib/export'
@@ -405,13 +405,18 @@ export const Canvas = () => {
   } = useInfiniteCanvas()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { session } = useParams<{ session: string }>()
   const { generateDesign, generatingFrameId } = useFrame()
   const { styleGuide } = useStyles()
 
   /** Hands a generated design to the editor, which is its own full screen. */
   const openEditor = (shape: Shape) => {
     const project = searchParams.get('project')
-    router.push(`editor?project=${project ?? ''}&design=${shape.id}`)
+    // Absolute: a relative push resolved against the current path, which put
+    // the editor under /dashboard/canvas/editor rather than the session.
+    router.push(
+      `/dashboard/${session}/editor?project=${project ?? ''}&design=${shape.id}`,
+    )
   }
 
   /** Frames leave as a PNG of the sketch; designs leave as a standalone page. */

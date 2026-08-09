@@ -107,3 +107,39 @@ export const toHex = (value: string): string => {
   const hex = (n: number) => Math.max(0, Math.min(255, Math.round(n || 0))).toString(16).padStart(2, '0')
   return `#${hex(r)}${hex(g)}${hex(b)}`
 }
+
+/** Where a node sits among its siblings, and how many there are. */
+export const siblingIndex = (element: HTMLElement) => {
+  const parent = element.parentElement
+  if (!parent) return { index: 0, total: 1 }
+  const siblings = Array.from(parent.children)
+  return { index: siblings.indexOf(element), total: siblings.length }
+}
+
+/**
+ * Moves a node one place among its siblings.
+ *
+ * Returns the id the caller should reselect. Every id is a positional path, so
+ * moving a node changes its own id and its siblings' — the whole tree has to
+ * be restamped afterwards, and the selection re-derived rather than kept.
+ */
+export const moveNode = (element: HTMLElement, direction: -1 | 1): boolean => {
+  const parent = element.parentElement
+  if (!parent) return false
+  const siblings = Array.from(parent.children)
+  const index = siblings.indexOf(element)
+  const target = index + direction
+  if (target < 0 || target >= siblings.length) return false
+
+  if (direction === -1) parent.insertBefore(element, siblings[target])
+  else parent.insertBefore(siblings[target], element)
+  return true
+}
+
+export const duplicateNode = (element: HTMLElement): HTMLElement | null => {
+  const parent = element.parentElement
+  if (!parent) return null
+  const copy = element.cloneNode(true) as HTMLElement
+  parent.insertBefore(copy, element.nextSibling)
+  return copy
+}

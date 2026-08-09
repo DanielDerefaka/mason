@@ -94,10 +94,8 @@ export const GeneratedUI = ({
           {shape.label}
         </span>
       )}
-      {/* Below the design, not above: the caption, the frame's own pills and
-          four actions were all competing for the same strip of canvas. */}
       {onGenerateWorkflow && !shape.streaming && (
-        <div className="absolute -bottom-8 right-0 flex items-center gap-2">
+        <div className="absolute -top-7 right-0 flex items-center gap-2">
           <button
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
@@ -128,18 +126,6 @@ export const GeneratedUI = ({
               Design Chat
             </button>
           )}
-          {onEdit && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={onEdit}
-              title="Open this design in the editor"
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.14] px-2.5 py-1 text-[11px] text-foreground transition-colors hover:bg-white/[0.2]"
-            >
-              <PenLine className="size-3" />
-              Edit
-            </button>
-          )}
           {onExport && (
             <button
               type="button"
@@ -151,6 +137,24 @@ export const GeneratedUI = ({
               Export
             </button>
           )}
+        </div>
+      )}
+
+      {/* Edit sits below on its own. The top strip already carries the
+          caption and three actions, and this is the one that leaves the
+          canvas — worth not burying in a crowded row. */}
+      {onEdit && !shape.streaming && (
+        <div className="absolute -bottom-8 right-0 flex items-center gap-2">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onEdit}
+            title="Open this design in the editor"
+            className="text-foreground flex items-center gap-1.5 rounded-full bg-white/[0.14] px-2.5 py-1 text-[11px] transition-colors hover:bg-white/[0.2]"
+          >
+            <PenLine className="size-3" />
+            Edit
+          </button>
         </div>
       )}
 
