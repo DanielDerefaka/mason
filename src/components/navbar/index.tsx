@@ -8,14 +8,8 @@ import { Button } from '@/components/ui/button'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useProjects } from '@/hooks/use-projects'
+import { LogoMark } from '@/components/logo-mark'
 import { cn } from '@/lib/utils'
-
-/** Thick white ring with a solid centre — the app mark. */
-const Mark = () => (
-  <span className="grid size-8 shrink-0 place-items-center rounded-full ring-[3px] ring-white">
-    <span className="size-3.5 rounded-full bg-white" />
-  </span>
-)
 
 export const Navbar = ({ name, image }: { name?: string | null; image?: string | null }) => {
   const { createProject, creating, projects } = useProjects()
@@ -48,7 +42,7 @@ export const Navbar = ({ name, image }: { name?: string | null; image?: string |
     <header className="relative flex items-center justify-between gap-4 px-6 py-4">
       <div className="flex min-w-0 items-center gap-3">
         <Link href={base} aria-label="Projects">
-          <Mark />
+          <LogoMark className="size-7 shrink-0 text-white" />
         </Link>
         {inWorkspace && (
           <span className="truncate rounded-md border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">

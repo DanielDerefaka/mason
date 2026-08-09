@@ -15,21 +15,8 @@ const base = (viewBox: string) =>
  * Brand
  * ------------------------------------------------------------------ */
 
-/**
- * The Mason mark — three blocks in a running bond: two laid down, one set
- * across the joint above them. It is the product's own vocabulary (a screen
- * is rectangles before it is anything else) and it survives 16px, which the
- * ported chevron was never designed to do.
- */
-export function LogoMark({ className, ...props }: IconProps) {
-  return (
-    <svg {...base("0 0 24 24")} className={className} {...props}>
-      <rect x="7.4" y="2.6" width="9.2" height="8.2" rx="1.4" />
-      <rect x="1.6" y="13.2" width="9.2" height="8.2" rx="1.4" />
-      <rect x="13.2" y="13.2" width="9.2" height="8.2" rx="1.4" />
-    </svg>
-  );
-}
+/** Lives in `components/logo-mark` so the app navbar shares the same glyph. */
+export { LogoMark } from "@/components/logo-mark";
 
 /* ------------------------------------------------------------------ *
  * Service card icons — paths lifted verbatim from the reference.
