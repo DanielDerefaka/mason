@@ -35,15 +35,12 @@ for extraction. Worth re-running whenever the router adds a model.
 
 ## Landing page
 
-Built from scratch — the video has no landing page chapter. Still open:
+Rebuilt from the user's own reference site and then cut back. Still open:
 
-- **A real product screenshot.** The hero frame is drawn in CSS so it cannot go
-  stale, but a genuine capture of the canvas would be more convincing. Wants a
-  capture pipeline that reruns when the UI changes.
-- **Social proof.** The pill says "Now in early access" because there is no user
-  count to quote yet. Put a real figure in when there is one.
-- **Pricing is illustrative.** The tiers and prices are placeholders shaped
-  around the credit system; they are not wired to Polar.
+- **Social proof.** No user count to quote yet. Put a real figure in when
+  there is one.
+- **Per-post blog art.** Every post shares one placeholder cover; the field is
+  a single constant in `marketing-blog.ts` when each gets its own.
 
 ## Chapters not built
 
@@ -52,8 +49,6 @@ Built from scratch — the video has no landing page chapter. Still open:
   `credits:grant` tops accounts up from the CLI in the meantime. Polar replaces
   the top-up path, not the ledger.
 - **32 — Pre-deploy notes**, **33 — Deploy on Sevalla.**
-- **Export design.** Referenced by chapter 28's pill row alongside Generate
-  Workflow and Design Chat; only the workflow pill is built.
 
 ## Deferred earlier
 
@@ -63,8 +58,45 @@ Built from scratch — the video has no landing page chapter. Still open:
 - **Inngest background jobs.** The creator sets Inngest up in chapter 22 and
   then leaves streaming on the request path, flagging "move it to a background
   job" as homework — a browser closed mid-generation loses the design today.
-- **Chapter 19's inspector panel** and **chapter 21's per-frame chat window**,
-  both partially skipped at the time.
+- **Chapter 21's per-frame chat window**, partially skipped at the time.
+
+## From the structural survey (9 Aug 2026)
+
+Lanes 1, 2 and 4 are done. What the audit raised and this backlog still owes:
+
+- **RTE-04 — undo dies with the tab.** `past`/`future` are Redux-only, so a
+  reload loses 50 steps. The durable answer is version history — periodic
+  named snapshots on the project document — not a longer undo stack.
+- **CNV-09 — grouping.** Needs multi-select, which now exists. Lower priority
+  than it looks: sketches here are throwaway input.
+- **CNV-11 — space-to-pan.** Works via shift-drag, an undocumented modifier
+  nobody will guess.
+- **CNV-12 — comments and presence.** Convex would make this cheap when it is
+  time. Later-stage.
+- **CNV-13 — auto layout.** Deliberately skipped. Mason's sketches are input,
+  not maintained artboards.
+- **POL-03 — entitlement TODOs.** `query.config.ts` stubs the check to always
+  pass and `dashboard/page.tsx` hardcodes the billing redirect against it.
+  Harmless until billing exists; exactly the lines that will bite when it does.
+
+## Editable generated output
+
+The idea worth building next, and the one Figma cannot copy: First Draft stops
+accepting prompts once you hand-edit a design. Ours does not have to.
+
+Generated output is HTML with inline styles — already a tree with computed
+styles on every node — so "convert to editable" is a selection layer over that
+DOM, not a new tool. The inspectors already edit the properties involved, and
+the layers panel is the same tree walk.
+
+The decision that has to come first: **manual edits must survive
+regeneration.** Store them as a patch keyed to stable node ids and re-apply
+after each generation. Get that wrong and every revision wipes the user's
+edits, which is exactly the failure mode that makes First Draft a one-shot
+tool.
+
+Downstream of it: host a design on a public route, export to JSX, push to
+Figma via their REST API.
 
 ## Tooling
 
