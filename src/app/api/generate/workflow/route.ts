@@ -45,6 +45,16 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
 
+    /** Puts the credit back when nothing usable came out of the model. */
+    const refundCredit = async () => {
+      try {
+        await fetchMutation(api.credits.refund, {}, { token })
+      } catch {
+        // A failed refund must not also break the response the user is
+        // already reading.
+      }
+    }
+
     const result = streamText({
       model: anthropicProvider(UI_MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
@@ -79,9 +89,15 @@ export async function POST(request: NextRequest) {
           // The marker is an HTML comment, which the sanitiser drops anyway,
           // so it can never reach the rendered design.
           if ((await result.finishReason) === 'length') {
+            // Cut off at the ceiling: the page is incomplete, so the credit
+            // goes back. The marker tells the client to say so.
+            await refundCredit()
             controller.enqueue(encoder.encode('<!--mason:truncated-->'))
           }
         } catch (error) {
+          // The stream died part-way. Nothing usable came back, so neither
+          // should the charge.
+          await refundCredit()
           controller.error(error)
           return
         }

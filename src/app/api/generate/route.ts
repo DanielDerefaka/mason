@@ -48,6 +48,16 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
 
+    /** Puts the credit back when nothing usable came out of the model. */
+    const refundCredit = async () => {
+      try {
+        await fetchMutation(api.credits.refund, {}, { token })
+      } catch {
+        // A failed refund must not also break the response the user is
+        // already reading.
+      }
+    }
+
     const inspirationParts = await fetchImageParts(inspirationUrls)
 
     const result = streamText({
@@ -86,6 +96,9 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(chunk))
           }
         } catch (error) {
+          // The stream died part-way. Nothing usable came back, so neither
+          // should the charge.
+          await refundCredit()
           controller.error(error)
           return
         }

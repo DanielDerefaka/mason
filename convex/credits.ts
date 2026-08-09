@@ -32,6 +32,38 @@ export const getBalance = query({
 })
 
 /**
+ * Puts a spent credit back.
+ *
+ * A credit is taken before the stream starts, which is right — once bytes are
+ * flowing there is no request left to fail cleanly on. But a generation that
+ * throws, or one the model cuts off at the output limit, produced nothing
+ * usable and should not be charged for.
+ *
+ * Deliberately not capped: the only caller is a generation route refunding
+ * what it just took, and clamping to a ceiling would silently swallow a bug
+ * rather than surface it.
+ */
+export const refund = mutation({
+  args: { amount: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const amount = args.amount ?? GENERATION_COST
+    const row = await ctx.db
+      .query('credits')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+
+    const next = (row?.balance ?? STARTING_CREDITS) + amount
+    if (row) await ctx.db.patch(row._id, { balance: next })
+    else await ctx.db.insert('credits', { userId, balance: next })
+
+    return { balance: next }
+  },
+})
+
+/**
  * Spends credits and returns the balance left. Throws rather than going
  * negative, so a caller that forgets to check still cannot overspend.
  */

@@ -44,6 +44,16 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
 
+    /** Puts the credit back when nothing usable came out of the model. */
+    const refundCredit = async () => {
+      try {
+        await fetchMutation(api.credits.refund, {}, { token })
+      } catch {
+        // A failed refund must not also break the response the user is
+        // already reading.
+      }
+    }
+
     const result = streamText({
       model: anthropicProvider(UI_MODEL),
       providerOptions: { anthropic: { effort: 'low' } },
@@ -65,6 +75,9 @@ export async function POST(request: NextRequest) {
         try {
           for await (const chunk of result.textStream) controller.enqueue(encoder.encode(chunk))
         } catch (error) {
+          // The stream died part-way. Nothing usable came back, so neither
+          // should the charge.
+          await refundCredit()
           controller.error(error)
           return
         }
