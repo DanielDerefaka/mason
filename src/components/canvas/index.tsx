@@ -10,6 +10,8 @@ import { useFrame } from '@/hooks/use-frame'
 import { useWorkflow } from '@/hooks/use-workflow'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
+import { DesignChat } from './shapes/design-chat'
+import { useDesignChat } from '@/hooks/use-design-chat'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
 
@@ -30,6 +32,7 @@ const ShapeView = ({
   onGenerate,
   onInspiration,
   onGenerateWorkflow,
+  onOpenChat,
   workflowRunning,
   onBeginEdit,
   onEndEdit,
@@ -43,6 +46,7 @@ const ShapeView = ({
   onGenerate?: () => void
   onInspiration?: () => void
   onGenerateWorkflow?: () => void
+  onOpenChat?: () => void
   workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
@@ -57,6 +61,7 @@ const ShapeView = ({
         selected={selected}
         onGrab={onGrab}
         onGenerateWorkflow={onGenerateWorkflow}
+        onOpenChat={onOpenChat}
         workflowRunning={workflowRunning}
       />
     )
@@ -331,6 +336,7 @@ export const Canvas = () => {
   const { generateDesign, generatingFrameId } = useFrame()
   const { generateWorkflow, workflowRunningFor } = useWorkflow()
   const [inspirationOpen, setInspirationOpen] = useState(false)
+  const { toggle: toggleDesignChat } = useDesignChat()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -384,6 +390,7 @@ export const Canvas = () => {
               onGenerate={() => void generateDesign(shape)}
               onInspiration={() => setInspirationOpen((open) => !open)}
               onGenerateWorkflow={() => void generateWorkflow(shape)}
+              onOpenChat={() => toggleDesignChat(shape.id)}
               workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}
@@ -406,6 +413,8 @@ export const Canvas = () => {
       </div>
 
       <InspirationSidebar isOpen={inspirationOpen} onClose={() => setInspirationOpen(false)} />
+
+      <DesignChat />
 
       <div className="pointer-events-none absolute top-4 right-5 z-50">
         <AutoSave />

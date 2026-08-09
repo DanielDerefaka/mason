@@ -192,7 +192,32 @@ Design a different screen, not a restyle. It has its own content, its own
 layout and its own reason to exist. Carry over the shell — header, nav,
 whatever frames the page — and change everything inside it.`
 
+const revisionSystem = `You are revising a design that already exists. Its current HTML is supplied.
+
+Apply what was asked and change nothing else. Everything the request does not
+mention — copy, imagery, spacing, components, structure — comes back exactly as
+it was. A request to change the button colour is not licence to rewrite the
+hero.
+
+Return the complete revised fragment, from its root element to its closing tag.
+Not a diff, not a patch, not the changed section on its own: whatever you return
+replaces the design outright, so anything you leave out is deleted.
+
+Everything in the output rules above still applies — inline styles, the design
+system's CSS variables, no class names, no script.`
+
 export const prompts = {
+  revise: {
+    system: revisionSystem,
+    user: (instruction: string, html: string) =>
+      [
+        `Requested change: ${instruction}`,
+        '',
+        'Current design:',
+        '',
+        html,
+      ].join('\n'),
+  },
   workflow: {
     plan: {
       system: workflowPlanSystem,

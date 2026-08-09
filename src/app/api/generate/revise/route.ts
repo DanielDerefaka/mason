@@ -1,0 +1,89 @@
+import { NextResponse, type NextRequest } from 'next/server'
+import { streamText } from 'ai'
+import { fetchMutation } from 'convex/nextjs'
+import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
+import { api } from '../../../../../convex/_generated/api'
+import type { Id } from '../../../../../convex/_generated/dataModel'
+import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
+import {
+  CreditsBalanceQuery,
+  InspirationImagesQuery,
+  StyleGuideQuery,
+} from '@/convex/query.config'
+import { prompts } from '@/prompts'
+import { describeStyleGuide } from '@/lib/style-guide-brief'
+import { describeImagery } from '@/lib/imagery-brief'
+
+export const runtime = 'nodejs'
+export const maxDuration = 300
+
+export async function POST(request: NextRequest) {
+  try {
+    const { projectId, html, instruction } = (await request.json()) as {
+      projectId?: string
+      html?: string
+      instruction?: string
+    }
+
+    if (!projectId || !html?.trim() || !instruction?.trim()) {
+      return NextResponse.json(
+        { message: 'A project, the current design and a request are required' },
+        { status: 400 },
+      )
+    }
+
+    const { ok, balance } = await CreditsBalanceQuery()
+    if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
+    if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
+
+    const [styleGuide, inspirationUrls] = await Promise.all([
+      StyleGuideQuery(projectId as Id<'projects'>),
+      InspirationImagesQuery(projectId as Id<'projects'>),
+    ])
+
+    const token = await convexAuthNextjsToken()
+    await fetchMutation(api.credits.spend, {}, { token })
+
+    const result = streamText({
+      model: anthropicProvider(UI_MODEL),
+      providerOptions: { anthropic: { effort: 'low' } },
+      // A revision returns the whole design, so it needs the same room the
+      // original generation had, not less.
+      maxOutputTokens: 16000,
+      system: [
+        prompts.generatedUi.system,
+        `## Revising\n\n${prompts.revise.system}`,
+        `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
+        `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
+      ].join('\n\n'),
+      messages: [{ role: 'user', content: prompts.revise.user(instruction, html) }],
+    })
+
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const chunk of result.textStream) controller.enqueue(encoder.encode(chunk))
+        } catch (error) {
+          controller.error(error)
+          return
+        }
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (error) {
+    console.error('[generate/revise]', error)
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : 'Failed to revise the design' },
+      { status: 500 },
+    )
+  }
+}
