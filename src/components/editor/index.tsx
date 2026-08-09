@@ -51,6 +51,7 @@ import {
   type InsertKind,
 } from './node'
 import { AiPanel } from './ai'
+import { ShareButton } from './share'
 import { Properties } from './properties'
 
 /**
@@ -966,6 +967,8 @@ export const DesignEditor = () => {
             <Play className="size-3.5" />
             Preview
           </Link>
+
+          <ShareButton projectId={projectId} designId={design.id} />
         </div>
       </header>
 

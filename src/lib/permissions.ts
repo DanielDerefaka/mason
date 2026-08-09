@@ -10,6 +10,9 @@ export const isBypassRoute = [
   // The public site. Bypass rather than public: a public route bounces a
   // signed-in visitor to the dashboard, and reading the blog or the about page
   // should not depend on being signed out.
+  // A share link is read by people with no account; the token is the
+  // credential, so the middleware must not ask for a session.
+  '/s/(.*)',
   '/blog(.*)',
   '/about-us(.*)',
   // The landing page too. As a public route it bounced signed-in visitors to

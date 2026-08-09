@@ -23,6 +23,24 @@ export default defineSchema({
     data: v.any(),
   }).index('by_project', ['projectId']),
 
+  /**
+   * Public links to a single generated design.
+   *
+   * A row per share rather than a flag on the project: a link points at one
+   * design, several can exist at once, and revoking one must not touch the
+   * others. The token is the only credential, so it is long and random —
+   * anyone holding it can read that design and nothing else.
+   */
+  shares: defineTable({
+    token: v.string(),
+    projectId: v.id('projects'),
+    designId: v.string(),
+    userId: v.id('users'),
+    createdAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_project', ['projectId']),
+
   projects: defineTable({
     userId: v.id('users'),
     name: v.string(),
