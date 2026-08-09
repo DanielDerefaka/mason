@@ -1,4 +1,11 @@
-import { convexAuth } from '@convex-dev/auth/server'
+import {
+  convexAuth,
+  invalidateSessions,
+  modifyAccountCredentials,
+} from '@convex-dev/auth/server'
+import { v } from 'convex/values'
+import { internal } from './_generated/api'
+import { internalAction, internalQuery } from './_generated/server'
 import { Password } from '@convex-dev/auth/providers/Password'
 import { ResendOTP, ResendOTPPasswordReset } from './email'
 
@@ -31,4 +38,53 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
     }),
   ],
+})
+
+/**
+ * Sets a password from the command line.
+ *
+ * Internal, so it is unreachable from the browser — the only way in is the
+ * deploy key on your own machine:
+ *
+ *   npx convex run auth:setPassword '{"email":"you@example.com","password":"…"}'
+ *
+ * This exists because the email reset flow needs AUTH_RESEND_KEY, and until
+ * that is set there is otherwise no way back into an account whose password
+ * has been forgotten. Same shape as credits:grant.
+ *
+ * An action rather than a mutation: Convex Auth hashes the secret itself, and
+ * its credential helpers need an action context to do it.
+ */
+export const findPasswordAccount = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const account = await ctx.db
+      .query('authAccounts')
+      .withIndex('providerAndAccountId', (q) =>
+        q.eq('provider', 'password').eq('providerAccountId', email),
+      )
+      .unique()
+    return account ? { userId: account.userId } : null
+  },
+})
+
+export const setPassword = internalAction({
+  args: { email: v.string(), password: v.string() },
+  handler: async (ctx, { email, password }): Promise<string> => {
+    if (password.length < 8) throw new Error('Use at least 8 characters')
+
+    const account = await ctx.runQuery(internal.auth.findPasswordAccount, { email })
+    if (!account) throw new Error(`No password account for ${email}`)
+
+    await modifyAccountCredentials(ctx, {
+      provider: 'password',
+      account: { id: email, secret: password },
+    })
+
+    // Every existing session goes: a password change should not leave an old
+    // browser signed in.
+    await invalidateSessions(ctx, { userId: account.userId })
+
+    return `Password updated for ${email}. Sign in again.`
+  },
 })

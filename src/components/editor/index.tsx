@@ -1012,7 +1012,13 @@ export const DesignEditor = () => {
               onMouseOver={onStageHover}
               onMouseLeave={() => setHoverId(null)}
               style={cssVars}
-              className={cn('[&_*]:cursor-pointer', draggingNode && '[&_*]:cursor-grabbing')}
+              className={cn(
+                // Dragging an element otherwise paints a text selection right
+                // across the design. Selection is re-enabled on the node that
+                // is actually open for typing.
+                'select-none [&_*]:cursor-pointer [&_[contenteditable=true]]:select-text',
+                draggingNode && '[&_*]:cursor-grabbing',
+              )}
             />
 
             {hoverBox && !resizing && (
