@@ -8,12 +8,13 @@ import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
 import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
+  ReferenceBriefQuery,
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
-import { describeImagery } from '@/lib/imagery-brief'
+import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
 import { fetchImageParts } from '@/lib/fetch-image'
 
 export const runtime = 'nodejs'
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       StyleGuideQuery(projectId),
       InspirationImagesQuery(projectId),
     ])
+    const { brief: referenceBrief } = await ReferenceBriefQuery(projectId)
     const sketch = new Uint8Array(await image.arrayBuffer())
 
     // Charged up front: the response streams, so by the time it finishes there
@@ -80,6 +82,9 @@ export async function POST(request: NextRequest) {
       system: [
         prompts.generatedUi.system,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
+        ...(describeReferenceBrief(referenceBrief)
+          ? [`## What the references actually look like\n\n${describeReferenceBrief(referenceBrief)}`]
+          : []),
         `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
       ].join('\n\n'),
       messages: [

@@ -166,6 +166,19 @@ the usual failure: the colours are right and the result is unrecognisable.
    ten times larger than its label, a horizontal rule that doubles as a
    progress bar. Name them, then build them. These matter more than any hex
    value — they are what someone recognises across the room.
+
+   Build the device *fully*. A half-built device is the commonest near-miss:
+
+   - **Bleed means bleed.** A wordmark that spans the viewport is set so its
+     first and last letters are clipped by the edges — \`width:100%\`, a
+     \`font-size\` in \`vw\`, \`white-space:nowrap\`, \`overflow:hidden\` on the
+     section. Centred with margins either side is a big heading, not the
+     device.
+   - **Overlap means depth.** Where a subject crosses oversized type in the
+     reference, the two share a stacking context: the type sits in a layer
+     behind, the photograph in a layer in front, both positioned so they
+     genuinely intersect. Stacking them vertically — image above, giant word
+     below — is the same two elements and a different design.
 3. **Scale.** Measure the headline against the viewport, not against a default.
    Reference display type is routinely 8–14% of the viewport height and
    frequently larger. Timid type is the most common way a design that is
@@ -205,6 +218,12 @@ carried by one large image, the design gets one large image — full-bleed or
 near it, sized so it dominates. A dominant photograph reduced to a small inset
 card is the single biggest reason a design misses its reference.
 
+Concretely, when a reference's hero is carried by a photograph: the image runs
+the full height of the hero section, is anchored to an edge or the centre
+rather than floated in a box, and carries no rounded corners unless the
+reference's does. If the tallest thing in your hero is the text column, the
+photograph is not doing the job it does in the reference.
+
 Keywords decide whether that photograph helps or embarrasses. Choose them from
 the *subject and mood* of the design, not from the product's name — a page
 about software with the keyword "software" returns a stock photo of a laptop on
@@ -212,6 +231,12 @@ a desk, and a page about a studio with the keyword "studio" returns a coffee
 cup. Prefer concrete nouns for subject matter and texture words for
 backgrounds: \`portrait,dramatic,lowkey\`, \`architecture,concrete,minimal\`,
 \`gradient,abstract,dark\`. Never use a brand name as a keyword.
+
+Three or four keywords, every one of them a visual noun or a lighting word.
+One broad keyword returns whatever is popular — \`laptop\` returns a decade-old
+laptop on a kitchen table, \`display\` returns a shop window, \`quiet\` returns a
+cat asleep on a wall. If a slot's subject is hard to photograph, ask for the
+mood instead of the thing: \`gradient,studio,dark\` beats \`performance\`.
 
     https://loremflickr.com/{width}/{height}/{keywords}?lock={n}
 
@@ -412,7 +437,40 @@ The root element sets width:100% and max-width:390px with margin:0 auto.
 Everything in the output rules above still applies — inline styles, the design
 system's CSS variables, no class names, no script.`
 
+const referenceBriefSystem = `You are reading a designer's inspiration board so that someone who cannot see
+it can rebuild its feeling from your description alone.
+
+Describe how these designs are *built*, not what they are about. Nobody will
+see the images again — only your words — so an observation you leave out is one
+the design will not have.
+
+Be concrete and physical. "Large heading" is useless; "display line about 12% of
+viewport height, tight tracking, set in two lines against the left margin" can
+be built. Where you can estimate a proportion, do.
+
+Say what makes each reference recognisable rather than what makes it pleasant.
+Signature devices matter most: an oversized wordmark bleeding off both edges,
+navigation split either side of a centred logo, a statistic set ten times
+larger than its label, a rule that doubles as a progress bar. These survive a
+change of palette, and they are what someone recognises across a room.
+
+If several references disagree, describe the direction the majority carries
+rather than averaging them into something bland.
+
+\`avoid\` is the most valuable field. Name the mistakes someone copying this
+would actually make — shrinking a dominant photograph into a small card,
+setting the display type at a safe size, replacing a directional glow with a
+flat wash, rebuilding a component's category instead of its anatomy.
+
+Never describe subject matter as content to reuse. No brand names, no
+headlines, no statistics. You are describing construction.`
+
 export const prompts = {
+  referenceBrief: {
+    system: referenceBriefSystem,
+    user: (count: number) =>
+      `Read ${count === 1 ? 'this reference' : `these ${count} references`} and describe how they are built.`,
+  },
   mobile: {
     system: mobileSystem,
     user: (html: string) =>

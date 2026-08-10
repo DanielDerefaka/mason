@@ -2,7 +2,7 @@ import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { StyleGuideSchema } from '@/types/style-guide'
+import { ReferenceBriefSchema, StyleGuideSchema } from '@/types/style-guide'
 
 /** URL-safe handle used as the /dashboard/[session] segment. */
 export const toSessionSlug = (value: string) =>
@@ -66,6 +66,20 @@ export const StyleGuideQuery = async (projectId: Id<'projects'>) => {
   const project = await fetchQuery(api.project.getProject, { projectId }, { token })
   const parsed = StyleGuideSchema.safeParse(project?.styleGuide)
   return parsed.success ? parsed.data : null
+}
+
+/**
+ * The written brief read out of the inspiration board, with the fingerprint of
+ * the board it came from so a caller can tell a stale one from a current one.
+ */
+export const ReferenceBriefQuery = async (projectId: Id<'projects'>) => {
+  const token = await convexAuthNextjsToken()
+  const project = await fetchQuery(api.project.getProject, { projectId }, { token })
+  const parsed = ReferenceBriefSchema.safeParse(project?.referenceBrief)
+  return {
+    brief: parsed.success ? parsed.data : null,
+    key: (project?.referenceBriefKey as string | undefined) ?? null,
+  }
 }
 
 /** Reference images the design generation should take its look from. */

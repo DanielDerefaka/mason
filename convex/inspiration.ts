@@ -109,3 +109,23 @@ export const getInspirationImages = query({
     return images.filter((image): image is { id: string; url: string } => image.url !== null)
   },
 })
+
+/**
+ * Stores what the extraction pass read.
+ *
+ * `key` is a fingerprint of the board it was read from, so a generation can
+ * tell a stale brief from a current one without re-reading the images.
+ */
+export const setReferenceBrief = mutation({
+  args: { projectId: v.id('projects'), brief: v.any(), key: v.string() },
+  handler: async (ctx, { projectId, brief, key }) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(projectId)
+    if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    await ctx.db.patch(projectId, { referenceBrief: brief, referenceBriefKey: key })
+    return { success: true }
+  },
+})

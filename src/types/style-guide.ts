@@ -107,3 +107,62 @@ export type StaticStyleGuide = Omit<StyleGuide, 'colorSections'> & {
     swatches: Array<Omit<ColorSwatch, 'color'>>
   }>
 }
+
+
+/* ------------------------------------------------------------------ *
+ * Reference brief
+ *
+ * What a separate pass reads out of the inspiration board, once, and
+ * every generation afterwards is given. Text rather than an impression:
+ * a design call that is already reading a sketch and writing a page
+ * cannot also study a photograph properly, and a written observation
+ * cannot be half-noticed the way a picture can.
+ * ------------------------------------------------------------------ */
+
+export const ReferenceBriefSchema = z.object({
+  carriedBy: z
+    .string()
+    .describe(
+      'What does the visual work. One dominant photograph, a wall of type, a product screenshot, a diagram, or flat colour — and at what scale relative to the viewport.',
+    ),
+  signatureDevices: z
+    .array(z.string())
+    .describe(
+      'The one or two moves that make the reference recognisable across a room, described concretely enough to rebuild: "colossal wordmark bled off both edges, overlapped by the subject".',
+    ),
+  typeScale: z
+    .string()
+    .describe(
+      'How type behaves: display size as a share of viewport height, the contrast between largest and smallest, weights, casing, letter spacing.',
+    ),
+  light: z
+    .string()
+    .describe(
+      'Where light comes from, its colour and falloff, and whether the subject is lit by it. Flat wash, radial corner glow, top-down, none.',
+    ),
+  density: z
+    .string()
+    .describe('Margins, rhythm, micro-copy width and whether it is ragged or justified.'),
+  componentAnatomy: z
+    .array(z.string())
+    .describe(
+      'How the small parts are actually built — "pill with a circular icon badge sunk into its trailing end", not "button with icon".',
+    ),
+  imageryRole: z
+    .string()
+    .describe(
+      'The job photography does, and how much room it gets. Say plainly if the design is carried by one large image.',
+    ),
+  palette: z
+    .string()
+    .describe(
+      'Which colour dominates, which is the accent, how much of the page is dark, and where the accent is permitted.',
+    ),
+  avoid: z
+    .array(z.string())
+    .describe(
+      'What would break the resemblance: the mistakes a designer copying this would most likely make.',
+    ),
+})
+
+export type ReferenceBrief = z.infer<typeof ReferenceBriefSchema>

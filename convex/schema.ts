@@ -78,6 +78,10 @@ export default defineSchema({
     description: v.optional(v.string()),
     generatedDesignData: v.optional(v.any()),
     inspirationImages: v.optional(v.array(v.string())),
+    /** What the extraction pass read out of the inspiration board. */
+    referenceBrief: v.optional(v.any()),
+    /** The board the brief was read from, so a changed board re-extracts. */
+    referenceBriefKey: v.optional(v.string()),
     moodBoardImages: v.optional(v.array(v.string())),
     styleGuide: v.optional(v.any()),
     tags: v.optional(v.array(v.string())),

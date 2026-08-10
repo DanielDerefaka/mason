@@ -8,12 +8,13 @@ import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
 import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
+  ReferenceBriefQuery,
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
-import { describeImagery } from '@/lib/imagery-brief'
+import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       StyleGuideQuery(projectId as Id<'projects'>),
       InspirationImagesQuery(projectId as Id<'projects'>),
     ])
+    const { brief: referenceBrief } = await ReferenceBriefQuery(projectId as Id<'projects'>)
 
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })
@@ -74,6 +76,9 @@ export async function POST(request: NextRequest) {
         prompts.generatedUi.system,
         `## Producing the mobile version\n\n${prompts.mobile.system}`,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
+        ...(describeReferenceBrief(referenceBrief)
+          ? [`## What the references actually look like\n\n${describeReferenceBrief(referenceBrief)}`]
+          : []),
         `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
       ].join('\n\n'),
       messages: [{ role: 'user', content: prompts.mobile.user(html) }],
