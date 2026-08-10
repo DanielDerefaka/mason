@@ -24,6 +24,14 @@ that runs once when references are uploaded, returns a structured brief
 light behaviour), stores it on the project, and passes it to every generation
 after. Costs one call per board rather than one per design.
 
+**A real image source.** loremflickr matches keywords loosely and returns
+whatever is popular, which is how a page about a quiet laptop was illustrated
+with a cat statue — twice, in the hero and a feature card. The prompt now
+mitigates it (texture keywords for large slots, a mandatory scrim, one lock
+per slot) but the cause is the source. An Unsplash or Pexels API key with a
+curated query would fix it properly, and would also allow orientation and
+colour filters, which is what a hero actually needs.
+
 **Topical imagery keywords.** Photographic slots pull from
 `loremflickr.com/{w}/{h}/{keywords}?lock={n}`. The model picks the keywords, and
 picks them badly when the product is abstract — a project-workspace landing page

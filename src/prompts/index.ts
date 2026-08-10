@@ -232,6 +232,30 @@ cup. Prefer concrete nouns for subject matter and texture words for
 backgrounds: \`portrait,dramatic,lowkey\`, \`architecture,concrete,minimal\`,
 \`gradient,abstract,dark\`. Never use a brand name as a keyword.
 
+**Text over a photograph always sits on a scrim.** Never place a heading, a
+statistic or body copy directly on an image and hope the image is dark enough.
+It will not be — a stock photograph is chosen by a machine and could be a
+bright street at noon. Put an absolutely positioned overlay between the image
+and the text, covering the image completely:
+
+    background:linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.15) 100%)
+
+Run the gradient from whichever side carries the text. Every piece of text over
+that image then sits above the scrim, and the design reads whatever photograph
+arrives. A design that is legible only with a lucky image is not finished.
+
+**One subject per page.** Each image slot gets its own keywords and its own
+lock number. The same photograph appearing in a hero and again in a feature
+card is the clearest sign nobody chose it.
+
+**Large slots take texture, not subjects.** A stock service matches keywords
+loosely, and the bigger the slot the worse a wrong match hurts — a small card
+showing an unexpected photograph is a curiosity, a full-bleed hero showing one
+is the whole page. For anything larger than a card, ask for material and light
+rather than a thing: \`gradient,dark,abstract\`, \`concrete,texture,shadow\`,
+\`smoke,dark,studio\`, \`metal,macro,lowkey\`. These return something usable
+almost every time. Save literal subjects for small slots where a miss is cheap.
+
 Three or four keywords, every one of them a visual noun or a lighting word.
 One broad keyword returns whatever is popular — \`laptop\` returns a decade-old
 laptop on a kitchen table, \`display\` returns a shop window, \`quiet\` returns a
