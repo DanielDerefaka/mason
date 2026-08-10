@@ -25,6 +25,27 @@ import { ReferenceBriefSchema, type ReferenceBrief } from '@/types/style-guide'
  * Never throws. A board that cannot be read should produce a design without a
  * brief, not no design at all.
  */
+/**
+ * The cache key carries a fingerprint of the extraction prompt, not just the
+ * board.
+ *
+ * Keyed on the images alone, a stored brief outlives the prompt that produced
+ * it: improve what the extraction is told to look for, regenerate against the
+ * same board, and the old reading comes straight back out of the cache. The
+ * prompt change looks like it did nothing, which is the worst way for a change
+ * to fail — it survives testing.
+ *
+ * A cheap hash is enough. It only has to differ when the prompt differs.
+ */
+const briefVersion = () => {
+  let hash = 0
+  const source = prompts.referenceBrief.system
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) | 0
+  }
+  return `b${(hash >>> 0).toString(36)}`
+}
+
 export const ensureReferenceBrief = async (
   projectId: Id<'projects'>,
   urls: string[],
@@ -32,7 +53,7 @@ export const ensureReferenceBrief = async (
 ): Promise<ReferenceBrief | null> => {
   if (urls.length === 0) return null
 
-  const key = urls.join('|')
+  const key = `${briefVersion()}|${urls.join('|')}`
   if (stored.brief && stored.key === key) return stored.brief
 
   try {
