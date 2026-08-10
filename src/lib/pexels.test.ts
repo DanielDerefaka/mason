@@ -12,12 +12,27 @@ import { findPhoto, pexelsConfigured } from './pexels'
  * the slot, and that every failure ends in a design with a grey panel rather
  * than a design with a hole.
  */
-const photo = (id: number) => ({
+const photo = (id: number, avgColor = '#808080') => ({
   src: { original: `https://images.pexels.com/photos/${id}/photo.jpeg` },
   photographer: `Photographer ${id}`,
   photographer_url: `https://www.pexels.com/@p${id}`,
   alt: 'a description',
+  avg_color: avgColor,
 })
+
+/** Four near-black and four near-white, so a tonality filter has to choose. */
+const mixedPool = () => [
+  photo(1, '#111111'),
+  photo(2, '#1e250b'),
+  photo(3, '#222222'),
+  photo(4, '#314329'),
+  photo(5, '#f3f2ef'),
+  photo(6, '#e1e5e4'),
+  photo(7, '#eeeeee'),
+  photo(8, '#c2cfc1'),
+]
+
+const idOf = (url: string | undefined) => Number(/photos\/(\d+)\//.exec(url ?? '')?.[1])
 
 const respond = (photos: unknown[]) =>
   new Response(JSON.stringify({ photos }), {
@@ -199,6 +214,78 @@ describe('failure', () => {
   })
 })
 
+describe('tonality', () => {
+  /**
+   * Keywords cannot control this. Appending "white background studio" shifts
+   * `green plant` from near-black to near-white and does nothing at all to
+   * `mossy log branch`, because the shift only happens where such photographs
+   * exist — which is why a pale page kept getting a dark forest. Pexels reports
+   * an average colour on every result, so it is measured here instead.
+   */
+  it('draws a light slot from the light half of the pool', async () => {
+    stub(() => respond(mixedPool()))
+
+    const results = await Promise.all(
+      [0, 1, 2].map((i) => findPhoto('tone light subject', 800, 600, i, false, 'light')),
+    )
+
+    expect(results.map((r) => idOf(r?.url)).every((id) => id >= 5)).toBe(true)
+  })
+
+  it('draws a dark slot from the dark half', async () => {
+    stub(() => respond(mixedPool()))
+
+    const result = await findPhoto('tone dark subject', 800, 600, 0, false, 'dark')
+
+    expect(idOf(result?.url)).toBeLessThanOrEqual(4)
+  })
+
+  it('still returns different pictures for consecutive slots', async () => {
+    // A filter that kept only the single lightest photo would put the same one
+    // in every card of a row.
+    stub(() => respond(mixedPool()))
+
+    const results = await Promise.all(
+      [0, 1, 2].map((i) => findPhoto('tone variety subject', 800, 600, i, false, 'light')),
+    )
+
+    expect(new Set(results.map((r) => r?.url))).toHaveProperty('size', 3)
+  })
+
+  it('leaves the pool alone when no tonality is asked for', async () => {
+    stub(() => respond(mixedPool()))
+
+    const result = await findPhoto('tone unset subject', 800, 600, 0)
+
+    expect(idOf(result?.url)).toBe(1)
+  })
+
+  it('does not filter a pool too small to have halves', async () => {
+    // Two results filtered to one is a slot with no choice left.
+    stub(() => respond([photo(1, '#111111'), photo(2, '#222222')]))
+
+    expect(await findPhoto('tone tiny pool', 800, 600, 0, false, 'light')).not.toBeNull()
+  })
+
+  it('treats a cut-out as light, since a dark photo has no background to lose', async () => {
+    stub(() => respond(mixedPool()))
+
+    const result = await findPhoto('tone cutout subject', 800, 600, 0, true)
+
+    expect(idOf(result?.url)).toBeGreaterThanOrEqual(5)
+  })
+
+  it('survives a missing average colour rather than sorting on nonsense', async () => {
+    stub(() => respond([{ ...photo(1), avg_color: undefined }, photo(2), photo(3), photo(4)]))
+
+    expect(await findPhoto('tone no colour', 800, 600, 0, false, 'light')).not.toBeNull()
+  })
+})
+
+/**
+ * Last on purpose. The budget is module state and this block deliberately
+ * exhausts it, so anything after it would find the allowance already gone.
+ */
 describe('the hourly budget', () => {
   it('stops calling out once the free tier is nearly spent', async () => {
     // The route is public, so the quota is reachable by anyone. Past the

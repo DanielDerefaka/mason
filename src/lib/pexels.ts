@@ -23,6 +23,32 @@ export type Photo = {
   photographer: string
   photographerUrl: string
   alt: string
+  /** 0 is black, 1 is white. Pexels reports the photo's average colour. */
+  luminance: number
+}
+
+/** How light this tonality is, on the same 0..1 scale. */
+export type Tone = 'light' | 'dark'
+
+/**
+ * Perceived brightness of Pexels' reported average colour.
+ *
+ * Keywords alone cannot control tonality: appending "white background studio"
+ * shifts `green plant` from near-black to near-white, and does nothing at all
+ * to `mossy log branch`, because the shift only happens when photographs like
+ * that exist. Asking is therefore unreliable in exactly the cases that hurt —
+ * a pale page with a dark photograph dropped into the middle of it. The
+ * average colour comes back on every result, so the tonality can be measured
+ * instead of requested.
+ */
+const luminanceOf = (hex: string | undefined): number => {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex ?? '')
+  if (!match) return 0.5
+  const value = Number.parseInt(match[1], 16)
+  const r = (value >> 16) & 255
+  const g = (value >> 8) & 255
+  const b = value & 255
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 }
 
 type Entry = { photos: Photo[]; at: number }
@@ -61,6 +87,7 @@ type PexelsResponse = {
     photographer?: string
     photographer_url?: string
     alt?: string
+    avg_color?: string
   }>
 }
 
@@ -121,6 +148,7 @@ const search = async (query: string, orientation: string): Promise<Photo[]> => {
       photographer: photo.photographer ?? 'Unknown',
       photographerUrl: photo.photographer_url ?? 'https://www.pexels.com',
       alt: photo.alt ?? query,
+      luminance: luminanceOf(photo.avg_color),
     }))
     .filter((photo) => photo.url)
 
@@ -140,23 +168,61 @@ export const findPhoto = async (
   width: number,
   height: number,
   index: number,
+  cutout = false,
+  tone: Tone | null = null,
 ): Promise<Photo | null> => {
   // The model comma-separates to narrow, which is a loremflickr convention.
   // Pexels reads a natural phrase, so the commas become spaces.
-  const query = keywords.replace(/[,+_-]+/g, ' ').replace(/\s+/g, ' ').trim()
-  if (!query) return null
+  const base = keywords.replace(/[,+_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!base) return null
+
+  /**
+   * A slot asking for a subject that floats on the page rather than sitting in
+   * a box. There is no such thing as a cut-out in a stock search — every
+   * result is a rectangle — so the nearest available thing is a subject shot
+   * against a plain white studio background, which composites away under
+   * `mix-blend-mode: multiply` on a light page.
+   *
+   * It is an approximation and it fails on dark backgrounds, which is why the
+   * prompt only reaches for it when the reference is light.
+   */
+  const query = cutout ? `${base} isolated white background studio` : base
 
   let photos = await search(query, orientationFor(width, height))
 
   // A narrow phrase can return nothing at all. Widening to the first two words
-  // is better than a hole in the layout.
+  // is better than a hole in the layout. For a cut-out that means dropping the
+  // studio qualifiers first, since they are the part most likely to have
+  // emptied the result.
+  if (photos.length === 0 && cutout) {
+    photos = await search(base, orientationFor(width, height))
+  }
   if (photos.length === 0) {
-    const broader = query.split(' ').slice(0, 2).join(' ')
-    if (broader !== query) photos = await search(broader, orientationFor(width, height))
+    const broader = base.split(' ').slice(0, 2).join(' ')
+    if (broader !== base) photos = await search(broader, orientationFor(width, height))
   }
   if (photos.length === 0) return null
 
-  const photo = photos[Math.abs(index) % photos.length]
+  /**
+   * Narrow the pool to the half that matches the tonality asked for, then index
+   * within it. Half rather than one, because three cards in a row still have to
+   * be three different pictures — a filter that returns the single lightest
+   * photo would put the same one in every slot.
+   *
+   * A cut-out implies light: the whole trick is that a pale background drops
+   * away under `multiply`, and a dark photograph has no background to lose.
+   */
+  const wanted = cutout ? 'light' : tone
+  const pool =
+    wanted && photos.length > 3
+      ? [...photos]
+          .sort((a, b) =>
+            wanted === 'light' ? b.luminance - a.luminance : a.luminance - b.luminance,
+          )
+          .slice(0, Math.ceil(photos.length / 2))
+      : photos
+
+  const photo = pool[Math.abs(index) % pool.length]
 
   // Pexels resizes and crops on its own CDN, so the browser is never sent a
   // 6000px original to paint into a 400px card.

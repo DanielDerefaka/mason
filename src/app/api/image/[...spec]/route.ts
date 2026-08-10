@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-import { findPhoto, pexelsConfigured } from '@/lib/pexels'
+import { findPhoto, pexelsConfigured, type Tone } from '@/lib/pexels'
 
 /**
  * The photograph slot in a generated design.
@@ -70,9 +70,21 @@ export async function GET(
   if (!keywords || !pexelsConfigured()) return placeholder(width, height)
 
   const index = Number(request.nextUrl.searchParams.get('i') ?? '0')
+  // A subject meant to float on the page rather than sit in a box.
+  const cutout = request.nextUrl.searchParams.get('cutout') === '1'
+  // Which half of the pool to draw from, measured rather than hoped for.
+  const raw = request.nextUrl.searchParams.get('tone')
+  const tone: Tone | null = raw === 'light' || raw === 'dark' ? raw : null
 
   try {
-    const photo = await findPhoto(keywords, width, height, Number.isFinite(index) ? index : 0)
+    const photo = await findPhoto(
+      keywords,
+      width,
+      height,
+      Number.isFinite(index) ? index : 0,
+      cutout,
+      tone,
+    )
     if (!photo) return placeholder(width, height)
 
     return NextResponse.redirect(photo.url, {

@@ -169,6 +169,14 @@ the usual failure: the colours are right and the result is unrecognisable.
 
    Build the device *fully*. A half-built device is the commonest near-miss:
 
+   - **A wordmark behind the subject is not decoration.** If the reference
+     sets its name huge and pale behind the hero — barely darker than the
+     background, overlapped by the photograph, clipped at both edges — that is
+     the device, and a hero built without it is missing the thing people
+     recognise. Set it in the same \`position:relative\` stack as the subject,
+     at a \`vw\` size, at low contrast against the background rather than a
+     low \`opacity\` over it, with the subject in a higher layer.
+
    - **Bleed means bleed.** A wordmark that spans the viewport is set so its
      first and last letters are clipped by the edges — \`width:100%\`, a
      \`font-size\` in \`vw\`, \`white-space:nowrap\`, \`overflow:hidden\` on the
@@ -232,6 +240,18 @@ cup. Prefer concrete nouns for subject matter and texture words for
 backgrounds: \`portrait,dramatic,lowkey\`, \`architecture,concrete,minimal\`,
 \`gradient,abstract,dark\`. Never use a brand name as a keyword.
 
+**Every photographic slot states its tonality.** This is the most common way a
+design that is otherwise right still looks wrong: a pale grey page with a dark
+brown forest dropped into the middle of it. The photograph and the page have to
+agree, and agreement is not something to leave to chance — add \`&tone=light\`
+to every image on a light page and \`&tone=dark\` on a dark one. The parameter
+measures the photograph rather than asking for it, so it works even where
+keywords like \`bright\` or \`white\` do nothing. The reading of the reference's
+light is given to you above; use it rather than guessing.
+
+Set the tonality from the *page*, not from the subject. A dark photograph on a
+dark page is right; a dark photograph on a near-white page is the mistake.
+
 **Text over a photograph always sits on a scrim.** Never place a heading, a
 statistic or body copy directly on an image and hope the image is dark enough.
 It will not be — a stock photograph is chosen by a machine and could be a
@@ -262,7 +282,7 @@ laptop on a kitchen table, \`display\` returns a shop window, \`quiet\` returns 
 cat asleep on a wall. If a slot's subject is hard to photograph, ask for the
 mood instead of the thing: \`gradient,studio,dark\` beats \`performance\`.
 
-    /api/image/{width}/{height}/{keywords}?i={n}
+    /api/image/{width}/{height}/{keywords}?i={n}&tone={light|dark}
 
 Choose keywords from what the product actually is: \`windturbine\`,
 \`solarpanel,field\`, \`architecture,office\`, \`portrait,woman\`. Comma-separate
@@ -277,6 +297,34 @@ application, not by a third party, so there is no host to add.
 Put each one in an \`<img>\` with \`object-fit: cover\` and explicit width and
 height, inside a container with \`overflow:hidden\` and the right radius. Put an
 overlay behind any text that sits on a photograph so it stays readable.
+
+**When the reference's subject floats on the page, do not put it in a box.**
+There is a real difference between a photograph *in* a design and a subject
+*on* one: a picture in a rounded rectangle sits in its own band, while a
+cut-out object overlaps the wordmark, bleeds past both edges and has the page
+colour showing through the gaps in it. The second is a signature device, and
+building it as the first is the commonest way a near-exact copy still reads as
+a different design.
+
+You cannot get a cut-out from a stock search — every result is a rectangle —
+so build it this way, and only when the reference's background is light:
+
+    <img src="/api/image/1800/900/{keywords}?i={n}&cutout=1"
+         style="width:120%;margin-left:-10%;display:block;
+                mix-blend-mode:multiply;filter:contrast(1.05)">
+
+\`cutout=1\` asks for the subject against a plain white studio background and
+then keeps only the lightest results, and \`multiply\` drops that pale
+background away so the subject sits on the page colour with no edge and no
+container. It works best on objects, plants and products, which are the things
+photographed against white; a subject nobody shoots in a studio will come back
+as an ordinary photograph, so keep a boxed image as the fallback in your mind
+and do not build the whole hero around the trick working. No wrapper, no \`overflow:hidden\`, no radius, no
+scrim — a floating subject has no box to clip and nothing behind it to darken.
+Over-width with a negative margin is what makes it bleed past both edges.
+
+This only works on a light background. On a dark page \`multiply\` turns the
+subject to mud — there, use the ordinary boxed image instead.
 
 Photographs belong in heroes, cards, avatars and backgrounds. They never belong
 in buttons, inputs, nav items, stat blocks or logos — those are built.
@@ -481,6 +529,23 @@ Signature devices matter most: an oversized wordmark bleeding off both edges,
 navigation split either side of a centred logo, a statistic set ten times
 larger than its label, a rule that doubles as a progress bar. These survive a
 change of palette, and they are what someone recognises across a room.
+
+Two things about the imagery decide more than any other observation, so state
+both explicitly every time.
+
+**How the subject meets the page.** A photograph inside a rectangle — its own
+band, its own corners, its own edges — is a different design from a subject
+cut out against the page, overlapping the type, bleeding past both sides with
+the background showing through the gaps in it. Say which one this is. If it is
+a cut-out, say what it overlaps and where it is clipped, because someone
+rebuilding it as a rounded rectangle will produce something that shares every
+colour and none of the character.
+
+**How bright the photograph itself is**, separately from the page. A pale page
+carrying a dark photograph is a different design from a pale page carrying a
+pale one, and this is the observation most often lost — whoever rebuilds it
+will pick the picture from your words alone, and a wrong reading here puts a
+dark forest in the middle of a near-white layout.
 
 If several references disagree, describe the direction the majority carries
 rather than averaging them into something bland.
