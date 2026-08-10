@@ -119,6 +119,19 @@ export const DesignPreview = () => {
         style={{ width: frame?.width ?? '100%', maxWidth: '100%' }}
       >
         <div dangerouslySetInnerHTML={{ __html: sanitiseHtml(design.html) }} />
+
+        {/* Pexels asks that photographs be credited wherever they are shown.
+            Set in the design's own colours and at the foot of the page, so it
+            reads as part of the site rather than as a badge we stuck on. */}
+        {design.html.includes('/api/image/') && (
+          <p className="px-4 py-4 text-center text-[12px] opacity-55">
+            Photographs via{' '}
+            <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline">
+              Pexels
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       {overflowing && (

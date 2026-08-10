@@ -44,8 +44,24 @@ export const exportFramePng = async (frame: Shape, shapes: Shape[]) => {
  * so those have to travel with it — without them the exported file renders
  * unstyled, which is the most obvious way an export like this goes wrong.
  */
+/**
+ * Photograph slots point at this application by relative path, which is right
+ * everywhere the design is rendered by us — the canvas, the editor, the
+ * preview, a share link — and wrong in a file on someone's desktop, where
+ * there is no origin to be relative to. So the file gets absolute ones.
+ *
+ * The exported page therefore loads its photographs through this deployment.
+ * That is the trade for keeping the API key on the server: the alternative is
+ * resolving every slot to its stock URL at export time, which means a network
+ * round trip per image before the download can start.
+ */
+const absoluteImageUrls = (html: string) =>
+  html.replace(/(["'(])\/api\/image\//g, `$1${window.location.origin}/api/image/`)
+
 export const exportDesignHtml = (design: Shape, styleGuide?: StyleGuide | null) => {
-  const fragment = sanitiseHtml(design.html ?? '')
+  const sanitised = sanitiseHtml(design.html ?? '')
+  const fragment = absoluteImageUrls(sanitised)
+  const usesPhotos = fragment.includes('/api/image/')
 
   // Same walk the canvas does when it binds the design's variables, so the
   // exported file resolves every token the markup references.
@@ -85,7 +101,15 @@ ${variables}
     </style>
   </head>
   <body>
-${fragment}
+${fragment}${
+    usesPhotos
+      ? `
+    <!-- Pexels asks that photographs be credited wherever they are shown. -->
+    <p style="margin:0;padding:16px;text-align:center;font-size:12px;opacity:0.55">
+      Photographs via <a href="https://www.pexels.com" style="color:inherit">Pexels</a>.
+    </p>`
+      : ''
+  }
   </body>
 </html>
 `

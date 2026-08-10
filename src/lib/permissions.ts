@@ -16,6 +16,11 @@ export const isBypassRoute = [
   // A share link is read by people with no account; the token is the
   // credential, so the middleware must not ask for a session.
   '/s/(.*)',
+  // The photographs inside a design. A shared design is read by people with no
+  // account, and an <img> that redirects to the sign-in page is a design full
+  // of broken pictures. There is nothing behind this route to protect: it
+  // resolves a stock search and redirects to a public CDN.
+  '/api/image/(.*)',
   '/blog(.*)',
   '/about-us(.*)',
   // The landing page too. As a public route it bounced signed-in visitors to

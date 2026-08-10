@@ -14,8 +14,8 @@ export const describeImagery = (referenceCount: number) => {
 
   return [
     references,
-    'For photographic slots use https://loremflickr.com/{width}/{height}/{keywords}?lock={n}',
-    'with keywords drawn from the product and a different lock number per image.',
+    'For photographic slots use /api/image/{width}/{height}/{keywords}?i={n}',
+    'with keywords drawn from the product and a different i number per image.',
   ].join(' ')
 }
 

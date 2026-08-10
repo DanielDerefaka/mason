@@ -262,13 +262,17 @@ laptop on a kitchen table, \`display\` returns a shop window, \`quiet\` returns 
 cat asleep on a wall. If a slot's subject is hard to photograph, ask for the
 mood instead of the thing: \`gradient,studio,dark\` beats \`performance\`.
 
-    https://loremflickr.com/{width}/{height}/{keywords}?lock={n}
+    /api/image/{width}/{height}/{keywords}?i={n}
 
 Choose keywords from what the product actually is: \`windturbine\`,
 \`solarpanel,field\`, \`architecture,office\`, \`portrait,woman\`. Comma-separate
-to narrow. Give every image on the page a different \`lock\` number so they are
+to narrow. Give every image on the page a different \`i\` number so they are
 different photographs, and ask for roughly the pixel size the slot will render
-at.
+at — the photograph is cropped to the size you ask for, so asking for the
+slot's real shape is what keeps a face from being cropped to a chin.
+
+Write the path exactly as shown, starting with a slash. It is served by this
+application, not by a third party, so there is no host to add.
 
 Put each one in an \`<img>\` with \`object-fit: cover\` and explicit width and
 height, inside a container with \`overflow:hidden\` and the right radius. Put an
