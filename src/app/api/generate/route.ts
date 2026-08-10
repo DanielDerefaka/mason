@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { ok, balance } = await CreditsBalanceQuery()
+    if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
+    if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
+
     const form = await request.formData()
     const image = form.get('image')
     const projectId = form.get('projectId') as Id<'projects'> | null
@@ -43,10 +47,6 @@ export async function POST(request: NextRequest) {
     if (!projectId) {
       return NextResponse.json({ message: 'Project ID is required' }, { status: 400 })
     }
-
-    const { ok, balance } = await CreditsBalanceQuery()
-    if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
-    if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
 
     const [styleGuide, inspirationUrls] = await Promise.all([
       StyleGuideQuery(projectId),

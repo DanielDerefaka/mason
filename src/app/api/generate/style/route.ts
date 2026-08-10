@@ -28,16 +28,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = (await request.json()) as { projectId?: string }
-    const projectId = body.projectId as Id<'projects'> | undefined
-
-    if (!projectId) {
-      return NextResponse.json(
-        { success: false, message: 'Project ID is required' },
-        { status: 400 },
-      )
-    }
-
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) {
       return NextResponse.json(
@@ -49,6 +39,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'You are out of credits' },
         { status: 402 },
+      )
+    }
+
+    const body = (await request.json()) as { projectId?: string }
+    const projectId = body.projectId as Id<'projects'> | undefined
+
+    if (!projectId) {
+      return NextResponse.json(
+        { success: false, message: 'Project ID is required' },
+        { status: 400 },
       )
     }
 

@@ -19,15 +19,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { sourceHtml, pageCount = 3 } = (await request.json()) as {
-      sourceHtml?: string
-      pageCount?: number
-    }
-
-    if (!sourceHtml?.trim()) {
-      return NextResponse.json({ message: 'A source design is required' }, { status: 400 })
-    }
-
     /**
      * The plan is not charged for, and that is a decision rather than an
      * oversight.
@@ -43,7 +34,19 @@ export async function POST(request: NextRequest) {
      */
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
+
+    const { sourceHtml, pageCount = 3 } = (await request.json()) as {
+      sourceHtml?: string
+      pageCount?: number
+    }
+
+    if (!sourceHtml?.trim()) {
+      return NextResponse.json({ message: 'A source design is required' }, { status: 400 })
+    }
+
     // Each page costs a credit, so refuse a flow that would run dry halfway.
+    // This half of the guard cannot move above the body, because how many
+    // credits the flow needs is something the body says.
     if (balance < pageCount) {
       return NextResponse.json(
         { message: `A ${pageCount}-page flow needs ${pageCount} credits; you have ${balance}.` },

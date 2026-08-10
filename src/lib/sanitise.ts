@@ -44,6 +44,19 @@ export const sanitiseHtml = (html: string): string => {
 
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
 
+  // Comments never render, so this is not about what the page looks like. It
+  // is about what leaves with it: a design is shareable by public link and
+  // exportable as a file, and a comment is where a model puts the thinking it
+  // was not asked to publish. Stripping them also makes the truncation marker
+  // genuinely unable to survive into stored markup rather than merely
+  // invisible there.
+  const comments = doc.createNodeIterator(doc.body, NodeFilter.SHOW_COMMENT)
+  const found: Comment[] = []
+  for (let node = comments.nextNode(); node; node = comments.nextNode()) {
+    found.push(node as Comment)
+  }
+  for (const comment of found) comment.remove()
+
   // Snapshot first: removing while walking a live NodeList skips siblings.
   for (const element of Array.from(doc.body.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
