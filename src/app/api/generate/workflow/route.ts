@@ -12,6 +12,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { ensureReferenceBrief } from '@/lib/reference-brief'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
@@ -51,7 +52,11 @@ export async function POST(request: NextRequest) {
       StyleGuideQuery(projectId as Id<'projects'>),
       InspirationImagesQuery(projectId as Id<'projects'>),
     ])
-    const { brief: referenceBrief } = await ReferenceBriefQuery(projectId as Id<'projects'>)
+    const referenceBrief = await ensureReferenceBrief(
+      projectId as Id<'projects'>,
+      inspirationUrls,
+      await ReferenceBriefQuery(projectId as Id<'projects'>),
+    )
 
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.credits.spend, {}, { token })

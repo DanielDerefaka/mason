@@ -114,6 +114,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
+    // The specific failure worth naming: the signature verified, so Polar is
+    // configured correctly, and Convex still refused the write. That is the
+    // deployment missing its copy of the secret, and retrying cannot fix it.
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('Not authorised')) {
+      console.error(
+        '[polar/webhook] CONFIG: the signature verified but Convex rejected the write. ' +
+          'Set POLAR_WEBHOOK_SECRET on the Convex deployment as well as in Next: ' +
+          'npx convex env set POLAR_WEBHOOK_SECRET <the same value>',
+      )
+    }
     console.error('[polar/webhook] handling', event.type, error)
     // A 500 tells Polar to retry, which is what we want for a transient
     // Convex failure.

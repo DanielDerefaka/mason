@@ -25,6 +25,7 @@ const PERKS = [
  */
 export const Billing = () => {
   const subscription = useQuery(api.subscriptions.getMine)
+  const billingReady = useQuery(api.subscriptions.billingReady)
   const credits = useQuery(api.credits.getBalance)
   const claim = useMutation(api.subscriptions.claimByEmail)
 
@@ -50,6 +51,16 @@ export const Billing = () => {
             : 'A sketch in, a finished screen out. Cancel whenever you like.'}
         </p>
       </div>
+
+      {billingReady === false && (
+        <p className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-200">
+          <span className="font-medium">This deployment cannot record a payment.</span>{' '}
+          POLAR_WEBHOOK_SECRET is set for the app but not on the Convex deployment, so a
+          completed checkout would be charged and never activate. Run{' '}
+          <code className="font-mono">npx convex env set POLAR_WEBHOOK_SECRET …</code> with
+          the same value.
+        </p>
+      )}
 
       <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] p-6">
         {loading ? (

@@ -12,6 +12,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { ensureReferenceBrief } from '@/lib/reference-brief'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
@@ -51,7 +52,13 @@ export async function POST(request: NextRequest) {
       StyleGuideQuery(projectId),
       InspirationImagesQuery(projectId),
     ])
-    const { brief: referenceBrief } = await ReferenceBriefQuery(projectId)
+    // Read the board only if the stored reading no longer matches it. The
+    // credit for this generation covers it; it happens once per board.
+    const referenceBrief = await ensureReferenceBrief(
+      projectId,
+      inspirationUrls,
+      await ReferenceBriefQuery(projectId),
+    )
     const sketch = new Uint8Array(await image.arrayBuffer())
 
     // Charged up front: the response streams, so by the time it finishes there

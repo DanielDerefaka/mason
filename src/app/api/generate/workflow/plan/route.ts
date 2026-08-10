@@ -28,6 +28,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'A source design is required' }, { status: 400 })
     }
 
+    /**
+     * The plan is not charged for, and that is a decision rather than an
+     * oversight.
+     *
+     * It refuses unless the whole flow is affordable, and each page it plans
+     * spends a credit of its own — so billing the plan too would quietly make
+     * a five-page flow cost six. What it leaves open is a caller with a
+     * balance re-planning without ever generating: two thousand tokens a
+     * time, eight times a minute, which the rate limiter already caps.
+     *
+     * If flows are ever priced per plan rather than per page, this is the
+     * line that changes.
+     */
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
     // Each page costs a credit, so refuse a flow that would run dry halfway.

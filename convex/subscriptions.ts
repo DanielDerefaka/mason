@@ -163,3 +163,21 @@ export const isEntitled = query({
     return rows.some((row) => LIVE.has(row.status))
   },
 })
+
+/**
+ * Whether this deployment can actually record a subscription.
+ *
+ * The webhook secret lives in two places — the Next environment, to verify
+ * Polar's signature, and here, to authorise the mutation that writes the row.
+ * Nothing used to check the second one existed, and missing it fails in the
+ * worst possible way: the signature passes, the mutation throws, the route
+ * answers 500, and Polar retries forever. The customer has paid and the
+ * subscription never activates.
+ *
+ * Public and boolean on purpose. It reveals whether a variable is set, never
+ * its value.
+ */
+export const billingReady = query({
+  args: {},
+  handler: async () => Boolean(process.env.POLAR_WEBHOOK_SECRET),
+})
