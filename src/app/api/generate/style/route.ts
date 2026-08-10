@@ -8,7 +8,7 @@ import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
-import { fetchImageParts } from '@/lib/fetch-image'
+import { fetchImages } from '@/lib/fetch-image'
 import { StyleGuideSchema } from '@/types/style-guide'
 
 // The AI SDK and the Convex server client both need Node builtins.
@@ -65,12 +65,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const moodBoardParts = await fetchImageParts(imageUrls)
+    const { parts: moodBoardParts, failures } = await fetchImages(imageUrls)
     if (moodBoardParts.length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'None of the mood board images could be read. Try re-uploading them.' },
-        { status: 400 },
-      )
+      // Say which way it failed. "Try re-uploading them" is useless advice
+      // when the file was fine and the fetch was the problem.
+      const reasons = new Set(failures.map((failure) => failure.reason))
+      const message = reasons.has('unreachable')
+        ? 'Could not download the mood board images. They may still be uploading — try again in a moment.'
+        : reasons.has('not-an-image')
+          ? 'Those files are not images. Upload PNG, JPEG or WebP.'
+          : 'Could not read those images. Re-export them as PNG or JPEG and upload again.'
+
+      console.error('[generate/style] no readable mood board images', failures)
+      return NextResponse.json({ success: false, message }, { status: 400 })
     }
 
     /**
