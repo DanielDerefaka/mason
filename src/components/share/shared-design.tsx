@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 
 import { useGoogleFont } from '@/hooks/use-google-font'
-import { sanitiseHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { LogoMark } from '@/components/logo-mark'
 import { api } from '../../../convex/_generated/api'
 import { StyleGuideSchema } from '@/types/style-guide'
@@ -71,7 +71,10 @@ export const SharedDesign = ({ token }: { token: string }) => {
       className="min-h-screen overflow-x-hidden"
       style={{ ...cssVars, background: 'var(--background)' }}
     >
-      <div dangerouslySetInnerHTML={{ __html: sanitiseHtml(shared.html) }} />
+      <div
+        className={DESIGN_SCOPE}
+        dangerouslySetInnerHTML={{ __html: sanitiseHtml(shared.html) }}
+      />
 
       <Link
         href="/"

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
-import { sanitiseHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 
 /**
@@ -118,7 +118,10 @@ export const DesignPreview = () => {
         className={cn('mx-auto', frame?.width && 'shadow-2xl', frame?.width && 'overflow-x-auto')}
         style={{ width: frame?.width ?? '100%', maxWidth: '100%' }}
       >
-        <div dangerouslySetInnerHTML={{ __html: sanitiseHtml(design.html) }} />
+        <div
+          className={DESIGN_SCOPE}
+          dangerouslySetInnerHTML={{ __html: sanitiseHtml(design.html) }}
+        />
 
         {/* Pexels asks that photographs be credited wherever they are shown.
             Set in the design's own colours and at the foot of the page, so it

@@ -28,7 +28,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
-import { sanitiseHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 
 import { useMutation } from 'convex/react'
@@ -139,6 +139,9 @@ export const DesignEditor = () => {
     const root = stage.current
     if (!root || painted.current || !design?.html) return
     painted.current = true
+    // The design's own stylesheet is confined beneath this class, so the
+    // editing surface has to carry it or every scoped rule misses.
+    root.classList.add(DESIGN_SCOPE)
     root.innerHTML = sanitiseHtml(design.html)
     // Designs saved before the ring was stripped on the way out still carry
     // one; clear it on the way in so it is gone after the next save.

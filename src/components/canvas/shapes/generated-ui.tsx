@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Download, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
-import { sanitisePartialHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, sanitisePartialHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 import { useStyles } from '@/hooks/use-styles'
 import { useGoogleFont } from '@/hooks/use-google-font'
@@ -199,7 +199,7 @@ export const GeneratedUI = ({
         style={variables}
       >
         {html ? (
-          <div dangerouslySetInnerHTML={{ __html: html }} />
+          <div className={DESIGN_SCOPE} dangerouslySetInnerHTML={{ __html: html }} />
         ) : (
           <div className="grid h-40 place-items-center text-xs text-white/40">
             Waiting for the first chunk…

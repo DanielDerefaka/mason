@@ -329,6 +329,68 @@ subject to mud — there, use the ordinary boxed image instead.
 Photographs belong in heroes, cards, avatars and backgrounds. They never belong
 in buttons, inputs, nav items, stat blocks or logos — those are built.
 
+## Build controls, do not draw them
+
+A \`<div>\` styled to look like a button is a picture of a button. It cannot be
+tabbed to, pressed, or read by a screen reader, and an input drawn as a div
+cannot be typed into — the design looks finished and behaves like an image.
+This is the single biggest gap between what you produce and a real page.
+
+So use the element that already does the job:
+
+- \`<button type="button">\` for anything pressed. Never a div.
+- \`<input type="text">\`, \`<textarea>\` for anything typed into. A real input
+  with a \`placeholder\`, not a div containing grey text.
+- \`<select><option>\` for a dropdown.
+- \`<a href="#…">\` for anything navigated to.
+- \`<details><summary>\` for an accordion or an FAQ. It opens and closes on its
+  own with no other work.
+- \`<label for="…">\` tied to an input's \`id\`, so clicking the label works.
+
+## One stylesheet, for the states an inline style cannot reach
+
+Inline styles cannot express \`:hover\`, \`:focus-visible\` or \`:checked\`, which
+means a design built only from them can never respond to anything. Put those in
+a single \`<style>\` element at the very top of the fragment. Keep everything
+else inline as before — the stylesheet is for states and interaction only.
+
+Never write \`html\`, \`body\` or \`:root\` selectors. Give the elements that need
+selecting a \`class\` and target that.
+
+Give every control a hover and a visible focus ring. A page where nothing
+responds to the pointer reads as a screenshot.
+
+**A working segmented control, toggle or tab strip needs no JavaScript.** Radio
+inputs hidden off-screen, with labels styled through \`:checked\` — this is how a
+configurator's options genuinely select when clicked:
+
+    <style>
+      .opt input { position: absolute; opacity: 0; pointer-events: none; }
+      .opt label { display: block; cursor: pointer; padding: 14px 20px;
+                   border-radius: 10px; background: var(--muted);
+                   transition: background .15s, color .15s; }
+      .opt label:hover { background: var(--border); }
+      .opt input:checked + label { background: var(--primary);
+                                   color: var(--primary-foreground); }
+      .opt input:focus-visible + label { outline: 2px solid var(--ring);
+                                         outline-offset: 2px; }
+    </style>
+
+    <div class="opt">
+      <input type="radio" id="m48" name="memory" checked><label for="m48">48GB</label>
+    </div>
+
+Every radio in one group shares a \`name\` and needs a unique \`id\`. A checkbox
+instead of a radio gives a switch that toggles independently. The same
+\`:checked\` trick drives tabs, filters and show-more.
+
+Set \`checked\` on whichever option the design shows as selected, so the page
+opens in the state the layout was drawn in.
+
+There is still no \`<script>\`. Anything genuinely needing one — a value that
+recalculates, a carousel that advances — is drawn in its resting state, and the
+parts that CSS can drive are made to work.
+
 ## Output
 
 Return a single HTML fragment and nothing else. No markdown fence, no

@@ -1,5 +1,5 @@
 import { rasteriseFrame } from '@/lib/rasterise'
-import { sanitiseHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import type { Shape } from '@/redux/slice/shapes'
 import type { StyleGuide } from '@/types/style-guide'
 
@@ -101,7 +101,12 @@ ${variables}
     </style>
   </head>
   <body>
-${fragment}${
+    <!-- The design's own stylesheet is scoped beneath this class, so the
+         wrapper has to travel with it or the exported page loses every hover,
+         focus and selected state. -->
+    <div class="${DESIGN_SCOPE}">
+${fragment}
+    </div>${
     usesPhotos
       ? `
     <!-- Pexels asks that photographs be credited wherever they are shown. -->

