@@ -172,6 +172,8 @@ const ShapeView = ({
   }
 
   if (shape.kind === 'image') {
+    const imageCss = shapeStyleOf(shape)
+
     return (
       // next/image is the wrong tool here: the source is an arbitrary storage
       // URL rather than a configured remote pattern, and the canvas already
@@ -180,13 +182,28 @@ const ShapeView = ({
       <img
         src={shape.src}
         alt={shape.label ?? ''}
-        // Dragging is the canvas's job; the browser's own image drag would
-        // start a file drag and cancel the move halfway through.
+        // Without this the browser starts its own image drag and the canvas
+        // never sees the pointer move, so the shape stays where it was.
         draggable={false}
-        className={cn(
-          'size-full rounded-sm object-cover select-none',
-          selected && 'ring-2 ring-white/70',
-        )}
+        className={cn(base, 'select-none', selected && 'ring-2 ring-white/80')}
+        style={{
+          ...style,
+          // Crops rather than stretches, the way an image fill behaves in a
+          // design tool. Dragging a corner should reframe the picture, not
+          // squash whoever is in it.
+          objectFit: 'cover',
+          opacity: imageCss.opacity,
+          borderRadius: imageCss.radius,
+          border:
+            imageCss.strokeWidth > 0
+              ? `${imageCss.strokeWidth}px solid ${imageCss.strokeColor}`
+              : undefined,
+          boxShadow: boxShadowFor(imageCss.shadow, 'transparent'),
+        }}
+        // The line that was missing. Every other shape hands its pointer down
+        // to the canvas; without it an image could not be selected, and with
+        // nothing selected there were no resize grips to drag either.
+        onPointerDown={onGrab}
       />
     )
   }

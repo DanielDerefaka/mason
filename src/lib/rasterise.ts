@@ -20,6 +20,23 @@ const overlaps = (shape: Shape, frame: Shape) =>
  * independent of zoom, scroll and whatever else is on screen — the model always
  * gets the frame at a known size, and it needs no extra dependency.
  */
+/**
+ * Loads a stored image for drawing.
+ *
+ * `crossOrigin` is set before the source because a canvas that has drawn an
+ * image without CORS permission is tainted, and `toBlob` then throws — the
+ * export would fail wholesale rather than lose one picture. A load that fails
+ * resolves to null so the rest of the frame still renders.
+ */
+const loadImage = (src: string): Promise<HTMLImageElement | null> =>
+  new Promise((resolve) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => resolve(null)
+    image.src = src
+  })
+
 export const rasteriseFrame = async (
   frame: Shape,
   shapes: Shape[],
@@ -58,6 +75,34 @@ export const rasteriseFrame = async (
         index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y),
       )
       ctx.stroke()
+      continue
+    }
+
+    if (shape.kind === 'image') {
+      // This matters more than the export it was written for: the frame is
+      // rasterised and sent to the model as the sketch, so an image placed in
+      // a frame is invisible to the generator unless it is drawn here.
+      const drawn = shape.src ? await loadImage(shape.src) : null
+      if (drawn) {
+        // Matches the canvas's object-fit: cover, so the exported picture is
+        // framed the way it was on screen rather than stretched to the box.
+        const boxRatio = shape.width / shape.height
+        const imageRatio = drawn.naturalWidth / drawn.naturalHeight
+        const sourceWidth = imageRatio > boxRatio ? drawn.naturalHeight * boxRatio : drawn.naturalWidth
+        const sourceHeight = imageRatio > boxRatio ? drawn.naturalHeight : drawn.naturalWidth / boxRatio
+
+        ctx.drawImage(
+          drawn,
+          (drawn.naturalWidth - sourceWidth) / 2,
+          (drawn.naturalHeight - sourceHeight) / 2,
+          sourceWidth,
+          sourceHeight,
+          shape.x,
+          shape.y,
+          shape.width,
+          shape.height,
+        )
+      }
       continue
     }
 

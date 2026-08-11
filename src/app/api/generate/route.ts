@@ -115,12 +115,15 @@ export async function POST(request: NextRequest) {
 
     // The SDK's text stream is an async iterable; the browser wants bytes.
     const encoder = new TextEncoder()
+    const startedAt = Date.now()
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         let produced = ''
+        let chunks = 0
         try {
           for await (const chunk of result.textStream) {
             produced += chunk
+            chunks += 1
             controller.enqueue(encoder.encode(chunk))
           }
         } catch (error) {
@@ -136,6 +139,43 @@ export async function POST(request: NextRequest) {
         // silence and the canvas waits for a chunk that already came and went.
         if (isUnusable(produced)) {
           await refundCredit()
+
+          /**
+           * Why a generation came back empty is the one thing the refund does
+           * not tell us, and it is the thing worth knowing: a content filter,
+           * an immediate stop, a provider that accepted the request and
+           * returned nothing, and a prompt that produced only whitespace are
+           * four different problems wearing the same face. Everything the SDK
+           * knows is recorded here so the next occurrence is diagnosable
+           * instead of merely survivable.
+           */
+          // Each read is wrapped: these settle only once the call completes,
+          // and a failure while diagnosing a failure should not replace the
+          // diagnosis with a stack trace.
+          const settle = async <T,>(value: PromiseLike<T>): Promise<T | null> => {
+            try {
+              return await value
+            } catch {
+              return null
+            }
+          }
+
+          const diagnosis = {
+            finishReason: await settle(result.finishReason),
+            usage: await settle(result.usage),
+            warnings: await settle(Promise.resolve(result.warnings)),
+            chunks,
+            bytes: produced.length,
+            // Whitespace-only output looks identical to nothing at all in a
+            // log, and they have different causes.
+            whitespaceOnly: produced.length > 0,
+            elapsedMs: Date.now() - startedAt,
+            model: UI_MODEL,
+            hadStyleGuide: Boolean(styleGuide),
+            referenceCount: inspirationUrls.length,
+          }
+          console.error('[generate] empty generation', JSON.stringify(diagnosis))
+
           controller.enqueue(encoder.encode(EMPTY_MARKER))
           controller.close()
           return
