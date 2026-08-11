@@ -48,3 +48,39 @@ export const FRAME_PRESET_GROUPS: FramePresetGroup[] = [
 
 /** Opened by default, since most designs here start as a desktop page. */
 export const DEFAULT_OPEN_GROUP = 'Desktop'
+
+/**
+ * Is this label just the size the frame was created at?
+ *
+ * It matters because the label is sent to the model, and a device name is not
+ * a description of anything. A frame left at its default read as
+ * `a sketch of "MacBook Air"`, and the model — correctly, given what it was
+ * told — designed a MacBook Air product page, regardless of what the sketch
+ * showed or what the reference looked like. Every design from a laptop-sized
+ * frame came out about laptops.
+ */
+/**
+ * Inch marks and stray spacing are noise here: a preset reads `MacBook Pro 14"`
+ * and someone typing the same thing will not reach for the quote character.
+ */
+const normalise = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/["'\u2018\u2019\u201c\u201d]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const PRESET_NAMES = new Set(
+  FRAME_PRESET_GROUPS.flatMap((group) => group.presets).map((preset) =>
+    normalise(preset.name),
+  ),
+)
+
+export const isDevicePresetName = (label: string) => {
+  const name = normalise(label)
+  if (!name) return true
+  if (PRESET_NAMES.has(name)) return true
+  // Frames are numbered as they are added — "iPhone 16 2", "Frame 3".
+  const withoutIndex = name.replace(/\s+\d+$/, '')
+  return PRESET_NAMES.has(withoutIndex) || withoutIndex === 'frame'
+}

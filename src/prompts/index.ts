@@ -667,8 +667,14 @@ export const prompts = {
   },
   generatedUi: {
     system: generatedUiSystem,
-    user: (frameLabel: string, referenceCount = 0) =>
-      `Turn the first image — a sketch${frameLabel ? ` of "${frameLabel}"` : ''} — into a finished design. ` +
+    /**
+     * `screenName` is the frame's name only when someone has actually named it.
+     * A device preset is filtered out upstream, because describing the sketch
+     * as being "of" a MacBook Air is what made the model design MacBook Air
+     * pages out of unrelated sketches.
+     */
+    user: (screenName: string, referenceCount = 0) =>
+      `Turn the first image — a sketch${screenName ? ` of a screen called "${screenName}"` : ''} — into a finished design. ` +
       (referenceCount > 0
         ? `The ${referenceCount === 1 ? 'image' : `${referenceCount} images`} after it ${referenceCount === 1 ? 'is a reference' : 'are references'} for the look, not the layout. `
         : '') +

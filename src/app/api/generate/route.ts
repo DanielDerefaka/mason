@@ -13,6 +13,7 @@ import {
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
 import { ensureReferenceBrief } from '@/lib/reference-brief'
+import { isDevicePresetName } from '@/lib/frame-presets'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
@@ -39,7 +40,10 @@ export async function POST(request: NextRequest) {
     const form = await request.formData()
     const image = form.get('image')
     const projectId = form.get('projectId') as Id<'projects'> | null
-    const frameLabel = (form.get('frameLabel') as string | null) ?? ''
+    const rawFrameLabel = (form.get('frameLabel') as string | null) ?? ''
+    // A frame left at its preset name carries no information about content —
+    // and passed on, it becomes the subject of the design.
+    const frameLabel = isDevicePresetName(rawFrameLabel) ? '' : rawFrameLabel
 
     if (!(image instanceof File) || !image.type.startsWith('image/')) {
       return NextResponse.json({ message: 'A frame image is required' }, { status: 400 })
