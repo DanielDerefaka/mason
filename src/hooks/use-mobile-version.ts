@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { stripTruncationMarker, wasTruncated } from '@/lib/truncation'
+import { useContinueDesign } from '@/hooks/use-continue-design'
 
 import { useAppDispatch } from '@/redux/hooks'
 import { addGeneratedUI, setGeneratedHtml, type Shape } from '@/redux/slice/shapes'
@@ -31,6 +32,7 @@ const UPDATE_INTERVAL = 200
  */
 export const useMobileVersion = () => {
   const dispatch = useAppDispatch()
+  const { continueDesign } = useContinueDesign()
   const [runningFor, setRunningFor] = useState<string | null>(null)
 
   const generateMobile = async (design: Shape) => {
@@ -105,8 +107,15 @@ export const useMobileVersion = () => {
       )
 
       if (cut) {
+        // Offered rather than done automatically: it costs a credit, and a
+        // design that stopped early is sometimes the one the user wanted.
         toast.warning('The design was cut off before it finished', {
-          description: 'It ran past the output limit. Try a simpler sketch, or fewer sections.',
+          description: 'It ran past the output limit. Continue to write the rest.',
+          duration: 30000,
+          action: {
+            label: 'Continue',
+            onClick: () => void continueDesign(id, stripTruncationMarker(markup)),
+          },
         })
       } else {
         toast.success('Mobile version ready')

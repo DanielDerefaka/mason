@@ -47,6 +47,7 @@ const GENERATION_ROUTES = [
   '/api/generate/mobile',
   '/api/generate/node',
   '/api/generate/revise',
+  '/api/generate/continue',
   '/api/generate/workflow',
   '/api/generate/workflow/plan',
 ]

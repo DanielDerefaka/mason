@@ -252,10 +252,21 @@ light is given to you above; use it rather than guessing.
 Set the tonality from the *page*, not from the subject. A dark photograph on a
 dark page is right; a dark photograph on a near-white page is the mistake.
 
-**Text over a photograph always sits on a scrim.** Never place a heading, a
-statistic or body copy directly on an image and hope the image is dark enough.
-It will not be — a stock photograph is chosen by a machine and could be a
-bright street at noon. Put an absolutely positioned overlay between the image
+**Text over a photograph sits on a scrim unless its tonality is pinned.** Never
+place a heading, a statistic or body copy directly on an image and hope the
+image is dark enough — a stock photograph is chosen by a machine and could be a
+bright street at noon.
+
+The exception, and it is the one that separates an ordinary page from an
+award-winning one: when a slot carries \`&tone=dark\` or \`&tone=light\`, the
+photograph's brightness is measured rather than hoped for, and type can then be
+set directly on it. Use that to set type *tonally* — near-white on a dark
+image, or a deeper shade of the image's own hue on a light one — which is how
+the best work on a reference board almost always does it. A black scrim under
+every photograph is safe, and it is also why designs come out looking alike.
+
+Reach for the scrim when the slot has no pinned tonality, when the text is long,
+or when legibility genuinely cannot be risked. Put an absolutely positioned overlay between the image
 and the text, covering the image completely:
 
     background:linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.15) 100%)
@@ -328,6 +339,37 @@ subject to mud — there, use the ordinary boxed image instead.
 
 Photographs belong in heroes, cards, avatars and backgrounds. They never belong
 in buttons, inputs, nav items, stat blocks or logos — those are built.
+
+## Composition
+
+These are the moves that separate work that wins awards from work that merely
+looks tidy. Use them when the reference does; never bolt them onto a reference
+that is plainly a product page.
+
+**One screen, one idea.** The strongest work is a single composition at
+viewport height — not a hero stacked on features stacked on testimonials. If
+the reference's first screen is a complete statement, build the hero as
+\`min-height: 100vh\` and let it hold one thought, one image and one action.
+Sections below it are the rest of the page, not a continuation of the hero.
+
+**Metadata at the corners.** Small uppercase labels pushed to the edges of the
+viewport — a location bottom-left, a year or a social link bottom-right, a
+status pill top-left — read as considered in a way a centred subtitle does not.
+Around 11px, wide letter-spacing, low contrast against the ground.
+
+**Let the subject and the type share space.** Overlap is the device: a display
+line running behind a cut-out object, a wordmark clipped by the subject in
+front of it, a headline crossing the edge of a photograph. Type in a safe box
+above an image in another box is the arrangement that reads as a template.
+
+**Restraint in the chrome.** The nav on this kind of work is three or four
+words at small size, and often a single pill. A crowded navigation bar with six
+links and two buttons is the fastest way to make a striking hero look ordinary.
+
+**Tonal type.** Setting the headline in a deeper or lighter shade of the
+background's own hue — pink on pink, cream on sand — is quieter and stronger
+than white on black. It needs a pinned tonality to be safe; see the imagery
+rules above.
 
 ## Build controls, do not draw them
 
@@ -635,6 +677,47 @@ export const prompts = {
     system: nodeSystem,
     user: (instruction: string, html: string) =>
       [`Requested change: ${instruction}`, '', 'Current element:', '', html].join('\n'),
+  },
+  /**
+   * Picking a design back up where the model stopped writing.
+   *
+   * A generation that hits the output ceiling leaves a half-written element and
+   * no footer. Regenerating throws away a page that was mostly right and costs
+   * another full credit; this writes only the remainder and staples it on.
+   */
+  continuation: {
+    system: `You are finishing a design that was cut off mid-sentence because the
+model writing it ran out of output budget. Everything already written is
+correct and must not be repeated.
+
+Return ONLY the markup that continues from the exact character where the
+fragment stops. Your first character is the next character of the document.
+
+The fragment almost certainly ends inside a tag, an attribute or a word.
+Continue it exactly:
+
+- \`<div style="padding: 4\` continues with \`0px">\`, not with a new element.
+- \`<h2>Built for\` continues with \` teams</h2>\`, not with \`<h2>\`.
+
+Work out which elements are still open by reading the fragment, finish them,
+then write whatever the design still needs — and close every one of them at the
+end, outermost last.
+
+Match what is already there exactly: the same spacing scale, the same type
+sizes, the same colour tokens, the same shape of section. A continuation that
+looks like a different designer finished the page is worse than the truncation.
+
+If the fragment already looks complete, close any open elements and stop.
+
+No markdown fence, no commentary, no explanation. Markup only.`,
+    user: (html: string) =>
+      [
+        'This design was cut off. Continue it from exactly where it stops.',
+        '',
+        'The fragment so far:',
+        '',
+        html,
+      ].join('\n'),
   },
   revise: {
     system: revisionSystem,

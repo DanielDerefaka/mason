@@ -5,6 +5,7 @@ import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
 
 import { stripTruncationMarker, wasTruncated } from '@/lib/truncation'
+import { useContinueDesign } from '@/hooks/use-continue-design'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   addGeneratedUI,
@@ -25,6 +26,7 @@ const UPDATE_INTERVAL = 200
 
 export const useFrame = () => {
   const dispatch = useAppDispatch()
+  const { continueDesign } = useContinueDesign()
   const entities = useAppSelector((state: RootState) => state.shapes.entities)
   const shapes = selectors.selectAll(entities)
   const [generatingFrameId, setGeneratingFrameId] = useState<string | null>(null)
@@ -100,8 +102,15 @@ export const useFrame = () => {
       )
 
       if (cut) {
+        // Offered rather than done automatically: it costs a credit, and a
+        // design that stopped early is sometimes the one the user wanted.
         toast.warning('The design was cut off before it finished', {
-          description: 'It ran past the output limit. Try a simpler sketch, or fewer sections.',
+          description: 'It ran past the output limit. Continue to write the rest.',
+          duration: 30000,
+          action: {
+            label: 'Continue',
+            onClick: () => void continueDesign(id, stripTruncationMarker(markup)),
+          },
         })
       } else {
         toast.success('Design generated')
