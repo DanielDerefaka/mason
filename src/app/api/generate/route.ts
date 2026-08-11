@@ -127,9 +127,35 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(chunk))
           }
         } catch (error) {
-          // The stream died part-way. Nothing usable came back, so neither
-          // should the charge.
+          // The stream died part-way. The charge goes back either way — the
+          // connection failing is not something the caller should pay for.
           await refundCredit()
+
+          /**
+           * If enough already arrived, keep it.
+           *
+           * A gateway that drops a long stream is the common failure here, and
+           * throwing away four-fifths of a finished design because the last
+           * fifth never came is the worst of the available outcomes. Marked as
+           * cut off, it reaches the canvas as a design the caller can press
+           * Continue on — the same path a design that hit the output ceiling
+           * takes, and that path already exists.
+           */
+          if (!isUnusable(produced)) {
+            console.error(
+              '[generate] stream dropped, keeping partial',
+              JSON.stringify({
+                bytes: produced.length,
+                chunks,
+                elapsedMs: Date.now() - startedAt,
+                reason: error instanceof Error ? error.message : String(error),
+              }),
+            )
+            controller.enqueue(encoder.encode(TRUNCATION_MARKER))
+            controller.close()
+            return
+          }
+
           controller.error(error)
           return
         }

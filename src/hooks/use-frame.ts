@@ -131,7 +131,22 @@ export const useFrame = () => {
     } catch (error) {
       // Clear the spinner on a shape that will never finish.
       dispatch(setGeneratedHtml({ id, html: '', streaming: false }))
-      toast.error(error instanceof Error ? error.message : 'Failed to generate the design')
+
+      /**
+       * "Failed to fetch" is what the browser says when the connection dropped
+       * before the response finished, and on its own it sends you looking at
+       * your own code. The cause is almost always the model endpoint hanging
+       * up on a long generation, which is a different problem with a different
+       * fix, so say so.
+       */
+      const message = error instanceof Error ? error.message : ''
+      const dropped = /failed to fetch|network|load failed|terminated/i.test(message)
+
+      toast.error(dropped ? 'The connection to the model dropped' : message || 'Failed to generate the design', {
+        description: dropped
+          ? 'The design was still being written when the connection closed. Your credit has been returned — try again, and if it keeps happening the model endpoint is the thing to look at, not the sketch.'
+          : undefined,
+      })
     } finally {
       setGeneratingFrameId(null)
     }
