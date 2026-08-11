@@ -9,6 +9,8 @@ import { Download, Layers as LayersIcon, Loader2, Sparkles, Wand2 } from 'lucide
 import { useFrame } from '@/hooks/use-frame'
 import { useWorkflow } from '@/hooks/use-workflow'
 import { useMobileVersion } from '@/hooks/use-mobile-version'
+import { useAppDispatch } from '@/redux/hooks'
+import { updateShape } from '@/redux/slice/shapes'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
@@ -113,11 +115,7 @@ const ShapeView = ({
   if (shape.kind === 'frame') {
     return (
       <div className={base} style={style} onPointerDown={onGrab}>
-        {shape.label && (
-          <span className="text-muted-foreground absolute -top-6 left-0 text-[11px]">
-            {shape.label}
-          </span>
-        )}
+        <FrameLabel shape={shape} />
         {/* Frame actions sit above the top-right corner, outside the frame. */}
         <div className="absolute -top-7 right-0 flex items-center gap-2">
           <button
@@ -372,6 +370,75 @@ const ShapeView = ({
       }}
       onPointerDown={onGrab}
     />
+  )
+}
+
+/**
+ * The frame's name, renameable in place.
+ *
+ * A frame is created with its preset name — "MacBook Air" — and that name is
+ * the only description of the screen anywhere. It is also, now, the only one
+ * the generator will accept: a device name is filtered out before the prompt
+ * is built, so a frame keeps its size label and tells the model nothing until
+ * somebody gives it a real one. Renaming needed to be as cheap as
+ * double-clicking it.
+ */
+const FrameLabel = ({ shape }: { shape: Shape }) => {
+  const dispatch = useAppDispatch()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(shape.label ?? '')
+
+  const commit = () => {
+    setEditing(false)
+    const next = draft.trim()
+    if (next && next !== shape.label) {
+      dispatch(updateShape({ id: shape.id, changes: { label: next } }))
+    } else {
+      // An empty name would leave the frame with no handle at all, so the old
+      // one stands and the field is put back the way it was.
+      setDraft(shape.label ?? '')
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit()
+          if (event.key === 'Escape') {
+            setDraft(shape.label ?? '')
+            setEditing(false)
+          }
+          // The canvas listens for single keys as tool shortcuts, and every
+          // letter typed here would otherwise also swap the active tool.
+          event.stopPropagation()
+        }}
+        // Without this the pointer down starts a drag on the frame underneath
+        // and the caret never lands.
+        onPointerDown={(event) => event.stopPropagation()}
+        className="absolute -top-6 left-0 w-48 rounded border border-sky-400/60 bg-black/80 px-1 text-[11px] text-white outline-none"
+      />
+    )
+  }
+
+  if (!shape.label) return null
+
+  return (
+    <span
+      onPointerDown={stopPointer}
+      onDoubleClick={() => {
+        setDraft(shape.label ?? '')
+        setEditing(true)
+      }}
+      title="Double-click to rename"
+      className="text-muted-foreground hover:text-foreground absolute -top-6 left-0 cursor-text text-[11px] transition-colors"
+    >
+      {shape.label}
+    </span>
   )
 }
 
