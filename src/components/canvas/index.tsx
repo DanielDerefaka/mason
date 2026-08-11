@@ -174,6 +174,20 @@ const ShapeView = ({
   if (shape.kind === 'image') {
     const imageCss = shapeStyleOf(shape)
 
+    // No source at all: draw the box so it can still be selected and removed,
+    // and say why it is empty rather than rendering nothing.
+    if (!shape.src) {
+      return (
+        <div
+          className={cn(base, 'grid place-items-center rounded-sm border border-dashed border-white/25 text-[11px] text-white/40', selected && 'ring-2 ring-white/80')}
+          style={style}
+          onPointerDown={onGrab}
+        >
+          Image unavailable
+        </div>
+      )
+    }
+
     return (
       // next/image is the wrong tool here: the source is an arbitrary storage
       // URL rather than a configured remote pattern, and the canvas already
@@ -182,6 +196,19 @@ const ShapeView = ({
       <img
         src={shape.src}
         alt={shape.label ?? ''}
+        /**
+         * An image with no source, or one that fails to load, renders as
+         * nothing at all — the shape is still there and still moves, so it
+         * reads as an invisible picture rather than a broken one, and there is
+         * nothing on screen or in the console to say which. Both cases now
+         * announce themselves.
+         */
+        onError={() =>
+          console.error(
+            '[canvas] image failed to load',
+            JSON.stringify({ id: shape.id, label: shape.label, src: shape.src ?? null }),
+          )
+        }
         // Without this the browser starts its own image drag and the canvas
         // never sees the pointer move, so the shape stays where it was.
         draggable={false}
