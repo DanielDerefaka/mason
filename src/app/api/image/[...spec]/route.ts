@@ -21,6 +21,30 @@ import { findPhoto, pexelsConfigured, type Tone } from '@/lib/pexels'
  */
 export const runtime = 'nodejs'
 
+/**
+ * Makes a value safe to put in an HTTP header.
+ *
+ * Header values are ByteStrings — nothing above 255 is allowed — and setting
+ * one throws. The photographer credit is a real person's name, so it is full
+ * of characters that qualify: a Turkish ğ is 287, and that alone was enough to
+ * throw inside the redirect, drop into the catch, and return a grey panel.
+ *
+ * The failure was silent and looked like a stock miss: the photograph existed,
+ * the query was fine, and the design simply lost its picture because of how
+ * the photographer spells their name.
+ *
+ * Accents are folded to their base letters so the name stays readable, and
+ * anything still outside ASCII is percent-encoded rather than deleted, so a
+ * name written in another script survives as something recoverable instead of
+ * becoming an empty string.
+ */
+const headerSafe = (value: string) =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, (char) => encodeURIComponent(char))
+    .trim() || 'Pexels photographer'
+
 /** Big enough for a retina hero, small enough that nobody can ask for a poster. */
 const MAX_EDGE = 2400
 const MIN_EDGE = 16
@@ -95,8 +119,8 @@ export async function GET(
         // shown. The design itself has nowhere sensible to put a name, so the
         // credit travels on the response and the app surfaces it — see the
         // credit line on the preview and in an exported file.
-        'X-Photo-Credit': photo.photographer,
-        'X-Photo-Credit-Url': photo.photographerUrl,
+        'X-Photo-Credit': headerSafe(photo.photographer),
+        'X-Photo-Credit-Url': headerSafe(photo.photographerUrl),
       },
     })
   } catch (error) {
