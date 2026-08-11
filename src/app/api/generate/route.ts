@@ -12,7 +12,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
-import { EMPTY_MARKER, isUnusable } from '@/lib/truncation'
+import { EMPTY_MARKER, TRUNCATION_MARKER, isUnusable } from '@/lib/truncation'
 import { ensureReferenceBrief } from '@/lib/reference-brief'
 import { isDevicePresetName } from '@/lib/frame-presets'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -130,6 +130,26 @@ export async function POST(request: NextRequest) {
           controller.error(error)
           return
         }
+
+        // Finished cleanly with nothing in it. The stream never errored, so
+        // the refund above never ran — without this the credit is spent on
+        // silence and the canvas waits for a chunk that already came and went.
+        if (isUnusable(produced)) {
+          await refundCredit()
+          controller.enqueue(encoder.encode(EMPTY_MARKER))
+          controller.close()
+          return
+        }
+
+        // A length stop means the design is incomplete, not merely short. This
+        // route was the one path that never said so: the client has always
+        // looked for the marker, and nothing here ever appended it, so a first
+        // generation cut off at the ceiling was saved as though it were whole.
+        if ((await result.finishReason) === 'length') {
+          await refundCredit()
+          controller.enqueue(encoder.encode(TRUNCATION_MARKER))
+        }
+
         controller.close()
       },
     })
