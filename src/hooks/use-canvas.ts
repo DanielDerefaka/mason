@@ -627,6 +627,8 @@ export const useInfiniteCanvas = () => {
     selectedIds,
     toggleSelected: (id: string) => dispatch(toggleSelected(id)),
     selectAll: () => dispatch(setSelection(shapes.map((shape) => shape.id))),
+    /** Replaces the selection outright — what paste needs before it copies. */
+    setSelection: (ids: string[]) => dispatch(setSelection(ids)),
     marquee,
     guides,
     align: (edge: Parameters<typeof alignSelected>[0]) => dispatch(alignSelected(edge)),
@@ -657,11 +659,47 @@ export const useInfiniteCanvas = () => {
     zoomToFit,
     restoreViewport: (next: Viewport) => dispatch(setViewport(next)),
     nudge: (dx: number, dy: number) => dispatch(nudgeSelected({ dx, dy })),
+    /**
+     * Duplicates the selection, and a frame brings its contents with it.
+     *
+     * A frame owns nothing structurally — every shape sits in world space and
+     * a frame is a rectangle drawn around some of them — so copying one copied
+     * an empty rectangle and left the design behind. Nothing appeared to
+     * happen, which read as frames not being duplicable at all.
+     *
+     * Containment is decided by the frame's bounds at the moment of copying,
+     * which is the same rule the eye uses.
+     */
     duplicate: () => {
       if (selectedIds.length === 0) return
+
+      const chosen = new Set(selectedIds)
+      const frames = shapes.filter((shape) => chosen.has(shape.id) && shape.kind === 'frame')
+
+      const inside = (frame: Shape, shape: Shape) =>
+        shape.x >= frame.x &&
+        shape.y >= frame.y &&
+        shape.x + shape.width <= frame.x + frame.width &&
+        shape.y + shape.height <= frame.y + frame.height
+
+      const contained = frames.length
+        ? shapes.filter(
+            (shape) =>
+              !chosen.has(shape.id) &&
+              shape.kind !== 'frame' &&
+              frames.some((frame) => inside(frame, shape)),
+          )
+        : []
+
+      const ids = [...selectedIds, ...contained.map((shape) => shape.id)]
+      // The reducer copies whatever is selected, so the contents join the
+      // selection first — which also leaves the copies selected afterwards,
+      // ready to be dragged somewhere.
+      if (contained.length > 0) dispatch(setSelection(ids))
+
       dispatch(
         duplicateSelected({
-          ids: selectedIds.map(() => crypto.randomUUID()),
+          ids: ids.map(() => crypto.randomUUID()),
           offset: 24,
         }),
       )

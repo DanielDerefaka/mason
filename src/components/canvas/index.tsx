@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape, Tool } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
@@ -557,6 +557,7 @@ export const Canvas = () => {
     zoomToFit,
     nudge,
     duplicate,
+    setSelection,
     undo,
     redo,
     setTool,
@@ -602,6 +603,9 @@ export const Canvas = () => {
    * this is aimed at already have. Undo is the reflex the app most obviously
    * ignored: it had exactly one binding before this, and it was Delete.
    */
+  /** What was last copied. Ids, not shapes — the shapes are in the store. */
+  const clipboard = useRef<string[]>([])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target
@@ -626,6 +630,29 @@ export const Canvas = () => {
       if (mod && event.key.toLowerCase() === 'd') {
         event.preventDefault()
         duplicate()
+        return
+      }
+      /**
+       * Copy and paste are the same operation as duplicate, split in two.
+       *
+       * Nothing goes near the system clipboard: the payload is a set of shapes,
+       * the clipboard holds text, and round-tripping through it would mean
+       * serialising and re-parsing a design for no gain. Copy remembers the
+       * selection, paste duplicates it — so pasting after moving away still
+       * puts the copy beside the original, which is the behaviour a canvas
+       * wants and a text editor does not.
+       */
+      if (mod && event.key.toLowerCase() === 'c') {
+        event.preventDefault()
+        clipboard.current = selectedIds
+        return
+      }
+      if (mod && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        if (clipboard.current.length > 0) {
+          setSelection(clipboard.current)
+          duplicate()
+        }
         return
       }
       if (mod) return
@@ -678,7 +705,7 @@ export const Canvas = () => {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [deleteSelected, duplicate, nudge, redo, selectAll, setTool, undo, zoomToFit])
+  }, [deleteSelected, duplicate, nudge, redo, selectAll, setSelection, selectedIds, setTool, undo, zoomToFit])
 
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
