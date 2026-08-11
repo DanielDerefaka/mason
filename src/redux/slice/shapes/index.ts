@@ -11,6 +11,8 @@ export type ShapeKind =
   | 'arrow'
   | 'pencil'
   | 'line'
+  /** Not drawn either — placed from a file the user picked. */
+  | 'image'
   /** Not drawable — created by the AI and rendered from stored markup. */
   | 'generated-ui'
 export type Tool = 'select' | 'hand' | 'eraser' | ShapeKind
@@ -29,6 +31,8 @@ export type Shape = {
   points?: Point[]
   /** Streamed markup, for `generated-ui` shapes only. */
   html?: string
+  /** Stored file URL, for `image` shapes only. */
+  src?: string
   /** The frame this design was generated from. */
   sourceFrameId?: string
   /** True while the model is still streaming into `html`. */

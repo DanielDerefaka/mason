@@ -171,6 +171,26 @@ const ShapeView = ({
     )
   }
 
+  if (shape.kind === 'image') {
+    return (
+      // next/image is the wrong tool here: the source is an arbitrary storage
+      // URL rather than a configured remote pattern, and the canvas already
+      // controls the box the picture is painted into.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={shape.src}
+        alt={shape.label ?? ''}
+        // Dragging is the canvas's job; the browser's own image drag would
+        // start a file drag and cancel the move halfway through.
+        draggable={false}
+        className={cn(
+          'size-full rounded-sm object-cover select-none',
+          selected && 'ring-2 ring-white/70',
+        )}
+      />
+    )
+  }
+
   if (shape.kind === 'pencil' || shape.kind === 'arrow' || shape.kind === 'line') {
     const points = shape.points ?? []
     if (points.length < 2) return null

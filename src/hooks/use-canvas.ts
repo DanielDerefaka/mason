@@ -48,6 +48,7 @@ const FILLS: Record<ShapeKind, string> = {
   arrow: '#FFFFFF',
   pencil: '#FFFFFF',
   line: '#FFFFFF',
+  image: 'transparent',
   'generated-ui': 'transparent',
 }
 

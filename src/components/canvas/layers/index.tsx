@@ -7,6 +7,7 @@ import {
   Layers as LayersIcon,
   Minus,
   Pencil,
+  Image as ImageIcon,
   Sparkles,
   Square,
   Type,
@@ -24,6 +25,7 @@ const ICONS: Record<ShapeKind, typeof Square> = {
   arrow: ArrowRight,
   line: Minus,
   text: Type,
+  image: ImageIcon,
   'generated-ui': Sparkles,
 }
 
@@ -36,6 +38,7 @@ const KIND_LABELS: Record<ShapeKind, string> = {
   line: 'Line',
   text: 'Text',
   'generated-ui': 'Design',
+  image: 'Image',
 }
 
 /**
