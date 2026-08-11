@@ -105,6 +105,23 @@ export default defineSchema({
      * ordered by when things were put there.
      */
     archivedAt: v.optional(v.number()),
+    /**
+     * What the design is being made for.
+     *
+     * A reference says how a design should look; this says who it is for, and
+     * they answer different questions. Without it the model invents a company
+     * every time — which is why generated pages arrive named Meridian or
+     * Verdant instead of the thing somebody is actually building.
+     */
+    brand: v.optional(
+      v.object({
+        enabled: v.boolean(),
+        name: v.optional(v.string()),
+        description: v.optional(v.string()),
+        /** Storage id of an uploaded logo, shown in the design's nav. */
+        logo: v.optional(v.union(v.string(), v.null())),
+      }),
+    ),
   }).index('by_user', ['userId']),
 
   // Per-user counter behind the "Project 1", "Project 2" auto-naming.

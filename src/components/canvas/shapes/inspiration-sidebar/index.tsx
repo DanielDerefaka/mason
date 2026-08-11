@@ -3,7 +3,10 @@
 import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { Image as ImageIcon, Plus, Trash2, Upload, X } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { MAX_INSPIRATION_IMAGES, useInspiration } from '@/hooks/use-inspiration'
+import { BrandPanel } from './brand'
+import type { Id } from '../../../../../convex/_generated/dataModel'
 
 /**
  * References the design generation looks at alongside the sketch.
@@ -21,6 +24,7 @@ export const InspirationSidebar = ({
 }) => {
   const { images, upload, remove, clear, uploading } = useInspiration()
   const inputRef = useRef<HTMLInputElement>(null)
+  const projectId = useSearchParams().get('project') as Id<'projects'> | null
   const [dragging, setDragging] = useState(false)
 
   if (!isOpen) return null
@@ -131,6 +135,12 @@ export const InspirationSidebar = ({
           References steer the look of a generated design. The sketch decides the layout.
         </p>
       )}
+
+      {/* Below the references, because it answers the other half of the
+          question: they decide how it looks, this decides what it is. */}
+      <div className="mt-4">
+        <BrandPanel projectId={projectId} />
+      </div>
 
       <input
         ref={inputRef}

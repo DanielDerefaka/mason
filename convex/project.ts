@@ -254,3 +254,40 @@ export const setProjectThumbnail = mutation({
     })
   },
 })
+
+export const setBrand = mutation({
+  args: {
+    projectId: v.id('projects'),
+    brand: v.object({
+      enabled: v.boolean(),
+      name: v.optional(v.string()),
+      description: v.optional(v.string()),
+      logo: v.optional(v.union(v.string(), v.null())),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ownedProject(ctx, args.projectId)
+    await ctx.db.patch(args.projectId, { brand: args.brand })
+  },
+})
+
+/** The brand as the generation routes need it, with the logo already a URL. */
+export const getBrand = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) return null
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) return null
+    if (!project.brand?.enabled) return null
+
+    return {
+      name: project.brand.name ?? '',
+      description: project.brand.description ?? '',
+      logoUrl: project.brand.logo
+        ? await ctx.storage.getUrl(project.brand.logo as Id<'_storage'>)
+        : null,
+    }
+  },
+})

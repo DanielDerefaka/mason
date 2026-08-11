@@ -9,6 +9,7 @@ import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
   ReferenceBriefQuery,
+  BrandQuery,
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
@@ -17,7 +18,7 @@ import { ensureReferenceBrief } from '@/lib/reference-brief'
 import { isDevicePresetName } from '@/lib/frame-presets'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
-import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
+import { describeBrand, describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
 import { fetchImageParts } from '@/lib/fetch-image'
 
 export const runtime = 'nodejs'
@@ -53,9 +54,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Project ID is required' }, { status: 400 })
     }
 
-    const [styleGuide, inspirationUrls] = await Promise.all([
+    const [styleGuide, inspirationUrls, brand] = await Promise.all([
       StyleGuideQuery(projectId),
-      InspirationImagesQuery(projectId),
+      InspirationImagesQuery(projectId),,
+      BrandQuery(projectId as Id<'projects'>)
     ])
     // Read the board only if the stored reading no longer matches it. The
     // credit for this generation covers it; it happens once per board.
@@ -98,6 +100,11 @@ export async function POST(request: NextRequest) {
           ? [`## What the references actually look like\n\n${describeReferenceBrief(referenceBrief)}`]
           : []),
         `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
+        // After the reference on purpose: the reference decides the look, the
+        // brand decides the words, and neither should overwrite the other.
+        ...(describeBrand(brand ?? null)
+          ? [`## The brand this is for\n\n${describeBrand(brand ?? null)}`]
+          : []),
       ].join('\n\n'),
       messages: [
         {

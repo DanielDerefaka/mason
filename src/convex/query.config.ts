@@ -82,6 +82,12 @@ export const ReferenceBriefQuery = async (projectId: Id<'projects'>) => {
   }
 }
 
+/** The brand a design is being made for, or null when brand mode is off. */
+export const BrandQuery = async (projectId: Id<'projects'>) => {
+  const token = await convexAuthNextjsToken()
+  return await fetchQuery(api.project.getBrand, { projectId }, { token })
+}
+
 /** Reference images the design generation should take its look from. */
 export const InspirationImagesQuery = async (projectId: Id<'projects'>) => {
   const token = await convexAuthNextjsToken()
