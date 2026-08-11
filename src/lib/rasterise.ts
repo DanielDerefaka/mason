@@ -49,7 +49,10 @@ export const rasteriseFrame = async (
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Could not get a 2D context')
 
-  ctx.fillStyle = BACKGROUND
+  // The frame's own colour when it has one, so a sketch drawn on a light page
+  // is sent to the model as a light page. Falling back to the canvas default
+  // meant a coloured frame exported — and generated — against the wrong ground.
+  ctx.fillStyle = frame.fill && frame.fill !== 'transparent' ? frame.fill : BACKGROUND
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Work in frame-local coordinates from here on.

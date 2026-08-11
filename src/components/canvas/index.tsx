@@ -162,10 +162,13 @@ const ShapeView = ({
           )}
         </div>
         <div
-          className={cn(
-            'size-full rounded-sm bg-white/[0.02] ring-1',
-            selected ? 'ring-white/70' : 'ring-white/25',
-          )}
+          className={cn('size-full rounded-sm ring-1', selected ? 'ring-white/70' : 'ring-white/25')}
+          // A frame is a page, and a page has a colour. It used to paint a
+          // fixed near-black wash whatever the fill said, so the picker offered
+          // a choice that did nothing. The wash is still the default, because
+          // an unfilled frame should read as empty canvas rather than as a
+          // white rectangle nobody asked for.
+          style={{ background: shape.fill === 'transparent' ? 'rgb(255 255 255 / 0.02)' : shape.fill }}
         />
       </div>
     )
@@ -377,6 +380,10 @@ const CURSORS: Record<ResizeHandle, string> = {
   se: 'nwse-resize',
   ne: 'nesw-resize',
   sw: 'nesw-resize',
+  n: 'ns-resize',
+  s: 'ns-resize',
+  e: 'ew-resize',
+  w: 'ew-resize',
 }
 
 /**
@@ -401,6 +408,20 @@ const SelectionBox = ({
     ['sw', shape.x, shape.y + shape.height],
   ]
 
+  /**
+   * Edge grips, at the midpoint of each side.
+   *
+   * With corners alone, making a frame taller also made it wider — so getting
+   * a long page meant dragging a corner down and then dragging it back. These
+   * change one dimension and leave the other exactly where it was.
+   */
+  const midpoints: Array<[ResizeHandle, number, number]> = [
+    ['n', shape.x + shape.width / 2, shape.y],
+    ['s', shape.x + shape.width / 2, shape.y + shape.height],
+    ['w', shape.x, shape.y + shape.height / 2],
+    ['e', shape.x + shape.width, shape.y + shape.height / 2],
+  ]
+
   return (
     <>
       <div
@@ -414,7 +435,7 @@ const SelectionBox = ({
           borderStyle: 'solid',
         }}
       />
-      {corners.map(([handle, cx, cy]) => (
+      {[...corners, ...midpoints].map(([handle, cx, cy]) => (
         <div
           key={handle}
           onPointerDown={(event) => onResize(handle, event)}

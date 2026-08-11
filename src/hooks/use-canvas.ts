@@ -56,7 +56,14 @@ const FILLS: Record<ShapeKind, string> = {
 const PATH_KINDS: ShapeKind[] = ['pencil', 'arrow', 'line']
 
 /** Corner grips, named for the corner they own. */
-export type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
+/**
+ * Corners resize both axes; edges resize one.
+ *
+ * Corners alone meant that making a frame taller also made it wider, so the
+ * only way to get a long page was to drag a corner and then drag it back — an
+ * edge grip is how every design tool lets you change one dimension.
+ */
+export type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w'
 
 /** How close, in screen pixels, an edge has to be before it snaps. */
 const SNAP_PX = 6
@@ -72,16 +79,26 @@ const TEXT_DEFAULT_HEIGHT = 32
 
 /** Resizes about the corner opposite the grip, scaling any path to match. */
 const resized = (shape: Shape, handle: ResizeHandle, world: Point): Partial<Shape> => {
-  const left = handle === 'nw' || handle === 'sw'
-  const top = handle === 'nw' || handle === 'ne'
+  const left = handle === 'nw' || handle === 'sw' || handle === 'w'
+  const right = handle === 'ne' || handle === 'se' || handle === 'e'
+  const top = handle === 'nw' || handle === 'ne' || handle === 'n'
+  const bottom = handle === 'sw' || handle === 'se' || handle === 's'
 
-  const anchorX = left ? shape.x + shape.width : shape.x
-  const anchorY = top ? shape.y + shape.height : shape.y
+  // An edge grip leaves the other axis exactly as it was, which is the whole
+  // point of it: dragging the bottom of a frame must not nudge its width.
+  let { x, y, width, height } = shape
 
-  const x = Math.min(anchorX, world.x)
-  const y = Math.min(anchorY, world.y)
-  const width = Math.max(MIN_SIZE, Math.abs(world.x - anchorX))
-  const height = Math.max(MIN_SIZE, Math.abs(world.y - anchorY))
+  if (left || right) {
+    const anchorX = left ? shape.x + shape.width : shape.x
+    x = Math.min(anchorX, world.x)
+    width = Math.max(MIN_SIZE, Math.abs(world.x - anchorX))
+  }
+
+  if (top || bottom) {
+    const anchorY = top ? shape.y + shape.height : shape.y
+    y = Math.min(anchorY, world.y)
+    height = Math.max(MIN_SIZE, Math.abs(world.y - anchorY))
+  }
 
   if (!shape.points) return { x, y, width, height }
 
