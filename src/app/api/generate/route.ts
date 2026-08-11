@@ -12,6 +12,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { EMPTY_MARKER, isUnusable } from '@/lib/truncation'
 import { ensureReferenceBrief } from '@/lib/reference-brief'
 import { isDevicePresetName } from '@/lib/frame-presets'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -116,8 +117,10 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        let produced = ''
         try {
           for await (const chunk of result.textStream) {
+            produced += chunk
             controller.enqueue(encoder.encode(chunk))
           }
         } catch (error) {

@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
 
-import { stripTruncationMarker, wasTruncated } from '@/lib/truncation'
+import { stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
 import { useContinueDesign } from '@/hooks/use-continue-design'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   addGeneratedUI,
+  removeShape,
   setGeneratedHtml,
   shapesAdapter,
   type Shape,
@@ -97,8 +98,20 @@ export const useFrame = () => {
 
       markup += decoder.decode()
       const cut = wasTruncated(markup)
+      const empty = wasEmpty(markup)
+
+      if (empty) {
+        // Nothing usable came back. The route has already put the credit
+        // back; say so rather than leaving an empty panel on the canvas.
+        dispatch(removeShape(id))
+        toast.error('The model returned nothing', {
+          description: 'Your credit has been refunded. Try again, or add more detail to the sketch.',
+        })
+        return
+      }
+
       dispatch(
-        setGeneratedHtml({ id, html: stripTruncationMarker(markup), streaming: false }),
+        setGeneratedHtml({ id, html: stripOutcomeMarkers(markup), streaming: false }),
       )
 
       if (cut) {
@@ -109,7 +122,7 @@ export const useFrame = () => {
           duration: 30000,
           action: {
             label: 'Continue',
-            onClick: () => void continueDesign(id, stripTruncationMarker(markup)),
+            onClick: () => void continueDesign(id, stripOutcomeMarkers(markup)),
           },
         })
       } else {

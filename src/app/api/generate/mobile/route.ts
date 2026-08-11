@@ -12,6 +12,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { EMPTY_MARKER, isUnusable } from '@/lib/truncation'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery, describeReferenceBrief } from '@/lib/imagery-brief'
@@ -87,12 +88,27 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        let produced = ''
         try {
-          for await (const chunk of result.textStream) controller.enqueue(encoder.encode(chunk))
+          for await (const chunk of result.textStream) {
+            produced += chunk
+            controller.enqueue(encoder.encode(chunk))
+          }
 
           // A length stop means the design is incomplete, not merely short.
           // The marker is an HTML comment, which the sanitiser drops anyway,
           // so it can never reach the rendered design.
+          // Finished cleanly with nothing in it. The stream never errored, so
+          // the refund path above never ran — without this the credit is spent
+          // on silence and the canvas waits for a chunk that already came and
+          // went.
+          if (isUnusable(produced)) {
+            await refundCredit()
+            controller.enqueue(encoder.encode(EMPTY_MARKER))
+            controller.close()
+            return
+          }
+
           if ((await result.finishReason) === 'length') {
             // Cut off at the ceiling: the page is incomplete, so the credit
             // goes back. The marker tells the client to say so.

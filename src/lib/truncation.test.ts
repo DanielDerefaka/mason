@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { TRUNCATION_MARKER, stripTruncationMarker, wasTruncated } from './truncation'
+import {
+  EMPTY_MARKER,
+  TRUNCATION_MARKER,
+  isUnusable,
+  stripOutcomeMarkers,
+  stripTruncationMarker,
+  wasEmpty,
+  wasTruncated,
+} from './truncation'
 
 import { sanitiseHtml } from './sanitise'
 
@@ -37,5 +45,48 @@ describe('the truncation marker', () => {
   it('leaves markup that never carried it untouched', () => {
     const markup = '<section><h1>Title</h1></section>'
     expect(stripTruncationMarker(markup)).toBe(markup)
+  })
+})
+
+/**
+ * Found by auditing the running app: a generation returned 200 after twenty
+ * seconds with an empty body. The stream had not errored, so the route's
+ * refund path never ran — the credit was spent, and the canvas sat on
+ * "Waiting for the first chunk" for a chunk that had already come and gone.
+ *
+ * Success and silence were indistinguishable. These are the tests that keep
+ * them apart.
+ */
+describe('an empty generation', () => {
+  it.each(['', '   ', '\n\n', '```html', '```html\n```', '<p></p>'])(
+    'treats %j as nothing usable',
+    (markup) => {
+      expect(isUnusable(markup)).toBe(true)
+    },
+  )
+
+  it('accepts a real fragment', () => {
+    expect(
+      isUnusable('<section style="padding:80px"><h1>Grow healthier plants</h1></section>'),
+    ).toBe(false)
+  })
+
+  it('is detected from the marker the route appends', () => {
+    expect(wasEmpty(`something${EMPTY_MARKER}`)).toBe(true)
+    expect(wasEmpty('<section>a real design</section>')).toBe(false)
+  })
+
+  it('strips both outcome markers, so neither can reach a stored design', () => {
+    const markup = `<p>Body</p>${TRUNCATION_MARKER}${EMPTY_MARKER}`
+    const stripped = stripOutcomeMarkers(markup)
+
+    expect(stripped).toBe('<p>Body</p>')
+    expect(wasEmpty(stripped)).toBe(false)
+    expect(wasTruncated(stripped)).toBe(false)
+  })
+
+  it('does not confuse a short-but-real design with an empty one', () => {
+    // The threshold has to sit below anything a design could legitimately be.
+    expect(isUnusable('<div style="height:100vh;background:#111"></div>')).toBe(false)
   })
 })
