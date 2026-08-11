@@ -29,6 +29,7 @@ export const useDesignEditor = () => {
 
   const project = useQuery(api.project.getProject, projectId ? { projectId } : 'skip')
   const save = useMutation(api.project.updateProjectSketches)
+  const setThumbnail = useMutation(api.project.setProjectThumbnail)
 
   const [status, setStatus] = useState<SaveStatus>('idle')
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -44,6 +45,26 @@ export const useDesignEditor = () => {
   useEffect(() => {
     if (design && lastSaved.current === null) lastSaved.current = design.html ?? ''
   }, [design])
+
+  /**
+   * Opening a design makes it the project's picture.
+   *
+   * Both the editor and the preview run through this hook, which is why the
+   * capture lives here rather than in either of them — the design somebody
+   * last looked at is the best available guess at what a project is, and it
+   * costs nothing to record. The mutation refuses to overwrite a picture that
+   * was chosen deliberately, so browsing cannot undo a decision.
+   */
+  const marked = useRef<string | null>(null)
+  useEffect(() => {
+    if (!projectId || !designId || !design?.html?.trim()) return
+    if (marked.current === designId) return
+    marked.current = designId
+    void setThumbnail({ projectId, designId, pinned: false }).catch(() => {
+      // A thumbnail is decoration; failing to set one must not interrupt
+      // editing the design it came from.
+    })
+  }, [projectId, designId, design?.html, setThumbnail])
 
   /**
    * Writes the edited markup back into its shape.

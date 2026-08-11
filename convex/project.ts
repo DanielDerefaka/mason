@@ -149,3 +149,37 @@ export const renameProject = mutation({
     return name
   },
 })
+
+/**
+ * Chooses the design a project card shows.
+ *
+ * Called two ways. Opening a design in the preview or the editor sets it
+ * automatically, because the thing you looked at last is the best guess at
+ * what the project is — but only until somebody picks one deliberately, after
+ * which `pinned` keeps their choice and merely browsing stops overwriting it.
+ *
+ * A null design id with pinned set is how "use the default" is expressed:
+ * deliberately no picture, rather than no choice yet.
+ */
+export const setProjectThumbnail = mutation({
+  args: {
+    projectId: v.id('projects'),
+    designId: v.union(v.string(), v.null()),
+    pinned: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project || project.userId !== userId) throw new Error('Not authorised')
+
+    // An automatic update never overrides a deliberate one.
+    if (!args.pinned && project.thumbnailPinned) return
+
+    await ctx.db.patch(args.projectId, {
+      thumbnailDesignId: args.designId,
+      thumbnailPinned: args.pinned || project.thumbnailPinned === true,
+    })
+  },
+})

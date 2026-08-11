@@ -23,6 +23,7 @@ export const useProjects = () => {
   const data = useQuery(api.project.getProjects)
   const createProjectMutation = useMutation(api.project.createProject)
   const deleteProjectMutation = useMutation(api.project.deleteProject)
+  const setThumbnail = useMutation(api.project.setProjectThumbnail)
   const renameProjectMutation = useMutation(api.project.renameProject)
   const [creating, setCreating] = useState(false)
 
@@ -77,5 +78,6 @@ export const useProjects = () => {
     createProject,
     deleteProject,
     renameProject,
+    setThumbnail,
   }
 }

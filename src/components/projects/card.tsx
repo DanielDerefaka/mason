@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
+import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { useProjects } from '@/hooks/use-projects'
 import type { Doc } from '../../../convex/_generated/dataModel'
 
@@ -15,7 +16,7 @@ export const ProjectCard = ({
   project: Doc<'projects'>
   session: string
 }) => {
-  const { renameProject } = useProjects()
+  const { renameProject, setThumbnail } = useProjects()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(project.name)
   const input = useRef<HTMLInputElement | null>(null)
@@ -28,6 +29,21 @@ export const ProjectCard = ({
     if (editing) input.current?.select()
   }, [editing])
 
+  /**
+   * The project's picture: the design it was last opened on, rendered small.
+   *
+   * The markup is already here — the card is handed the whole project — so the
+   * card draws the real design rather than a screenshot of it. Nothing is
+   * uploaded, nothing is stored twice, and editing a design updates its own
+   * thumbnail for free. A project with no design, or one whose picture has
+   * been set back to the default, keeps the cover image.
+   */
+  const stored = (project.sketchesData ?? {}) as { shapes?: Array<{ id: string; html?: string }> }
+  const design = project.thumbnailDesignId
+    ? stored.shapes?.find((shape) => shape.id === project.thumbnailDesignId)
+    : undefined
+  const preview = design?.html?.trim() ? sanitiseHtml(design.html) : null
+
   const commit = () => {
     setEditing(false)
     const next = draft.trim()
@@ -36,22 +52,48 @@ export const ProjectCard = ({
   }
 
   return (
-    <div className="group block">
+    <div className="group relative block">
       <Link
         href={`/dashboard/${session}/canvas?project=${project._id}`}
         className="block"
         aria-label={`Open ${project.name}`}
       >
-        <div className="relative aspect-[4/3] overflow-hidden rounded-xl transition-transform duration-300 group-hover:scale-[1.01]">
-          <Image
-            src="/images/project-cover.webp"
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
-            className="object-cover"
-          />
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-white transition-transform duration-300 group-hover:scale-[1.01]">
+          {preview ? (
+            /* Drawn at a real page width and scaled down, so the card shows the
+               design's actual proportions rather than a squeezed version of
+               them. Pointer events are off: this is a picture of a design, and
+               a card is a link. */
+            <div
+              aria-hidden
+              className={`${DESIGN_SCOPE} pointer-events-none absolute top-0 left-0 origin-top-left`}
+              style={{ width: 1280, transform: 'scale(0.25)' }}
+              dangerouslySetInnerHTML={{ __html: preview }}
+            />
+          ) : (
+            <Image
+              src="/images/project-cover.webp"
+              alt=""
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
+              className="object-cover"
+            />
+          )}
         </div>
       </Link>
+
+      {preview && (
+        /* Outside the link on purpose: nested inside it, every click would
+           open the project instead of resetting the picture. */
+        <button
+          type="button"
+          onClick={() => void setThumbnail({ projectId: project._id, designId: null, pinned: true })}
+          title="Use the default cover"
+          className="absolute top-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-[10px] text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          Reset image
+        </button>
+      )}
 
       {editing ? (
         <input

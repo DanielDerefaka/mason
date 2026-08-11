@@ -85,6 +85,17 @@ export default defineSchema({
     moodBoardImages: v.optional(v.array(v.string())),
     styleGuide: v.optional(v.any()),
     tags: v.optional(v.array(v.string())),
+    /**
+     * Which generated design stands in as the project's picture.
+     *
+     * The id of a shape rather than an image: the design's markup is already
+     * in sketchesData, so the card renders the real thing scaled down and
+     * there is no second copy to upload, store, or leave stale when the design
+     * is edited.
+     */
+    thumbnailDesignId: v.optional(v.union(v.string(), v.null())),
+    /** Set once somebody chooses a picture, so opening a design stops changing it. */
+    thumbnailPinned: v.optional(v.boolean()),
   }).index('by_user', ['userId']),
 
   // Per-user counter behind the "Project 1", "Project 2" auto-naming.
