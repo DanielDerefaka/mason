@@ -72,8 +72,21 @@ Write a short description for each swatch saying where it should be used.
 
 ## Typography
 
-Choose one font family that suits the mood board and is available on Google
-Fonts, and give its exact family name. Return the weights that family actually
+Identify the typeface first, then name what to use.
+
+Read the letterforms rather than the mood: is it a grotesque or a geometric, is
+the x-height tall or modest, are the terminals cut straight or angled, is the
+\`a\` double-storey, how much does the weight change between the display line
+and the body. Those decide whether a substitute keeps the design's rhythm.
+
+Then give a family **Google Fonts actually hosts**, spelled exactly as Google
+spells it. The references worth copying are usually set in commercial faces —
+Söhne, GT America, Canela, Suisse — and naming one of those produces a
+stylesheet that does not load and a design that silently renders in the wrong
+face. If the reference uses a commercial face, name the closest Google family
+in the same category instead: a neo-grotesque for a neo-grotesque, a
+transitional serif for a transitional serif. Never substitute across
+categories. Return the weights that family actually
 publishes, named plainly: Extra Light 200, Light 300, Regular 400, Medium 500,
 Semi Bold 600, Bold 700, Extra Bold 800. Only include weights the family really
 has.
@@ -458,10 +471,14 @@ box-sizing:border-box too.
 
 ## Responsive
 
-The design has to hold together at any width — a phone, a tablet and a wide
-desktop — and it has to do that with inline styles alone. Inline styles cannot
-carry media queries, so the layout must be intrinsically fluid rather than
-switched at breakpoints. That is a constraint on how you build, not an excuse:
+One design, every screen. There is no separate mobile file and no second
+artboard: what you produce is a single page that reflows, because that is what
+gets exported and that is what gets shipped.
+
+Build it fluid first, then correct it at breakpoints. A layout that only works
+because of its media queries collapses the moment it meets a width you did not
+think of, so the fluid rules below are the foundation and the breakpoints are
+the finish.
 
 - No fixed pixel width on any container. Use \`width:100%\` with a
   \`max-width\` when a column should stop growing, and centre with
@@ -484,6 +501,47 @@ switched at breakpoints. That is a constraint on how you build, not an excuse:
 - Horizontal padding scales: \`padding:0 clamp(16px,5vw,64px)\`.
 - Never set \`white-space:nowrap\` on anything that could be long, and never
   set a \`width\` in pixels on text.
+
+### Then the breakpoints
+
+Put them in the same \`<style>\` element as the interaction states. Give the
+elements that change a \`class\` and write real media queries — this is what
+turns a fluid layout into a designed one, and it is the difference between a
+desktop page that survives on a phone and a page that was designed for a phone.
+
+Two breakpoints are enough: 900px for tablet, 640px for phone.
+
+    @media (max-width: 900px) {
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .split  { flex-direction: column; }
+    }
+    @media (max-width: 640px) {
+      .grid-3   { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .nav-menu  { display: block; }
+      .hero h1   { font-size: 34px; }
+      .section   { padding: 48px 20px; }
+    }
+
+What actually changes at phone width, and none of it is guesswork:
+
+- The horizontal nav's links are hidden and a menu button appears in their
+  place. Set the button to \`display:none\` on desktop and reveal it here.
+- Anything side by side becomes stacked, and the order is decided rather than
+  inherited — the image usually belongs above the copy, so use \`order\` when
+  the source order is wrong.
+- Multi-column grids drop to one column.
+- Section padding drops to about 20px, and vertical rhythm tightens by roughly
+  a third.
+- Anything decorative that competes for space at 390px — a background wordmark,
+  a floating stat card, a second photograph — is hidden rather than shrunk.
+  Deciding what to drop is the design work; shrinking everything is what makes
+  a phone layout look scattered.
+- A wide table scrolls inside its own \`overflow-x:auto\` container rather than
+  breaking the page.
+
+The page must never scroll sideways at 390px. If something would overflow, it
+wraps, hides, or scrolls inside itself.
 
 A design that needs a horizontal scrollbar at 390px is wrong, however good it
 looks at 1440px.

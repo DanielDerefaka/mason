@@ -6,6 +6,7 @@ import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
+import { resolveFont } from '@/lib/fonts'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
 import { fetchImages } from '@/lib/fetch-image'
@@ -135,7 +136,24 @@ export async function POST(request: NextRequest) {
         { status: 502 },
       )
     }
-    const styleGuide = parsed.data
+    /**
+     * The model is good at reading type and bad at knowing what Google hosts.
+     * A commercial face named exactly right still 404s on the stylesheet and
+     * falls back to the app font with no error anywhere, which looks like the
+     * font having been identified wrongly. Resolved to something that will
+     * actually load before it is stored, so every surface that renders this
+     * guide renders the same face.
+     */
+    const { family, substituted } = await resolveFont(parsed.data.typography.fontFamily)
+    if (substituted) {
+      console.info(
+        `[generate/style] font "${parsed.data.typography.fontFamily}" is not on Google Fonts — using "${family}"`,
+      )
+    }
+    const styleGuide = {
+      ...parsed.data,
+      typography: { ...parsed.data.typography, fontFamily: family },
+    }
 
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.project.saveStyleGuide, { projectId, styleGuide }, { token })
