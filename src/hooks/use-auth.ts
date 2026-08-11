@@ -15,9 +15,35 @@ export const useAuthentication = () => {
     try {
       await signIn('password', { ...data, flow: 'signIn' })
       router.push('/dashboard')
-    } catch {
-      // Convex Auth deliberately does not say which half was wrong.
-      toast.error('Those credentials did not match an account.')
+    } catch (error) {
+      /**
+       * A failure to sign in is not proof of a wrong password.
+       *
+       * This reported every failure as bad credentials, and when the backend
+       * was disabled for exceeding its plan limits it sent someone hunting for
+       * a password that was correct all along. The account was there, the
+       * hash was there, and the app said they did not match.
+       *
+       * Convex Auth deliberately will not say which half of a real credential
+       * was wrong — that part stays vague on purpose. But a backend that is
+       * down, over quota or unreachable is a different answer, and saying so
+       * is the difference between waiting and resetting a password that was
+       * never the problem.
+       */
+      const message = error instanceof Error ? error.message : ''
+      const backendDown =
+        /exceeded the free plan|deployments have been disabled|server error|failed to fetch|network/i.test(
+          message,
+        )
+
+      if (backendDown) {
+        toast.error('Signing in is unavailable right now', {
+          description:
+            'The backend rejected the request rather than your details — your password is probably fine. Check the Convex deployment status.',
+        })
+      } else {
+        toast.error('Those credentials did not match an account.')
+      }
     } finally {
       setPending(false)
     }
