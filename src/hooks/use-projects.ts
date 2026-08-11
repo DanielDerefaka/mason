@@ -51,15 +51,28 @@ export const useProjects = () => {
     }
   }
 
-  const deleteProject = async (projectId: Id<'projects'>) => {
+  /**
+   * Archiving, which is what deleting means now.
+   *
+   * Takes a list because the projects page can select several, and one
+   * round trip is both faster and atomic from the caller's point of view.
+   */
+  const archiveProjects = async (projectIds: Id<'projects'>[]) => {
+    if (projectIds.length === 0) return
     try {
-      await deleteProjectMutation({ projectId })
-      dispatch(removeProject(projectId))
-      toast.success('Project deleted')
+      await deleteProjectMutation({ projectIds })
+      for (const id of projectIds) dispatch(removeProject(id))
+      toast.success(
+        projectIds.length === 1 ? 'Moved to archive' : `${projectIds.length} moved to archive`,
+        { description: 'Restore it from the archive at any time.' },
+      )
     } catch {
-      toast.error('Could not delete that project.')
+      toast.error('Could not archive that project.')
     }
   }
+
+  /** Kept for callers that still archive exactly one. */
+  const deleteProject = (projectId: Id<'projects'>) => archiveProjects([projectId])
 
   const renameProject = async (projectId: Id<'projects'>, name: string) => {
     try {
@@ -77,6 +90,7 @@ export const useProjects = () => {
     creating,
     createProject,
     deleteProject,
+    archiveProjects,
     renameProject,
     setThumbnail,
   }

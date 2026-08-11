@@ -1,12 +1,17 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import { useState } from 'react'
+
+import { cn } from '@/lib/utils'
 import { useProjects } from '@/hooks/use-projects'
+import { ProjectArchive } from './archive'
 import { ProjectCard } from './card'
 
 export const ProjectsList = () => {
   const params = useParams<{ session: string }>()
   const { projects } = useProjects()
+  const [view, setView] = useState<'live' | 'archive'>('live')
 
   return (
     <div className="space-y-8">
@@ -17,7 +22,29 @@ export const ProjectsList = () => {
         </p>
       </div>
 
-      {projects.length === 0 ? (
+      {/* A tab rather than a separate page: the archive is the same list in
+          another state, and a route of its own would make it feel like
+          somewhere projects go to be forgotten. */}
+      <div className="flex items-center gap-1 rounded-full bg-white/[0.04] p-1 w-max">
+        {(['live', 'archive'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setView(option)}
+            aria-pressed={view === option}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-xs capitalize transition-colors',
+              view === option ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {option === 'live' ? 'Projects' : 'Archive'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'archive' ? (
+        <ProjectArchive />
+      ) : projects.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No projects yet. Create one to get started.
         </p>

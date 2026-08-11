@@ -1,6 +1,7 @@
-import { mutation, query } from './_generated/server'
+import { mutation, query, type MutationCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
+import type { Id } from './_generated/dataModel'
 
 export const getProjects = query({
   args: {},
@@ -8,13 +9,16 @@ export const getProjects = query({
     const userId = await getAuthUserId(ctx)
     if (userId === null) return { projects: [], total: 0 }
 
-    const projects = await ctx.db
+    const all = await ctx.db
       .query('projects')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .order('desc')
       .collect()
 
-    return { projects, total: projects.length }
+    // Archived projects are not gone, but they are not here either.
+    const projects = all.filter((project) => !project.archivedAt)
+
+    return { projects, total: projects.length, archivedCount: all.length - projects.length }
   },
 })
 
@@ -54,17 +58,84 @@ export const createProject = mutation({
   },
 })
 
+/** Ownership is checked here rather than trusted from the client. */
+const ownedProject = async (ctx: MutationCtx, projectId: Id<'projects'>) => {
+  const userId = await getAuthUserId(ctx)
+  if (userId === null) throw new Error('Not authenticated')
+  const project = await ctx.db.get(projectId)
+  if (!project || project.userId !== userId) throw new Error('Project not found')
+  return project
+}
+
+/**
+ * Deleting puts a project in the archive rather than destroying it.
+ *
+ * A project holds designs somebody spent credits generating, so the
+ * irreversible step should be one you have to ask for twice. This is the first
+ * ask; deleteProjectsForever is the second.
+ */
 export const deleteProject = mutation({
-  args: { projectId: v.id('projects') },
+  args: { projectIds: v.array(v.id('projects')) },
   handler: async (ctx, args) => {
+    for (const projectId of args.projectIds) {
+      await ownedProject(ctx, projectId)
+      await ctx.db.patch(projectId, { archivedAt: Date.now() })
+    }
+  },
+})
+
+export const listArchivedProjects = query({
+  args: {},
+  handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
-    if (userId === null) throw new Error('Not authenticated')
+    if (userId === null) return []
 
-    const project = await ctx.db.get(args.projectId)
-    // Ownership is checked here rather than trusted from the client.
-    if (!project || project.userId !== userId) throw new Error('Project not found')
+    const all = await ctx.db
+      .query('projects')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect()
 
-    await ctx.db.delete(args.projectId)
+    return all
+      .filter((project) => project.archivedAt)
+      .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0))
+  },
+})
+
+export const restoreProjects = mutation({
+  args: { projectIds: v.array(v.id('projects')) },
+  handler: async (ctx, args) => {
+    for (const projectId of args.projectIds) {
+      await ownedProject(ctx, projectId)
+      // Cleared rather than set to zero, so "live" is the absence of a date.
+      await ctx.db.patch(projectId, { archivedAt: undefined })
+    }
+  },
+})
+
+/**
+ * The irreversible one.
+ *
+ * Uploaded images go with it. Nothing else references a project's inspiration
+ * or mood board, and a blob nobody can reach is a bill that never stops —
+ * leaving them behind would mean the storage of every deleted project is paid
+ * for forever.
+ */
+export const deleteProjectsForever = mutation({
+  args: { projectIds: v.array(v.id('projects')) },
+  handler: async (ctx, args) => {
+    for (const projectId of args.projectIds) {
+      const project = await ownedProject(ctx, projectId)
+
+      for (const storageId of [
+        ...(project.inspirationImages ?? []),
+        ...(project.moodBoardImages ?? []),
+      ]) {
+        // A missing blob is not a reason to abandon the delete.
+        await ctx.storage.delete(storageId as Id<'_storage'>).catch(() => {})
+      }
+
+      await ctx.db.delete(projectId)
+    }
   },
 })
 

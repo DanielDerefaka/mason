@@ -96,6 +96,15 @@ export default defineSchema({
     thumbnailDesignId: v.optional(v.union(v.string(), v.null())),
     /** Set once somebody chooses a picture, so opening a design stops changing it. */
     thumbnailPinned: v.optional(v.boolean()),
+    /**
+     * When the project was archived, or absent if it is live.
+     *
+     * Deleting is a two-step now: archiving is reversible and permanent
+     * deletion is not, and a design somebody spent credits generating is worth
+     * the extra step. A timestamp rather than a flag, so the archive can be
+     * ordered by when things were put there.
+     */
+    archivedAt: v.optional(v.number()),
   }).index('by_user', ['userId']),
 
   // Per-user counter behind the "Project 1", "Project 2" auto-naming.
