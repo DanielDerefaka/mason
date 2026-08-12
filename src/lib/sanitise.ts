@@ -36,6 +36,11 @@ const ALLOWED_ATTRS = new Set([
   'step', 'rows', 'cols', 'maxlength', 'inputmode', 'aria-expanded',
   'aria-controls', 'aria-labelledby', 'aria-describedby', 'aria-current',
   'aria-pressed', 'aria-selected', 'tabindex',
+  // What the layer tree records about a node: the name it was given, whether
+  // it is hidden and whether it is locked. Part of the design rather than of
+  // an editing session, so they have to survive the round trip through
+  // storage — which means surviving this walk on the way back in.
+  'data-mason-name', 'data-mason-hidden', 'data-mason-locked',
   // SVG geometry and paint.
   'viewbox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
   'stroke-linejoin', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2',
@@ -75,8 +80,14 @@ export const DESIGN_SCOPE = 'mason-design'
  * fetches from somewhere it should not is dropped rather than the whole rule.
  * ------------------------------------------------------------------ */
 
-/** Splits on a character only where it is not nested inside brackets or quotes. */
-const splitTop = (input: string, separator: string): string[] => {
+/**
+ * Splits on a character only where it is not nested inside brackets or quotes.
+ *
+ * Exported because the inspector needs the same rule: `box-shadow` and
+ * `background-image` are comma-separated lists whose entries contain commas of
+ * their own, so `rgba(0, 0, 0, 0.4)` is one value and not four.
+ */
+export const splitTop = (input: string, separator: string): string[] => {
   const parts: string[] = []
   let depth = 0
   let quote: string | null = null
@@ -152,11 +163,27 @@ const scopeSelectors = (selectorList: string, scope: string): string =>
   splitTop(selectorList, ',')
     .map((selector) => selector.trim())
     .filter(Boolean)
-    .map((selector) =>
-      /^(html|body|:root)\b/i.test(selector)
+    .map((selector) => {
+      /**
+       * Scoping is idempotent, and it has to be.
+       *
+       * A design is sanitised on the way in, edited, serialised back to
+       * storage with its stylesheet already scoped, and sanitised again on the
+       * next render. Prefixing unconditionally therefore added a level every
+       * time it was opened — `.mason-design .mason-design .card` needs a
+       * wrapper nested inside a wrapper, and there is only ever one, so the
+       * rule matched nothing and the design silently lost every hover, focus,
+       * selected state and breakpoint it had.
+       *
+       * It looked like opening the preview corrupting the design, because the
+       * damage was written back on the next save.
+       */
+      if (selector === scope || selector.startsWith(`${scope} `)) return selector
+
+      return /^(html|body|:root)\b/i.test(selector)
         ? selector.replace(/^(html|body|:root)/i, scope)
-        : `${scope} ${selector}`,
-    )
+        : `${scope} ${selector}`
+    })
     .join(', ')
 
 /** At-rules whose contents are ordinary rules, so they are scoped recursively. */

@@ -37,8 +37,15 @@ import { toast } from 'sonner'
 import { api } from '../../../convex/_generated/api'
 import {
   NODE_ATTR,
+  ancestorIds,
+  applyWrites,
   assignNodeIds,
+  buildLayerRows,
+  canAcceptDrop,
+  canDropLayer,
   canEditInline,
+  defaultExpanded,
+  dropLayer,
   stripRings,
   duplicateNode,
   findNode,
@@ -46,15 +53,24 @@ import {
   labelFor,
   canHostChildren,
   isRowLayout,
+  lockedAncestor,
   moveNode,
   readStyle,
+  renameNode,
   serialise,
+  setHidden,
+  setLocked,
   siblingIndex,
+  sizeWrites,
+  type DropWhere,
   type InsertKind,
+  type StyleWrite,
 } from './node'
 import { AiPanel } from './ai'
+import { Layers } from './layers'
 import { ShareButton } from './share'
 import { Properties } from './properties'
+import { exportDesignHtml, exportDesignPrompt } from '@/lib/export'
 
 /**
  * The design editor.
@@ -86,7 +102,6 @@ export const DesignEditor = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [dragId, setDragId] = useState<string | null>(null)
   const [asking, setAsking] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [box, setBox] = useState<Box | null>(null)
@@ -99,8 +114,23 @@ export const DesignEditor = () => {
 
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
   const resolveStorageUrl = useMutation(api.moodboard.resolveStorageUrl)
-  const [tree, setTree] = useState<{ id: string; depth: number; label: string }[]>([])
   const [zoom, setZoom] = useState(1)
+
+  /**
+   * The layer tree is derived, not stored.
+   *
+   * The DOM is the document, so the rows are rebuilt from it whenever it
+   * changes — `treeTick` is the signal that it has. What is state here is what
+   * the DOM cannot say: which groups are open.
+   */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [treeTick, setTreeTick] = useState(0)
+  const rows = useMemo(
+    () => (stage.current ? buildLayerRows(stage.current, expanded) : []),
+    // treeTick is the dependency that matters; the DOM read is deliberate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expanded, treeTick],
+  )
 
   /** Snapshots of the markup. The canvas's history does not reach in here. */
   const past = useRef<string[]>([])
@@ -119,20 +149,8 @@ export const DesignEditor = () => {
     return vars as React.CSSProperties
   }, [styleGuide])
 
-  const readTree = useCallback(() => {
-    const root = stage.current
-    if (!root) return
-    const rows: { id: string; depth: number; label: string }[] = []
-    const walk = (element: Element, depth: number) => {
-      const id = element.getAttribute(NODE_ATTR)
-      if (id) rows.push({ id, depth, label: labelFor(element as HTMLElement) })
-      // Deep trees are unreadable as a flat list, and the interesting nodes
-      // are near the top.
-      if (depth < 5) Array.from(element.children).forEach((child) => walk(child, depth + 1))
-    }
-    Array.from(root.children).forEach((child) => walk(child, 0))
-    setTree(rows)
-  }, [])
+  /** Re-reads the tree out of the DOM. Cheap, and always right. */
+  const readTree = useCallback(() => setTreeTick((tick) => tick + 1), [])
 
   /** Paint the stored markup once, then never re-render from React again —
    *  React re-rendering the tree would blow away the live DOM being edited. */
@@ -149,8 +167,29 @@ export const DesignEditor = () => {
     // one; clear it on the way in so it is gone after the next save.
     stripRings(root)
     assignNodeIds(root)
+    setExpanded(defaultExpanded(root))
     readTree()
   }, [design?.html, readTree])
+
+  /**
+   * Reveals the selection in the tree.
+   *
+   * Clicking something three levels down on the artboard has to open the
+   * groups above it, or the layer list is showing a selection that is not in
+   * it. Ids are positional paths, so a node's ancestors are its own id's
+   * prefixes and there is nothing to walk.
+   */
+  useEffect(() => {
+    if (!selectedId) return
+    const ancestors = ancestorIds(selectedId)
+    if (ancestors.length === 0) return
+    setExpanded((current) => {
+      if (ancestors.every((id) => current.has(id))) return current
+      const next = new Set(current)
+      for (const id of ancestors) next.add(id)
+      return next
+    })
+  }, [selectedId])
 
   const commit = () => {
     const root = stage.current
@@ -196,11 +235,27 @@ export const DesignEditor = () => {
   const position = selected ? siblingIndex(selected) : null
   const atStart = !position || position.index <= 0
   const atEnd = !position || position.index >= position.total - 1
+  const selectionLocked =
+    selected && stage.current ? lockedAncestor(selected, stage.current) !== null : false
 
   const onStyle = (property: string, value: string) => {
     if (!selected) return
     snapshot()
     selected.style.setProperty(property, value)
+    commit()
+  }
+
+  /**
+   * Several declarations as one edit.
+   *
+   * A fixed width on a flex child is three properties and a fill that is
+   * removed is two; written one at a time they would be three undo steps and
+   * two, which is not what the user did.
+   */
+  const onStyles = (writes: StyleWrite[]) => {
+    if (!selected || writes.length === 0) return
+    snapshot()
+    applyWrites(selected, writes)
     commit()
   }
 
@@ -344,13 +399,27 @@ export const DesignEditor = () => {
     }
   }
 
+  /**
+   * The node an event on the artboard is about.
+   *
+   * A locked node answers nothing: the lock is what stops a finished section
+   * being picked up by a stray click, so the same walk that finds what to
+   * select has to be the one that refuses. It stays reachable from the layer
+   * tree, which is where it can be unlocked.
+   */
+  const nodeFor = (target: EventTarget | null): HTMLElement | null => {
+    const root = stage.current
+    if (!root) return null
+    let node = target as HTMLElement | null
+    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
+    if (!node || node === root) return null
+    return lockedAncestor(node, root) ? null : node
+  }
+
   /** Double-click types straight into the design rather than the side panel. */
   const onStageDoubleClick = (event: React.MouseEvent) => {
-    const root = stage.current
-    if (!root) return
-    let node = event.target as HTMLElement | null
-    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
-    if (!node || node === root || !canEditInline(node)) return
+    const node = nodeFor(event.target)
+    if (!node || !canEditInline(node)) return
 
     event.stopPropagation()
     setSelectedId(node.getAttribute(NODE_ATTR))
@@ -405,9 +474,18 @@ export const DesignEditor = () => {
     }
 
     const onMove = (move: PointerEvent) => {
+      /**
+       * Sized through `sizeWrites` rather than by setting width directly.
+       *
+       * A flex child's width loses to its flex-basis, and a sibling with
+       * `flex: 1` takes the space back on the next layout pass — so dragging
+       * the handle of a card in a row either did nothing or left the row
+       * broken behind it. Along the parent's axis the drag writes a basis the
+       * container is told to hold.
+       */
       if (edge !== 's') {
         const width = Math.max(8, start.width + (move.clientX - start.x) / zoom)
-        node.style.width = `${Math.round(width)}px`
+        applyWrites(node, sizeWrites(node, 'width', `${Math.round(width)}px`))
         // A flex item defaults to min-width:auto, which refuses to go below
         // its content — so dragging a handle inwards did nothing at all until
         // the floor was removed.
@@ -415,7 +493,7 @@ export const DesignEditor = () => {
       }
       if (edge !== 'e') {
         const height = Math.max(8, start.height + (move.clientY - start.y) / zoom)
-        node.style.height = `${Math.round(height)}px`
+        applyWrites(node, sizeWrites(node, 'height', `${Math.round(height)}px`))
         node.style.minHeight = '0'
       }
       setBox(measure(selectedId))
@@ -683,29 +761,104 @@ export const DesignEditor = () => {
 
   /** Right-click selects what is under the pointer, then offers its actions. */
   const onStageContextMenu = (event: React.MouseEvent) => {
-    const root = stage.current
-    if (!root) return
+    if (!stage.current) return
     event.preventDefault()
     event.stopPropagation()
 
-    let node = event.target as HTMLElement | null
-    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
-    if (node && node !== root) setSelectedId(node.getAttribute(NODE_ATTR))
+    const node = nodeFor(event.target)
+    if (node) setSelectedId(node.getAttribute(NODE_ATTR))
     setMenu({ x: event.clientX, y: event.clientY })
   }
 
-  /** Drops a dragged layer next to the one it was released on. */
-  const onDropLayer = (targetId: string) => {
+  /**
+   * Drops a dragged layer beside or inside the one it was released on.
+   *
+   * Every one of these reshapes the tree, so the ids are restamped and the
+   * selection re-derived rather than carried across — the node that moved has
+   * a different path afterwards, and so does everything it moved past.
+   */
+  const onDropLayer = (movingId: string, targetId: string, where: DropWhere) => {
     const root = stage.current
-    if (!root || !dragId || dragId === targetId) return
-    const moving = findNode(root, dragId)
+    if (!root) return
+    const moving = findNode(root, movingId)
     const target = findNode(root, targetId)
-    setDragId(null)
-    if (!moving || !target || moving.contains(target)) return
+    // Asked before the snapshot, so a refused drop does not leave an undo
+    // step for something that did not happen.
+    if (!moving || !target || !canDropLayer(moving, target, where)) return
 
     snapshot()
-    target.parentElement?.insertBefore(moving, target)
+    dropLayer(moving, target, where)
     restamp(moving)
+  }
+
+  const onToggleLayer = (id: string) =>
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+
+  /** Hiding, locking and renaming all write onto the node, so all persist. */
+  const onHideLayer = (id: string, hidden: boolean) => {
+    const node = stage.current && findNode(stage.current, id)
+    if (!node) return
+    snapshot()
+    setHidden(node, hidden)
+    readTree()
+    commit()
+  }
+
+  const onLockLayer = (id: string, locked: boolean) => {
+    const node = stage.current && findNode(stage.current, id)
+    if (!node) return
+    snapshot()
+    setLocked(node, locked)
+    readTree()
+    commit()
+  }
+
+  const onRenameLayer = (id: string, name: string) => {
+    const node = stage.current && findNode(stage.current, id)
+    if (!node || name === labelFor(node)) return
+    snapshot()
+    renameNode(node, name)
+    readTree()
+    commit()
+  }
+
+  /** Whether a row will take a layer dropped into the middle of it. */
+  const canDropInside = (id: string) => {
+    const node = stage.current && findNode(stage.current, id)
+    return node ? canAcceptDrop(node) : false
+  }
+
+  /**
+   * Markup typed into the inspector's code view.
+   *
+   * The same path a model's answer takes — sanitised, swapped in, restamped —
+   * because it is the same kind of input: HTML from outside the editor.
+   */
+  const onReplace = (html: string) => {
+    if (!selected) return
+    const holder = document.createElement('div')
+    holder.innerHTML = sanitiseHtml(html)
+    const replacement = holder.firstElementChild as HTMLElement | null
+    if (!replacement) {
+      toast.error('That is not markup this can use')
+      return
+    }
+    snapshot()
+    selected.replaceWith(replacement)
+    restamp(replacement)
+  }
+
+  const onExport = (kind: 'html' | 'brief') => {
+    if (!design) return
+    // Exported from the live DOM rather than the last save, so a download
+    // taken mid-edit is the design on screen.
+    const current = stage.current ? { ...design, html: serialise(stage.current) } : design
+    if (kind === 'html') exportDesignHtml(current, styleGuide)
+    else exportDesignPrompt(current, styleGuide)
   }
 
   const onText = (text: string) => {
@@ -727,12 +880,10 @@ export const DesignEditor = () => {
   const DRAG_THRESHOLD = 4
 
   const onStagePointerDown = (event: React.PointerEvent) => {
-    const root = stage.current
-    if (!root || event.button !== 0) return
+    if (event.button !== 0) return
 
-    let node = event.target as HTMLElement | null
-    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
-    if (!node || node === root) return
+    const node = nodeFor(event.target)
+    if (!node) return
     // Typing beats dragging while a node is open for editing.
     if (node.isContentEditable) return
     // A press on something not yet selected still starts a drag — requiring a
@@ -772,8 +923,7 @@ export const DesignEditor = () => {
 
   /** Selection: walk up from whatever was clicked to the nearest tagged node. */
   const onStageClick = (event: React.MouseEvent) => {
-    const root = stage.current
-    if (!root) return
+    if (!stage.current) return
     event.preventDefault()
     // Without this the click carries on to the artboard behind, whose job is
     // to clear the selection — so every click selected and instantly
@@ -781,11 +931,7 @@ export const DesignEditor = () => {
     event.stopPropagation()
     // The click that ends a drag should not re-select whatever it landed on.
     if (draggingNode) return
-    let node = event.target as HTMLElement | null
-    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) {
-      node = node.parentElement
-    }
-    setSelectedId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
+    setSelectedId(nodeFor(event.target)?.getAttribute(NODE_ATTR) ?? null)
   }
 
   /**
@@ -850,15 +996,8 @@ export const DesignEditor = () => {
   }, [hoverId, selectedId, measure])
 
   /** Same walk as the click, so what lights up is exactly what will select. */
-  const onStageHover = (event: React.MouseEvent) => {
-    const root = stage.current
-    if (!root) return
-    let node = event.target as HTMLElement | null
-    while (node && node !== root && !node.hasAttribute(NODE_ATTR)) {
-      node = node.parentElement
-    }
-    setHoverId(node && node !== root ? node.getAttribute(NODE_ATTR) : null)
-  }
+  const onStageHover = (event: React.MouseEvent) =>
+    setHoverId(nodeFor(event.target)?.getAttribute(NODE_ATTR) ?? null)
 
   // The selection ring used to be an inline `outline` on the node, which made
   // it part of innerHTML and shipped it to storage. It is an overlay now, so
@@ -1027,37 +1166,25 @@ export const DesignEditor = () => {
         {/* Layers */}
         {/* Below md the layer list becomes a strip along the top: hiding it
             left no way to reach a node that was not visible on the artboard. */}
-        <aside className="flex max-h-[22vh] w-full shrink-0 flex-row overflow-x-auto border-b border-white/[0.08] py-2 md:max-h-none md:w-[210px] md:flex-col md:overflow-x-visible md:overflow-y-auto md:border-r md:border-b-0">
-          <span className="hidden px-3 pb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase md:block">
+        {/* A nested tree needs to scroll vertically at any width, so under md
+            this is a short scrolling panel rather than the horizontal strip
+            the flat list used to be. */}
+        <aside className="flex max-h-[26vh] w-full shrink-0 flex-col overflow-y-auto border-b border-white/[0.08] pt-2 md:max-h-none md:w-[210px] md:border-r md:border-b-0">
+          <span className="px-3 pb-1 text-[10px] tracking-[0.14em] text-white/40 uppercase">
             Layers
           </span>
-          {tree.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() => setSelectedId(row.id)}
-              onMouseEnter={() => setHoverId(row.id)}
-              onMouseLeave={() => setHoverId(null)}
-              draggable
-              onDragStart={() => setDragId(row.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => onDropLayer(row.id)}
-              onDragEnd={() => setDragId(null)}
-              style={{ paddingLeft: 12 + row.depth * 12 }}
-              className={cn(
-                // shrink-0: these are flex children in a fixed-height column,
-                // and without it sixty rows compress into each other rather
-                // than overflowing into the scroll.
-                'shrink-0 cursor-grab truncate py-1.5 pr-3 text-left text-[12px] whitespace-nowrap transition-colors active:cursor-grabbing',
-                dragId === row.id && 'opacity-40',
-                selectedId === row.id
-                  ? 'bg-white/[0.12] text-white'
-                  : 'text-muted-foreground hover:bg-white/[0.05] hover:text-foreground',
-              )}
-            >
-              {row.label}
-            </button>
-          ))}
+          <Layers
+            rows={rows}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onHover={setHoverId}
+            onToggle={onToggleLayer}
+            onHide={onHideLayer}
+            onLock={onLockLayer}
+            onRename={onRenameLayer}
+            onDrop={onDropLayer}
+            allowInside={canDropInside}
+          />
         </aside>
 
         {/* Artboard */}
@@ -1122,10 +1249,16 @@ export const DesignEditor = () => {
               >
 
                 {/* Handles counter-scale so they stay the same size on screen
-                    however far in or out the artboard is zoomed. */}
-                <Handle edge="e" zoom={zoom} onPointerDown={onResizeStart('e')} />
-                <Handle edge="s" zoom={zoom} onPointerDown={onResizeStart('s')} />
-                <Handle edge="se" zoom={zoom} onPointerDown={onResizeStart('se')} />
+                    however far in or out the artboard is zoomed. A locked node
+                    still shows its box — it is selected, after all — but
+                    nothing on it that would resize it. */}
+                {!selectionLocked && (
+                  <>
+                    <Handle edge="e" zoom={zoom} onPointerDown={onResizeStart('e')} />
+                    <Handle edge="s" zoom={zoom} onPointerDown={onResizeStart('s')} />
+                    <Handle edge="se" zoom={zoom} onPointerDown={onResizeStart('se')} />
+                  </>
+                )}
 
                 {/* Only while dragging. A permanent badge sits on top of any
                     element smaller than the badge itself. */}
@@ -1200,13 +1333,18 @@ export const DesignEditor = () => {
                   <Trash2 className="size-3.5" />
                 </NodeAction>
               </div>
-                <Properties
+              <Properties
                 element={selected}
                 guide={styleGuide}
+                locked={selectionLocked}
                 onStyle={onStyle}
+                onStyles={onStyles}
                 onText={onText}
                 onAttribute={onAttribute}
                 onUpload={(file) => void onUpload(file)}
+                onReplace={onReplace}
+                onExport={onExport}
+                onUnlock={() => selectedId && onLockLayer(selectedId, false)}
                 uploading={uploading}
               />
               <AiPanel

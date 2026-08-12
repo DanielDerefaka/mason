@@ -274,3 +274,37 @@ describe('interactive markup', () => {
     expect(sanitiseHtml('<style>@import url("https://evil.test/x.css");</style>')).not.toContain('<style>')
   })
 })
+
+describe('sanitiseCss — idempotence', () => {
+  /**
+   * A design is sanitised on the way in, edited, serialised back to storage
+   * with its stylesheet already scoped, and sanitised again on the next
+   * render. Scoping had to be applied exactly once however many times that
+   * cycle runs.
+   */
+  it('does not scope a selector that is already scoped', () => {
+    const once = sanitiseCss('.card { color: red }')
+    expect(sanitiseCss(once)).toBe(once)
+  })
+
+  it('survives many round trips unchanged', () => {
+    // Each pass used to add a level: `.mason-design .mason-design .card`
+    // needs a wrapper inside a wrapper, and there is only ever one — so the
+    // rule matched nothing and the design lost its stylesheet.
+    let css = sanitiseCss('.card:hover { color: red }')
+    for (let pass = 0; pass < 5; pass += 1) css = sanitiseCss(css)
+
+    expect(css).toBe(`${scope} .card:hover{color: red}`)
+    expect(css).not.toContain(`${scope} ${scope}`)
+  })
+
+  it('keeps a retargeted root rule stable across passes', () => {
+    const once = sanitiseCss('body { background: black }')
+    expect(sanitiseCss(once)).toBe(once)
+  })
+
+  it('is idempotent inside a media query too', () => {
+    const once = sanitiseCss('@media (max-width: 640px) { .nav { display: none } }')
+    expect(sanitiseCss(once)).toBe(once)
+  })
+})
