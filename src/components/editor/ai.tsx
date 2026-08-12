@@ -83,8 +83,17 @@ export const AiPanel = ({
       </h3>
 
       <p className="text-muted-foreground text-[11px] leading-relaxed">
-        Editing the <span className="text-foreground">{label}</span>. One credit per
-        request.
+        {label === 'whole page' ? (
+          <>
+            Nothing selected — click a part of the design, or type{' '}
+            <span className="text-foreground">/</span> to pick a section.
+          </>
+        ) : (
+          <>
+            Editing the <span className="text-foreground">{label}</span>. One credit per
+            request.
+          </>
+        )}
       </p>
 
       {matches.length > 0 && (

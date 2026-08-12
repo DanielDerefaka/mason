@@ -380,7 +380,16 @@ export const DesignEditor = () => {
    * when it looks identical.
    */
   const onAsk = async (instruction: string) => {
-    if (!selected || !projectId) return
+    if (!projectId) return
+
+    // The panel is always on screen now, so it can be typed into with nothing
+    // chosen. Saying what is missing beats doing nothing.
+    if (!selected) {
+      toast.error('Nothing is selected', {
+        description: 'Click a part of the design, or type / to pick a section by name.',
+      })
+      return
+    }
     setAsking(true)
     const target = selected
 
@@ -1365,13 +1374,6 @@ export const DesignEditor = () => {
                 onUnlock={() => selectedId && onLockLayer(selectedId, false)}
                 uploading={uploading}
               />
-              <AiPanel
-                label={labelFor(selected)}
-                busy={asking}
-                onAsk={(instruction) => void onAsk(instruction)}
-                sections={sections}
-                onTarget={setSelectedId}
-              />
             </>
           ) : (
             <p className="text-muted-foreground p-4 text-xs leading-relaxed">
@@ -1380,6 +1382,26 @@ export const DesignEditor = () => {
             </p>
           )}
         </aside>
+      </div>
+
+      {/*
+        The AI sits along the bottom rather than at the foot of the property
+        panel. It is about the page, not about the property being edited: with
+        `/section` it can aim anywhere without a selection first, so burying it
+        under Effects made the one control that does not need the sidebar the
+        hardest one to reach. Full width also gives the section list somewhere
+        to open.
+      */}
+      <div className="shrink-0 border-t border-white/[0.08] bg-[#0B0B0C]">
+        <div className="mx-auto w-full max-w-3xl">
+          <AiPanel
+            label={selected ? labelFor(selected) : 'whole page'}
+            busy={asking}
+            onAsk={(instruction) => void onAsk(instruction)}
+            sections={sections}
+            onTarget={setSelectedId}
+          />
+        </div>
       </div>
 
       {menu && selected && (
