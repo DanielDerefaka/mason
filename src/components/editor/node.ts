@@ -225,3 +225,60 @@ export const insertNode = (
   else root.append(node)
   return node
 }
+
+/* ------------------------------------------------------------------ *
+ * Containers
+ *
+ * A generated design is a flow layout: some elements arrange children and some
+ * are the children. The editor has to tell them apart, because dropping a card
+ * into a nav — which is what happens when any node under the pointer is
+ * accepted — rearranges the page rather than the element.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Elements that hold content rather than layout.
+ *
+ * A button contains a label, not a section. Inserting a sibling inside one is
+ * always a mistake even when it is geometrically where the pointer was.
+ */
+const LEAF_TAGS = new Set([
+  'BUTTON', 'A', 'P', 'SPAN', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'IMG', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT', 'LABEL', 'LI', 'TD', 'TH',
+  'STRONG', 'EM', 'SMALL', 'CODE', 'TIME', 'SUMMARY',
+])
+
+/** Can this element genuinely arrange a new child? */
+export const canHostChildren = (element: HTMLElement): boolean => {
+  if (LEAF_TAGS.has(element.tagName)) return false
+
+  const display = getComputedStyle(element).display
+  // Inline boxes do not arrange block children in any useful way, and an
+  // element displaying nothing cannot be dropped into at all.
+  if (display === 'inline' || display === 'none' || display === 'contents') return false
+
+  // A container with no element children is usually a spacer or a decorative
+  // box rather than somewhere content belongs. ^[inferred]
+  return element.children.length > 0
+}
+
+/**
+ * Does this container lay its children out along the horizontal axis?
+ *
+ * Decides which edge of a target counts as "before", and whether the drop
+ * indicator is a vertical bar or a horizontal one. Judging a row by the
+ * pointer's Y position puts the element on the wrong side about half the time.
+ */
+export const isRowLayout = (container: HTMLElement): boolean => {
+  const style = getComputedStyle(container)
+
+  if (style.display === 'flex' || style.display === 'inline-flex') {
+    return style.flexDirection === 'row' || style.flexDirection === 'row-reverse'
+  }
+
+  if (style.display === 'grid' || style.display === 'inline-grid') {
+    // More than one column means children sit beside each other.
+    return style.gridTemplateColumns.split(' ').filter(Boolean).length > 1
+  }
+
+  return false
+}

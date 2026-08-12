@@ -44,6 +44,8 @@ import {
   findNode,
   insertNode,
   labelFor,
+  canHostChildren,
+  isRowLayout,
   moveNode,
   readStyle,
   serialise,
@@ -92,7 +94,7 @@ export const DesignEditor = () => {
   const [resizing, setResizing] = useState(false)
   const [draggingNode, setDraggingNode] = useState(false)
   const [dropLine, setDropLine] = useState<
-    { left: number; top: number; width: number } | null
+    { left: number; top: number; width: number; height: number } | null
   >(null)
 
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
@@ -477,18 +479,64 @@ export const DesignEditor = () => {
         return
       }
 
+      /**
+       * The drop has to land somewhere that can hold it.
+       *
+       * Previously any node under the pointer was accepted and the element was
+       * inserted into that node's parent — so dragging a card across a nav
+       * dropped the card *into* the nav, and the layout scattered. A generated
+       * design is a flow layout, and a flow layout has containers that know how
+       * to arrange children and elements that do not.
+       *
+       * Walk outward until the parent is something that can genuinely host a
+       * child, and refuse rather than guess when nothing qualifies.
+       */
+      while (under && under !== root) {
+        const parent: HTMLElement | null = under.parentElement
+        if (!parent) break
+        if (parent === root || canHostChildren(parent)) break
+        under = parent
+      }
+
+      if (!under || under === root || under === node || node.contains(under)) {
+        target = null
+        setDropLine(null)
+        return
+      }
+
+      const container = under.parentElement
       const rect = under.getBoundingClientRect()
-      const before = move.clientY < rect.top + rect.height / 2
+
+      /**
+       * Which side of the target counts as "before" depends on how the
+       * container lays its children out. In a row, the answer is left/right and
+       * the indicator is a vertical bar; judging a row by the pointer's Y put
+       * the element on the wrong side about half the time. ^[inferred]
+       */
+      const row = container ? isRowLayout(container) : false
+      const before = row
+        ? move.clientX < rect.left + rect.width / 2
+        : move.clientY < rect.top + rect.height / 2
       target = { node: under, before }
 
       const wrap = artboard.current
       if (!wrap) return
       const w = wrap.getBoundingClientRect()
-      setDropLine({
-        left: (rect.left - w.left) / zoom,
-        top: (before ? rect.top - w.top : rect.bottom - w.top) / zoom,
-        width: rect.width / zoom,
-      })
+      setDropLine(
+        row
+          ? {
+              left: ((before ? rect.left : rect.right) - w.left) / zoom,
+              top: (rect.top - w.top) / zoom,
+              width: 2 / zoom,
+              height: rect.height / zoom,
+            }
+          : {
+              left: (rect.left - w.left) / zoom,
+              top: ((before ? rect.top : rect.bottom) - w.top) / zoom,
+              width: rect.width / zoom,
+              height: 2 / zoom,
+            },
+      )
     }
 
     const onUp = () => {
@@ -1061,7 +1109,7 @@ export const DesignEditor = () => {
                   left: dropLine.left,
                   top: dropLine.top,
                   width: dropLine.width,
-                  height: 2 / zoom,
+                  height: dropLine.height,
                 }}
               />
             )}
