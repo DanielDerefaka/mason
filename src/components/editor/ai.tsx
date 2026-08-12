@@ -3,6 +3,8 @@
 import { Loader2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 
+import { cn } from '@/lib/utils'
+
 /**
  * Ask-the-model, scoped to the selected element.
  *
@@ -76,7 +78,7 @@ export const AiPanel = ({
   }
 
   return (
-    <section className="flex flex-col gap-3 border-t border-white/[0.08] p-4">
+    <section className="flex flex-col gap-2.5 p-3">
       <h3 className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] text-white/40 uppercase">
         <Sparkles className="size-3" />
         Ask AI
@@ -127,7 +129,9 @@ export const AiPanel = ({
         className="w-full resize-none rounded-md border border-white/10 bg-white/[0.04] p-2.5 text-xs outline-none placeholder:text-white/30 focus:border-white/25"
       />
 
-      <div className="flex flex-wrap gap-1">
+      {/* Only while empty: six chips under a filled box is noise, and the dock
+          has to stay short enough not to cover the design. */}
+      <div className={cn('flex flex-wrap gap-1', instruction.trim() && 'hidden')}>
         {SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion}

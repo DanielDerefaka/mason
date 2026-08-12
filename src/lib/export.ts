@@ -1,8 +1,10 @@
 import { buildDesignPrompt } from '@/lib/prompt-export'
+import { buildProject, projectFilename } from '@/lib/project-export'
 import { rasteriseFrame } from '@/lib/rasterise'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import type { Shape } from '@/redux/slice/shapes'
 import type { StyleGuide } from '@/types/style-guide'
+import { zip } from '@/lib/zip'
 
 /**
  * Getting work out of the canvas.
@@ -133,4 +135,18 @@ export const exportDesignPrompt = (design: Shape, styleGuide?: StyleGuide | null
   const prompt = buildDesignPrompt(design, styleGuide ?? null)
   download(new Blob([prompt], { type: 'text/markdown' }), `${slug(design.label ?? 'design')}.md`)
   return prompt
+}
+
+/**
+ * The design as a project that runs.
+ *
+ * The third and least lossy of the three: a Next.js app with the palette as
+ * tokens, a component per section, and the markup translated to Tailwind. The
+ * brief describes the design to somebody who will rebuild it; this is the
+ * rebuild.
+ */
+export const exportDesignProject = (design: Shape, styleGuide?: StyleGuide | null) => {
+  const files = buildProject(design, styleGuide ?? null, { origin: window.location.origin })
+  download(new Blob([zip(files)], { type: 'application/zip' }), projectFilename(design))
+  return files
 }

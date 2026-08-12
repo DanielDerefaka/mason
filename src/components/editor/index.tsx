@@ -1110,7 +1110,7 @@ export const DesignEditor = () => {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#0B0B0C]">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#0B0B0C]">
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] px-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
@@ -1392,8 +1392,16 @@ export const DesignEditor = () => {
         hardest one to reach. Full width also gives the section list somewhere
         to open.
       */}
-      <div className="shrink-0 border-t border-white/[0.08] bg-[#0B0B0C]">
-        <div className="mx-auto w-full max-w-3xl">
+      {/*
+        A dock, not a bar. It floats over the artboard in the middle of the
+        bottom edge rather than spanning the width, so it takes the room it
+        needs and gives the rest back to the design — a full-width strip cost
+        vertical space on every screen for a control used a few times an hour.
+        Pointer events are off on the spacer so the canvas underneath stays
+        reachable either side of it.
+      */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
+        <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-white/10 bg-[#141416]/95 shadow-2xl backdrop-blur">
           <AiPanel
             label={selected ? labelFor(selected) : 'whole page'}
             busy={asking}

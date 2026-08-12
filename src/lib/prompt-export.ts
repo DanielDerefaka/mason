@@ -1,84 +1,38 @@
-import { primaryFamily } from '@/lib/fonts'
+import { readDesign, type DesignModel } from '@/lib/design-model'
 import type { Shape } from '@/redux/slice/shapes'
 import type { StyleGuide } from '@/types/style-guide'
 
 /**
  * The design as a brief another agent can build from.
  *
- * The HTML export hands over a finished artefact; this hands over the
- * instructions. It is the more useful of the two for the common case — somebody
- * wants this design in *their* stack, with their component library and their
- * conventions, and a file of inline-styled divs is the wrong shape for that.
+ * The HTML export hands over a finished artefact, the project export hands
+ * over a build; this hands over the instructions. It is the most useful of the
+ * three for the common case — somebody wants this design in *their* stack,
+ * with their component library and their conventions, and neither a file of
+ * inline-styled divs nor a scaffolded Next app is the right shape for that.
  *
- * Everything here is already known: the palette, the type scale, the radii and
- * the section structure are read off the design and its style guide rather than
- * inferred, so the brief states measurements instead of adjectives. A builder
- * that has to guess a colour has been failed by the brief.
+ * Everything it states is measured rather than described. The measuring is
+ * `design-model.ts`, which the project export reads too, so the brief and the
+ * project it sits beside cannot disagree about what the design is.
  */
 
-/** A section, as far as a reader of the page is concerned. */
-type Section = { tag: string; heading: string; summary: string }
-
-/**
- * Reads the page's top-level structure.
- *
- * Only the outermost run of elements: a design's real sections are its direct
- * children, and descending further produces an outline of every card on the
- * page rather than an outline of the page.
- */
-const readSections = (html: string): Section[] => {
-  if (typeof window === 'undefined') return []
-
-  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
-  const root =
-    doc.body.children.length === 1 ? (doc.body.firstElementChild as HTMLElement) : doc.body
-
-  return Array.from(root.children).map((child) => {
-    const heading = child.querySelector('h1, h2, h3')?.textContent?.trim() ?? ''
-    const paragraph = child.querySelector('p')?.textContent?.trim() ?? ''
-
-    // What the section is made of matters more than its prose.
-    const parts: string[] = []
-    const count = (selector: string, label: string) => {
-      const n = child.querySelectorAll(selector).length
-      if (n > 0) parts.push(`${n} ${label}${n === 1 ? '' : 's'}`)
-    }
-    count('img', 'image')
-    count('button', 'button')
-    count('a', 'link')
-    count('input, textarea, select', 'form control')
-
-    return {
-      tag: child.tagName.toLowerCase(),
-      heading,
-      summary: [paragraph.slice(0, 90), parts.join(', ')].filter(Boolean).join(' — '),
-    }
-  })
-}
-
-const swatchLines = (guide: StyleGuide) =>
-  guide.colorSections
-    .flatMap((section) =>
-      section.swatches.map(
-        (swatch) =>
-          `| \`${swatch.token}\` | ${swatch.color.toUpperCase()} | ${swatch.name}${swatch.description ? ` — ${swatch.description}` : ''} |`,
-      ),
+const swatchLines = (model: DesignModel) =>
+  model.tokens.colours
+    .map(
+      (colour) =>
+        `| \`${colour.token}\` | ${colour.hex} | ${colour.name}${colour.description ? ` — ${colour.description}` : ''} |`,
     )
     .join('\n')
 
-const typeLines = (guide: StyleGuide) => {
-  if (guide.typeScale?.length) {
-    return guide.typeScale
-      .map(
-        (style) =>
-          `| ${style.name} | ${style.fontSize}px | ${style.fontWeight} | ${style.lineHeight} | ${style.letterSpacing}em | ${style.usage} |`,
-      )
-      .join('\n')
-  }
-  return guide.typography.styles
-    .map((style) => `| ${style.name} | — | ${style.weight} | — | — | — |`)
+const typeLines = (model: DesignModel) =>
+  model.tokens.type
+    .map(
+      (style) =>
+        `| ${style.name} | ${style.fontSize ? `${style.fontSize}px` : '—'} | ${style.fontWeight} | ` +
+        `${style.lineHeight ?? '—'} | ${style.letterSpacing !== null ? `${style.letterSpacing}em` : '—'} | ` +
+        `${style.usage || '—'} |`,
+    )
     .join('\n')
-}
 
 export const buildDesignPrompt = (
   design: Shape,
@@ -86,11 +40,12 @@ export const buildDesignPrompt = (
   options: { framework?: string; brandName?: string } = {},
 ): string => {
   const framework = options.framework ?? 'Next.js (App Router) with Tailwind CSS'
-  const sections = readSections(design.html ?? '')
-  const family = guide ? primaryFamily(guide.typography.fontFamily) : null
+  const model = readDesign(design, guide)
+  const { sections, tokens } = model
+  const family = tokens.family
 
   const lines: string[] = [
-    `# Build: ${options.brandName || design.label || 'Untitled design'}`,
+    `# Build: ${options.brandName || model.name}`,
     '',
     `Build this page in **${framework}**. Every value below is measured from an existing`,
     'design rather than described, so use the numbers as given — if something here is',
@@ -102,7 +57,7 @@ export const buildDesignPrompt = (
     lines.push(
       `## Design direction`,
       '',
-      `**${guide.theme}** — ${guide.description}`,
+      `**${tokens.theme}** — ${tokens.description}`,
       '',
       '## Colour',
       '',
@@ -111,7 +66,7 @@ export const buildDesignPrompt = (
       '',
       '| Token | Hex | Use |',
       '| --- | --- | --- |',
-      swatchLines(guide),
+      swatchLines(model),
       '',
       '## Type',
       '',
@@ -121,26 +76,26 @@ export const buildDesignPrompt = (
       '',
       '| Style | Size | Weight | Line height | Tracking | Use |',
       '| --- | --- | --- | --- | --- | --- |',
-      typeLines(guide),
+      typeLines(model),
       '',
     )
 
-    if (guide.radii?.length) {
+    if (tokens.radii.length) {
       lines.push(
         '## Radius',
         '',
-        guide.radii
+        tokens.radii
           .map((r) => `- **${r.name}** — ${r.value === 9999 ? 'fully rounded' : `${r.value}px`}`)
           .join('\n'),
         '',
       )
     }
 
-    if (guide.elevation?.length) {
+    if (tokens.elevation.length) {
       lines.push(
         '## Elevation',
         '',
-        guide.elevation.map((e) => `- **${e.name}** — \`${e.shadow}\` (${e.usage})`).join('\n'),
+        tokens.elevation.map((e) => `- **${e.name}** — \`${e.shadow}\` (${e.usage})`).join('\n'),
         '',
       )
     }
@@ -189,7 +144,7 @@ export const buildDesignPrompt = (
     'paste it — it is the artefact this brief describes, not the deliverable.',
     '',
     '```html',
-    (design.html ?? '').trim(),
+    model.html,
     '```',
     '',
   )
