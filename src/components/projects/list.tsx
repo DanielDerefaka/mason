@@ -10,8 +10,10 @@ import { ProjectCard } from './card'
 
 export const ProjectsList = () => {
   const params = useParams<{ session: string }>()
-  const { projects } = useProjects()
+  const { projects, archiveProjects } = useProjects()
   const [view, setView] = useState<'live' | 'archive'>('live')
+  /** True while a card is hovering the Archive tab, so the target can say so. */
+  const [dropping, setDropping] = useState(false)
 
   return (
     <div className="space-y-8">
@@ -32,9 +34,36 @@ export const ProjectsList = () => {
             type="button"
             onClick={() => setView(option)}
             aria-pressed={view === option}
+            /* The Archive tab is also a drop target. Dragging a project onto
+               it is the gesture the shape of the thing already suggests —
+               a tab that holds projects should accept one. */
+            onDragOver={
+              option === 'archive'
+                ? (event) => {
+                    if (!event.dataTransfer.types.includes('text/mason-project')) return
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                    setDropping(true)
+                  }
+                : undefined
+            }
+            onDragLeave={option === 'archive' ? () => setDropping(false) : undefined}
+            onDrop={
+              option === 'archive'
+                ? (event) => {
+                    event.preventDefault()
+                    setDropping(false)
+                    const id = event.dataTransfer.getData('text/mason-project')
+                    if (id) void archiveProjects([id as Parameters<typeof archiveProjects>[0][number]])
+                  }
+                : undefined
+            }
             className={cn(
-              'rounded-full px-4 py-1.5 text-xs capitalize transition-colors',
+              'rounded-full px-4 py-1.5 text-xs capitalize transition-all',
               view === option ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground',
+              // Grows and lights up while something is over it, so the drop
+              // reads as landing somewhere rather than being let go of.
+              option === 'archive' && dropping && 'scale-110 bg-sky-500/25 text-foreground ring-1 ring-sky-400/60',
             )}
           >
             {option === 'live' ? 'Projects' : 'Archive'}

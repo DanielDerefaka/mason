@@ -16,7 +16,8 @@ export const ProjectCard = ({
   project: Doc<'projects'>
   session: string
 }) => {
-  const { renameProject, setThumbnail } = useProjects()
+  const { renameProject, setThumbnail, archiveProjects } = useProjects()
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(project.name)
   const input = useRef<HTMLInputElement | null>(null)
@@ -52,7 +53,20 @@ export const ProjectCard = ({
   }
 
   return (
-    <div className="group relative block">
+    <div
+      className="group relative block"
+      // Dragging a card onto the Archive tab archives it. The payload is the
+      // id; the tab does the work.
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData('text/mason-project', project._id)
+        event.dataTransfer.effectAllowed = 'move'
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        setMenu({ x: event.clientX, y: event.clientY })
+      }}
+    >
       <Link
         href={`/dashboard/${session}/canvas?project=${project._id}`}
         className="block"
@@ -93,6 +107,39 @@ export const ProjectCard = ({
         >
           Reset image
         </button>
+      )}
+
+      {menu && (
+        <>
+          {/* A full-screen catcher rather than a blur handler: a click anywhere,
+              including on another card, should close this first. */}
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null) }} />
+          <div
+            className="fixed z-50 w-44 overflow-hidden rounded-lg border border-white/10 bg-[#141416] py-1 shadow-2xl"
+            style={{ left: menu.x, top: menu.y }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null)
+                setEditing(true)
+              }}
+              className="block w-full px-3 py-2 text-left text-xs text-white/80 transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null)
+                void archiveProjects([project._id])
+              }}
+              className="block w-full px-3 py-2 text-left text-xs text-red-400 transition-colors hover:bg-red-500/10"
+            >
+              Move to archive
+            </button>
+          </div>
+        </>
       )}
 
       {editing ? (
