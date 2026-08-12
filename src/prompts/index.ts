@@ -823,10 +823,39 @@ No markdown fence, no commentary, no explanation. Markup only.`,
   },
   styleGuide: {
     system: styleGuideSystem,
-    /** The turn that carries the images; the system prompt carries the rules. */
-    user: (imageCount: number) =>
-      `Analyze ${imageCount === 1 ? 'this mood board image' : `these ${imageCount} mood board images`} ` +
-      `and generate the design system. Extract colours that work harmoniously together, ` +
-      `and choose typography that matches the aesthetic.`,
+    /**
+     * The turn that carries the images; the system prompt carries the rules.
+     *
+     * Either input is enough on its own. Images give mood; a brand gives
+     * purpose, and a system derived from what a product *is* beats no system
+     * at all — which is what a sketch-only project used to get.
+     */
+    user: (imageCount: number, brand?: { name: string; description: string } | null) => {
+      const parts: string[] = []
+
+      if (imageCount > 0) {
+        parts.push(
+          `Analyse ${imageCount === 1 ? 'this mood board image' : `these ${imageCount} mood board images`} and derive the design system from them.`,
+        )
+      }
+
+      if (brand?.name || brand?.description) {
+        parts.push(
+          imageCount > 0
+            ? 'The design system is for this product, so let it inform the palette\'s temperature and the typographic voice — the images still decide the look:'
+            : 'There is no mood board. Derive the system from what this product is:',
+          [brand.name && `Name: ${brand.name}`, brand.description && `What it does: ${brand.description}`]
+            .filter(Boolean)
+            .join('\n'),
+          'Choose a palette and a typeface a designer would defend for this specific product rather than a safe neutral one, and commit to a direction.',
+        )
+      }
+
+      parts.push(
+        'Extract colours that work harmoniously together, and choose typography that matches the aesthetic.',
+      )
+
+      return parts.join('\n\n')
+    },
   },
 }

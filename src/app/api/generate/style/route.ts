@@ -7,6 +7,7 @@ import type { Id } from '../../../../../convex/_generated/dataModel'
 import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
 import { resolveFont } from '@/lib/fonts'
+import { BrandQuery } from '@/convex/query.config'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
 import { fetchImages } from '@/lib/fetch-image'
@@ -56,18 +57,32 @@ export async function POST(request: NextRequest) {
     const moodBoardImages = await MoodBoardImagesQuery(projectId)
     const imageUrls = moodBoardImages.map((image) => image.url).filter(Boolean)
 
-    if (imageUrls.length === 0) {
+    /**
+     * A brand is enough on its own.
+     *
+     * Requiring mood board images meant somebody who only sketches could not
+     * have a style guide at all — and designs generated without one silently
+     * ignore the palette, the type scale and the radii, which is invisible
+     * until you compare two projects. A name and a sentence about the product
+     * is plenty to derive a coherent system from.
+     */
+    const brand = await BrandQuery(projectId)
+    const hasBrand = Boolean(brand?.name || brand?.description)
+
+    if (imageUrls.length === 0 && !hasBrand) {
       return NextResponse.json(
         {
           success: false,
-          message: 'No mood board images found. Please upload images to the mood board first.',
+          message:
+            'Add mood board images, or turn on brand mode and name the product — either is enough to build a style guide from.',
         },
         { status: 400 },
       )
     }
 
     const { parts: moodBoardParts, failures } = await fetchImages(imageUrls)
-    if (moodBoardParts.length === 0) {
+    // Unreadable images are only fatal when they were the sole input.
+    if (moodBoardParts.length === 0 && !hasBrand) {
       // Say which way it failed. "Try re-uploading them" is useless advice
       // when the file was fine and the fetch was the problem.
       const reasons = new Set(failures.map((failure) => failure.reason))
@@ -105,7 +120,7 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompts.styleGuide.user(imageUrls.length) },
+            { type: 'text', text: prompts.styleGuide.user(moodBoardParts.length, brand) },
             ...moodBoardParts,
           ],
         },
