@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { Download, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
+import { FileText, Download, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { DESIGN_SCOPE, sanitisePartialHtml } from '@/lib/sanitise'
@@ -25,6 +25,7 @@ export const GeneratedUI = ({
   onGenerateWorkflow,
   onOpenChat,
   onExport,
+  onExportPrompt,
   onEdit,
   onMobile,
   mobileRunning,
@@ -36,6 +37,8 @@ export const GeneratedUI = ({
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
   onExport?: () => void
+  /** The design as a build brief, for rebuilding it in another stack. */
+  onExportPrompt?: () => void
   onEdit?: () => void
   onMobile?: () => void
   mobileRunning?: boolean
@@ -161,6 +164,18 @@ export const GeneratedUI = ({
             >
               <Download className="size-3" />
               Export
+            </button>
+          )}
+          {onExportPrompt && (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onExportPrompt}
+              title="Download a build brief: palette, type scale, structure and rules"
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
+            >
+              <FileText className="size-3" />
+              Prompt
             </button>
           )}
         </div>

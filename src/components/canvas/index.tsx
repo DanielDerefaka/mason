@@ -17,7 +17,7 @@ import { DesignChat } from './shapes/design-chat'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { useStyles } from '@/hooks/use-styles'
-import { exportDesignHtml, exportFramePng } from '@/lib/export'
+import { exportDesignHtml, exportDesignPrompt, exportFramePng } from '@/lib/export'
 import { toast } from 'sonner'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
@@ -59,6 +59,7 @@ const ShapeView = ({
   onGenerateWorkflow,
   onOpenChat,
   onExport,
+  onExportPrompt,
   onEdit,
   onMobile,
   mobileRunning,
@@ -77,6 +78,7 @@ const ShapeView = ({
   onGenerateWorkflow?: () => void
   onOpenChat?: () => void
   onExport?: () => void
+  onExportPrompt?: () => void
   onEdit?: () => void
   onMobile?: () => void
   mobileRunning?: boolean
@@ -96,6 +98,7 @@ const ShapeView = ({
         onGenerateWorkflow={onGenerateWorkflow}
         onOpenChat={onOpenChat}
         onExport={onExport}
+        onExportPrompt={onExportPrompt}
         onEdit={onEdit}
         onMobile={onMobile}
         mobileRunning={mobileRunning}
@@ -580,6 +583,21 @@ export const Canvas = () => {
   }
 
   /** Frames leave as a PNG of the sketch; designs leave as a standalone page. */
+  /**
+   * The design as a brief rather than a build.
+   *
+   * The HTML export hands over a finished artefact; this hands over the
+   * instructions — palette, type scale, radii, section order and the rules —
+   * so the design can be rebuilt in somebody else's stack rather than pasted
+   * into it as inline-styled divs.
+   */
+  const onExportPrompt = (shape: Shape) => {
+    exportDesignPrompt(shape, styleGuide)
+    toast.success('Build brief exported', {
+      description: 'Hand the .md to a coding agent, or read it yourself.',
+    })
+  }
+
   const onExport = (shape: Shape) => {
     if (shape.kind === 'generated-ui') {
       exportDesignHtml(shape, styleGuide)
@@ -777,6 +795,9 @@ export const Canvas = () => {
               onGenerateWorkflow={() => void generateWorkflow(shape)}
               onOpenChat={() => toggleDesignChat(shape.id)}
               onExport={() => onExport(shape)}
+              onExportPrompt={
+                shape.kind === 'generated-ui' ? () => onExportPrompt(shape) : undefined
+              }
               onEdit={() => openEditor(shape)}
               onMobile={() => void generateMobile(shape)}
               mobileRunning={mobileRunningFor !== null}

@@ -1,3 +1,4 @@
+import { buildDesignPrompt } from '@/lib/prompt-export'
 import { rasteriseFrame } from '@/lib/rasterise'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import type { Shape } from '@/redux/slice/shapes'
@@ -120,4 +121,16 @@ ${fragment}
 `
 
   download(new Blob([doc], { type: 'text/html' }), `${slug(design.label ?? 'design')}.html`)
+}
+
+/**
+ * The design as a build brief rather than a build.
+ *
+ * Markdown, because the audience is a coding agent or a developer reading it
+ * in an editor, and both handle a table better than they handle a zip.
+ */
+export const exportDesignPrompt = (design: Shape, styleGuide?: StyleGuide | null) => {
+  const prompt = buildDesignPrompt(design, styleGuide ?? null)
+  download(new Blob([prompt], { type: 'text/markdown' }), `${slug(design.label ?? 'design')}.md`)
+  return prompt
 }
