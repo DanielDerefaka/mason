@@ -27,6 +27,18 @@ export type Translation = {
 /** Arbitrary values may not contain spaces; underscores stand in for them. */
 const arbitrary = (value: string) => value.trim().replace(/\s+/g, '_')
 
+/**
+ * Tailwind cannot tell what a custom property holds.
+ *
+ * `text-[var(--foreground)]` could be a colour or a font size, `bg-[var(--x)]`
+ * a colour or an image, `font-[var(--f)]` a family or a weight — and faced
+ * with an ambiguous arbitrary value Tailwind emits nothing at all rather than
+ * guessing. The design references tokens everywhere, so without the hint most
+ * of the page would come out unstyled and nothing would say why.
+ */
+const hinted = (kind: 'color' | 'length' | 'family-name' | 'image', value: string) =>
+  value.includes('var(') ? `${kind}:${arbitrary(value)}` : arbitrary(value)
+
 const px = (value: string): number | null => {
   const trimmed = value.trim()
   if (/^-?[\d.]+px$/.test(trimmed)) return Number.parseFloat(trimmed)
@@ -223,6 +235,10 @@ const KEYWORDS: Record<string, Record<string, string>> = {
   'flex-shrink': { '0': 'shrink-0', '1': 'shrink' },
   // Solid is Tailwind's default, so saying so adds a class that changes
   // nothing; every other style has to be stated.
+  'border-top-style': { solid: '' },
+  'border-right-style': { solid: '' },
+  'border-bottom-style': { solid: '' },
+  'border-left-style': { solid: '' },
   'border-style': {
     solid: '',
     none: 'border-none',
@@ -317,22 +333,22 @@ const one = (property: string, value: string): string | null | typeof DROP => {
 
   switch (property) {
     case 'color':
-      return `text-[${arbitrary(clean)}]`
+      return `text-[${hinted('color', clean)}]`
     case 'background-color':
-      return clean === 'transparent' ? 'bg-transparent' : `bg-[${arbitrary(clean)}]`
+      return clean === 'transparent' ? 'bg-transparent' : `bg-[${hinted('color', clean)}]`
     case 'background-image':
       return clean === 'none' ? DROP : `bg-[image:${arbitrary(clean)}]`
     case 'background':
-      return `bg-[${arbitrary(clean)}]`
+      return `bg-[${hinted('color', clean)}]`
     case 'font-size': {
       const measured = px(clean)
       const named = measured !== null ? FONT_SIZES[measured] : undefined
-      return named ? `text-${named}` : `text-[${arbitrary(clean)}]`
+      return named ? `text-${named}` : `text-[${hinted('length', clean)}]`
     }
     case 'font-weight':
       return WEIGHTS[clean] ? `font-${WEIGHTS[clean]}` : `font-[${arbitrary(clean)}]`
     case 'font-family':
-      return `font-[${arbitrary(clean)}]`
+      return `font-[${hinted('family-name', clean)}]`
     case 'line-height':
       return `leading-[${arbitrary(clean)}]`
     case 'letter-spacing':
@@ -345,7 +361,7 @@ const one = (property: string, value: string): string | null | typeof DROP => {
       return measured === 1 ? 'border' : `border-[${arbitrary(clean)}]`
     }
     case 'border-color':
-      return `border-[${arbitrary(clean)}]`
+      return `border-[${hinted('color', clean)}]`
     case 'opacity': {
       const percent = Number.parseFloat(clean) * 100
       return Number.isInteger(percent) ? `opacity-${percent}` : `opacity-[${clean}]`
@@ -387,7 +403,7 @@ const one = (property: string, value: string): string | null | typeof DROP => {
     return measured === 1 ? BORDER_SIDES[property] : `${BORDER_SIDES[property]}-[${clean}]`
   }
 
-  if (BORDER_COLOURS[property]) return `${BORDER_COLOURS[property]}-[${arbitrary(clean)}]`
+  if (BORDER_COLOURS[property]) return `${BORDER_COLOURS[property]}-[${hinted('color', clean)}]`
 
   return null
 }

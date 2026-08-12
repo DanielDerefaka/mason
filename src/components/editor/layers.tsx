@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
+import { ChevronDown, ChevronRight, Component, Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
 import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -165,10 +165,21 @@ export const Layers = ({
               />
             ) : (
               <span
-                className={cn('min-w-0 flex-1 truncate text-left', dimmed && 'opacity-40')}
-                title={`${row.label} — double-click to rename`}
+                className={cn(
+                  'flex min-w-0 flex-1 items-center gap-1 truncate text-left',
+                  dimmed && 'opacity-40',
+                )}
+                title={
+                  row.component
+                    ? `${row.label} — an instance of ${row.component}`
+                    : `${row.label} — double-click to rename`
+                }
               >
-                {row.label}
+                {/* A component reads differently from a group, and the tree is
+                    where you look to find out which one you are about to
+                    edit. */}
+                {row.component && <Component className="size-3 shrink-0 text-sky-400" />}
+                <span className={cn('truncate', row.component && 'text-sky-100')}>{row.label}</span>
               </span>
             )}
 

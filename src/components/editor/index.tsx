@@ -16,7 +16,9 @@ import {
   RectangleHorizontal,
   Redo2,
   SeparatorHorizontal,
+  Component,
   Sparkles,
+  X,
   Square,
   Type as TypeIcon,
   Trash2,
@@ -36,6 +38,7 @@ import { toast } from 'sonner'
 
 import { api } from '../../../convex/_generated/api'
 import {
+  COMPONENT_ATTR,
   NODE_ATTR,
   ancestorIds,
   applyWrites,
@@ -44,6 +47,11 @@ import {
   canAcceptDrop,
   canDropLayer,
   canEditInline,
+  componentAncestor,
+  componentName,
+  componentsIn,
+  pushToInstances,
+  setComponentName,
   defaultExpanded,
   dropLayer,
   stripRings,
@@ -70,7 +78,7 @@ import { AiPanel } from './ai'
 import { Layers } from './layers'
 import { ShareButton } from './share'
 import { Properties } from './properties'
-import { exportDesignHtml, exportDesignPrompt } from '@/lib/export'
+import { exportDesignHtml, exportDesignPrompt, exportDesignProject } from '@/lib/export'
 
 /**
  * The design editor.
@@ -108,6 +116,8 @@ export const DesignEditor = () => {
   const [hoverBox, setHoverBox] = useState<Box | null>(null)
   const [resizing, setResizing] = useState(false)
   const [draggingNode, setDraggingNode] = useState(false)
+  /** The dock is dismissible: it sits over the design and is not always wanted. */
+  const [aiOpen, setAiOpen] = useState(false)
   const [dropLine, setDropLine] = useState<
     { left: number; top: number; width: number; height: number } | null
   >(null)
@@ -255,6 +265,21 @@ export const DesignEditor = () => {
   const atEnd = !position || position.index >= position.total - 1
   const selectionLocked =
     selected && stage.current ? lockedAncestor(selected, stage.current) !== null : false
+
+  /**
+   * The component the selection is, or is part of.
+   *
+   * Read from the DOM on every render like everything else here, so it is
+   * right immediately after a component is made rather than after the next
+   * event.
+   */
+  const componentRoot =
+    selected && stage.current ? componentAncestor(selected, stage.current) : null
+  const components = useMemo(
+    () => (stage.current ? componentsIn(stage.current) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [treeTick, historyTick],
+  )
 
   const onStyle = (property: string, value: string) => {
     if (!selected) return
@@ -853,6 +878,74 @@ export const DesignEditor = () => {
     commit()
   }
 
+  /**
+   * Turns the selection into a component.
+   *
+   * Named from its layer label rather than from a dialogue: the name is
+   * editable in the panel and in the tree straight afterwards, and a modal
+   * between "I want this to be a component" and it being one is a step nobody
+   * wants twice.
+   */
+  const onCreateComponent = () => {
+    if (!selected) return
+    snapshot()
+    setComponentName(selected, labelFor(selected))
+    readTree()
+    commit()
+    toast.success('Component created', {
+      description: 'Rename it in the panel. It exports as a file of its own.',
+    })
+  }
+
+  const onRenameComponent = (name: string) => {
+    if (!componentRoot || name === componentName(componentRoot)) return
+    snapshot()
+    setComponentName(componentRoot, name)
+    readTree()
+    commit()
+  }
+
+  /** Removes the name, leaving the markup exactly where it was. */
+  const onDetachComponent = () => {
+    if (!componentRoot) return
+    snapshot()
+    setComponentName(componentRoot, '')
+    readTree()
+    commit()
+  }
+
+  const onPushToInstances = () => {
+    const root = stage.current
+    if (!root || !componentRoot) return
+    snapshot()
+    const changed = pushToInstances(root, componentRoot)
+    if (changed === 0) {
+      past.current.pop()
+      toast.message('Nothing to update', { description: 'This is the only instance.' })
+      return
+    }
+    restamp(componentRoot)
+    toast.success(`Updated ${changed} other instance${changed === 1 ? '' : 's'}`)
+  }
+
+  /** Places another instance of a component after the selection. */
+  const onInsertComponent = (name: string) => {
+    const root = stage.current
+    if (!root) return
+    const source = root.querySelector<HTMLElement>(
+      `[${COMPONENT_ATTR}="${CSS.escape(name)}"]`,
+    )
+    if (!source) return
+
+    snapshot()
+    const copy = source.cloneNode(true) as HTMLElement
+    const after = selected && !source.contains(selected) ? selected : null
+    if (after?.parentElement) after.parentElement.insertBefore(copy, after.nextSibling)
+    else root.append(copy)
+    restamp(copy)
+    copy.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
+
   /** Whether a row will take a layer dropped into the middle of it. */
   const canDropInside = (id: string) => {
     const node = stage.current && findNode(stage.current, id)
@@ -879,13 +972,19 @@ export const DesignEditor = () => {
     restamp(replacement)
   }
 
-  const onExport = (kind: 'html' | 'brief') => {
+  const onExport = (kind: 'html' | 'brief' | 'project') => {
     if (!design) return
     // Exported from the live DOM rather than the last save, so a download
     // taken mid-edit is the design on screen.
     const current = stage.current ? { ...design, html: serialise(stage.current) } : design
     if (kind === 'html') exportDesignHtml(current, styleGuide)
-    else exportDesignPrompt(current, styleGuide)
+    else if (kind === 'brief') exportDesignPrompt(current, styleGuide)
+    else {
+      const files = exportDesignProject(current, styleGuide)
+      toast.success('Next.js project exported', {
+        description: `${files.length} files. npm install, then npm run dev.`,
+      })
+    }
   }
 
   const onText = (text: string) => {
@@ -1339,6 +1438,35 @@ export const DesignEditor = () => {
                 </button>
               ))}
             </div>
+
+            {/*
+              A design's own components are things to place, exactly like a
+              heading or a button — so they belong in the same panel rather
+              than in a library somewhere else. Placing one copies it; the
+              copy is an instance because it carries the same name.
+            */}
+            {components.length > 0 && (
+              <div className="mt-3">
+                <h3 className="mb-2 text-[10px] tracking-[0.14em] text-white/40 uppercase">
+                  Components
+                </h3>
+                <div className="flex flex-wrap gap-1">
+                  {components.map((entry) => (
+                    <button
+                      key={entry.name}
+                      type="button"
+                      title={`Place another ${entry.name}${selected ? ' after the selection' : ''}`}
+                      onClick={() => onInsertComponent(entry.name)}
+                      className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md bg-white/[0.04] px-2 py-1.5 text-[10px] transition-colors hover:bg-white/[0.1]"
+                    >
+                      <Component className="size-3" />
+                      {entry.name}
+                      <span className="text-white/30">{entry.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {selected ? (
@@ -1372,6 +1500,21 @@ export const DesignEditor = () => {
                 onReplace={onReplace}
                 onExport={onExport}
                 onUnlock={() => selectedId && onLockLayer(selectedId, false)}
+                component={componentRoot ? componentName(componentRoot) : null}
+                componentIsSelection={componentRoot !== null && componentRoot === selected}
+                instances={
+                  componentRoot
+                    ? (components.find((entry) => entry.name === componentName(componentRoot))
+                        ?.count ?? 1)
+                    : 0
+                }
+                onCreateComponent={onCreateComponent}
+                onRenameComponent={onRenameComponent}
+                onDetachComponent={onDetachComponent}
+                onPushToInstances={onPushToInstances}
+                onSelectComponentRoot={() =>
+                  componentRoot && setSelectedId(componentRoot.getAttribute(NODE_ATTR))
+                }
                 uploading={uploading}
               />
             </>
@@ -1401,15 +1544,42 @@ export const DesignEditor = () => {
         reachable either side of it.
       */}
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
-        <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-white/10 bg-[#141416]/95 shadow-2xl backdrop-blur">
-          <AiPanel
-            label={selected ? labelFor(selected) : 'whole page'}
-            busy={asking}
-            onAsk={(instruction) => void onAsk(instruction)}
-            sections={sections}
-            onTarget={setSelectedId}
-          />
-        </div>
+        {aiOpen ? (
+          <div className="pointer-events-auto w-full max-w-lg rounded-2xl border border-white/10 bg-[#141416]/95 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between px-3 pt-2.5">
+              <span className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] text-white/40 uppercase">
+                <Sparkles className="size-3" />
+                Ask AI
+              </span>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setAiOpen(false)}
+                className="text-muted-foreground hover:text-foreground grid size-6 place-items-center rounded-md transition-colors hover:bg-white/[0.08]"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <AiPanel
+              label={selected ? labelFor(selected) : 'whole page'}
+              busy={asking}
+              onAsk={(instruction) => void onAsk(instruction)}
+              sections={sections}
+              onTarget={setSelectedId}
+            />
+          </div>
+        ) : (
+          /* Closed, it is a single button — the design gets the space back, and
+             the way in is still where the dock was. */
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-[#141416]/95 px-4 py-2.5 text-xs text-white/70 shadow-2xl backdrop-blur transition-colors hover:text-white"
+          >
+            <Sparkles className="size-3.5" />
+            Ask AI
+          </button>
+        )}
       </div>
 
       {menu && selected && (
@@ -1449,6 +1619,18 @@ export const DesignEditor = () => {
               <Copy className="size-3.5" />
               Duplicate
             </MenuItem>
+            {!componentRoot && (
+              <MenuItem onClick={() => { setMenu(null); onCreateComponent() }}>
+                <Component className="size-3.5" />
+                Create component
+              </MenuItem>
+            )}
+            {componentRoot && (
+              <MenuItem onClick={() => { setMenu(null); onPushToInstances() }}>
+                <Component className="size-3.5" />
+                Push to all instances
+              </MenuItem>
+            )}
             <MenuItem onClick={() => { setMenu(null); onMove(-1) }} disabled={atStart}>
               <ChevronUp className="size-3.5" />
               Move up

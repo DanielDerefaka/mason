@@ -41,6 +41,9 @@ const ALLOWED_ATTRS = new Set([
   // an editing session, so they have to survive the round trip through
   // storage — which means surviving this walk on the way back in.
   'data-mason-name', 'data-mason-hidden', 'data-mason-locked',
+  // And the name that makes a subtree a component, which the project export
+  // turns into a file of its own.
+  'data-mason-component',
   // SVG geometry and paint.
   'viewbox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
   'stroke-linejoin', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2',

@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Clipboard,
   Columns3,
+  Component as ComponentIcon,
   Download,
+  FolderDown,
   FileCode2,
   Italic,
   Lock,
@@ -105,6 +107,14 @@ export const Properties = ({
   onReplace,
   onExport,
   onUnlock,
+  component,
+  componentIsSelection,
+  instances,
+  onCreateComponent,
+  onRenameComponent,
+  onDetachComponent,
+  onPushToInstances,
+  onSelectComponentRoot,
   uploading,
 }: {
   element: HTMLElement
@@ -116,8 +126,17 @@ export const Properties = ({
   onAttribute: (name: string, value: string) => void
   onUpload: (file: File) => void
   onReplace: (html: string) => void
-  onExport: (kind: 'html' | 'brief') => void
+  onExport: (kind: 'html' | 'brief' | 'project') => void
   onUnlock: () => void
+  component: string | null
+  /** True when the selection is the component itself rather than part of one. */
+  componentIsSelection: boolean
+  instances: number
+  onCreateComponent: () => void
+  onRenameComponent: (name: string) => void
+  onDetachComponent: () => void
+  onPushToInstances: () => void
+  onSelectComponentRoot: () => void
   uploading: boolean
 }) => {
   const isImage = element.tagName === 'IMG'
@@ -152,6 +171,18 @@ export const Properties = ({
           </button>
         </div>
       )}
+
+      <ComponentSection
+        key={`component-${key}`}
+        name={component}
+        isSelection={componentIsSelection}
+        instances={instances}
+        onCreate={onCreateComponent}
+        onRename={onRenameComponent}
+        onDetach={onDetachComponent}
+        onPush={onPushToInstances}
+        onSelectRoot={onSelectComponentRoot}
+      />
 
       <Alignment element={element} onStyles={onStyles} />
       <Position element={element} isFree={isFree} onStyle={onStyle} onStyles={onStyles} />
@@ -188,6 +219,97 @@ export const Properties = ({
       <Code key={key} element={element} onReplace={onReplace} />
       <Export element={element} onExport={onExport} />
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Component
+ * ------------------------------------------------------------------ */
+
+/**
+ * What the selection is, as a component.
+ *
+ * Three states worth telling apart: not a component, the component itself, and
+ * something inside one. The third is the one that catches people out — an edit
+ * made three levels inside an instance is an edit to that instance alone until
+ * it is pushed, and the panel says so rather than leaving it to be discovered.
+ */
+const ComponentSection = ({
+  name,
+  isSelection,
+  instances,
+  onCreate,
+  onRename,
+  onDetach,
+  onPush,
+  onSelectRoot,
+}: {
+  name: string | null
+  isSelection: boolean
+  instances: number
+  onCreate: () => void
+  onRename: (name: string) => void
+  onDetach: () => void
+  onPush: () => void
+  onSelectRoot: () => void
+}) => {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  if (!name) {
+    return (
+      <Group label="Component">
+        <Add label="Create component from this" onClick={onCreate} />
+        <p className="text-[10px] leading-relaxed text-white/40">
+          A component exports as a file of its own, and can be placed again from the
+          Insert panel.
+        </p>
+      </Group>
+    )
+  }
+
+  return (
+    <Group label="Component">
+      <div className="flex items-center gap-1.5">
+        <ComponentIcon className="size-3.5 shrink-0 text-sky-400" />
+        <Input
+          value={draft ?? name}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => {
+            if (draft !== null) onRename(draft)
+            setDraft(null)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+            if (event.key === 'Escape') setDraft(null)
+          }}
+          className="h-8 border-white/10 bg-white/[0.04] text-xs"
+        />
+      </div>
+
+      {!isSelection && (
+        <button
+          type="button"
+          onClick={onSelectRoot}
+          className="text-left text-[10px] leading-relaxed text-white/45 hover:text-white/70"
+        >
+          You are editing part of this component, and only this instance of it.
+          <span className="text-sky-400"> Select the component →</span>
+        </button>
+      )}
+
+      <div className="flex flex-wrap gap-1">
+        <Preset onClick={onPush}>
+          Push to {instances - 1} other{instances === 2 ? '' : 's'}
+        </Preset>
+        <Preset onClick={onDetach}>Detach</Preset>
+      </div>
+
+      <p className="text-[10px] leading-relaxed text-white/40">
+        {instances > 1
+          ? 'Instances do not update as you type. Push when the change is the one you want everywhere.'
+          : 'The only instance. Place another from the Insert panel.'}
+      </p>
+    </Group>
   )
 }
 
@@ -1131,10 +1253,14 @@ const Export = ({
   onExport,
 }: {
   element: HTMLElement
-  onExport: (kind: 'html' | 'brief') => void
+  onExport: (kind: 'html' | 'brief' | 'project') => void
 }) => (
   <Group label="Export" defaultOpen={false}>
     <div className="flex flex-col gap-1">
+      <Wide onClick={() => onExport('project')}>
+        <FolderDown className="size-3.5" />
+        Download as a Next.js project
+      </Wide>
       <Wide onClick={() => onExport('html')}>
         <Download className="size-3.5" />
         Download the design as HTML

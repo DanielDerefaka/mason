@@ -6,7 +6,10 @@
  * and reading `innerHTML` back out.
  */
 
+import { COMPONENT_ATTR } from '@/lib/design-model'
 import { splitTop } from '@/lib/sanitise'
+
+export { COMPONENT_ATTR }
 
 /** Marks every element so a selection can survive a re-render. */
 export const NODE_ATTR = 'data-mason-id'
@@ -387,6 +390,81 @@ export const lockedAncestor = (
   return null
 }
 
+/* ------------------------------------------------------------------ *
+ * Components
+ *
+ * A component is a subtree with a name on it. Instances are copies carrying
+ * the same name — there is no main and no override model, because the design
+ * is a live DOM and an override that survives regeneration would need an
+ * identity that positional ids deliberately do not have.
+ *
+ * What that buys: the project export emits one file per name and references it
+ * everywhere it appears, and a change can be pushed across the instances when
+ * the user asks for it rather than while they are still editing.
+ * ------------------------------------------------------------------ */
+
+export const componentName = (element: HTMLElement): string | null =>
+  element.getAttribute(COMPONENT_ATTR)?.trim() || null
+
+export const setComponentName = (element: HTMLElement, name: string) => {
+  const trimmed = name.trim().slice(0, 40)
+  if (trimmed) element.setAttribute(COMPONENT_ATTR, trimmed)
+  else element.removeAttribute(COMPONENT_ATTR)
+}
+
+/** The component a node belongs to, which may be the node itself. */
+export const componentAncestor = (
+  element: HTMLElement,
+  root: HTMLElement,
+): HTMLElement | null => {
+  let node: HTMLElement | null = element
+  while (node && node !== root) {
+    if (componentName(node)) return node
+    node = node.parentElement
+  }
+  return null
+}
+
+export const instancesOf = (root: HTMLElement, name: string): HTMLElement[] =>
+  Array.from(root.querySelectorAll<HTMLElement>(`[${COMPONENT_ATTR}]`)).filter(
+    (node) => componentName(node) === name,
+  )
+
+/** Every distinct component in the design, with how many instances it has. */
+export const componentsIn = (root: HTMLElement): { name: string; count: number }[] => {
+  const counts = new Map<string, number>()
+  for (const node of Array.from(root.querySelectorAll<HTMLElement>(`[${COMPONENT_ATTR}]`))) {
+    const name = componentName(node)
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+  return Array.from(counts, ([name, count]) => ({ name, count }))
+}
+
+/**
+ * Makes every other instance look like this one.
+ *
+ * Deliberate rather than continuous. Editing one instance and having the other
+ * six change under you is the behaviour people turn components off to avoid,
+ * and it cannot be undone selectively once the design is only a DOM. Asking
+ * for it is one undo step; not asking for it leaves the instances alone.
+ *
+ * Returns how many were changed, which is the only honest thing to report —
+ * "pushed" with no number could mean nothing happened.
+ */
+export const pushToInstances = (root: HTMLElement, source: HTMLElement): number => {
+  const name = componentName(source)
+  if (!name) return 0
+
+  const others = instancesOf(root, name).filter(
+    // A component nested inside itself is not a thing anybody meant to build,
+    // and replacing an ancestor with its own descendant destroys the tree.
+    (node) => node !== source && !node.contains(source) && !source.contains(node),
+  )
+
+  for (const other of others) other.replaceWith(source.cloneNode(true) as HTMLElement)
+  return others.length
+}
+
 /** Renames a layer, or clears the name so the generated label comes back. */
 export const renameNode = (element: HTMLElement, name: string) => {
   const trimmed = name.trim().slice(0, 60)
@@ -408,6 +486,8 @@ export type LayerRow = {
   open: boolean
   hidden: boolean
   locked: boolean
+  /** The component this row is, when it is one. */
+  component: string | null
   /** Set when the state comes from an ancestor, which the row cannot undo. */
   hiddenAbove: boolean
   lockedAbove: boolean
@@ -440,6 +520,7 @@ export const buildLayerRows = (root: HTMLElement, expanded: Set<string>): LayerR
       open,
       hidden,
       locked,
+      component: componentName(node),
       hiddenAbove,
       lockedAbove,
     })
