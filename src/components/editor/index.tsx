@@ -125,6 +125,24 @@ export const DesignEditor = () => {
    */
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [treeTick, setTreeTick] = useState(0)
+  /**
+   * The page's sections, for the AI panel's `/name` addressing.
+   *
+   * The outermost run of elements only — descending further lists every card
+   * on the page, which is an inventory rather than a set of destinations.
+   */
+  const sections = useMemo(() => {
+    const root = stage.current
+    if (!root) return []
+    return Array.from(root.children).flatMap((child) => {
+      const node = child as HTMLElement
+      const id = node.getAttribute(NODE_ATTR)
+      return id ? [{ id, name: labelFor(node) }] : []
+    })
+    // Recomputed whenever the tree is restamped, same as the layer rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeTick])
+
   const rows = useMemo(
     () => (stage.current ? buildLayerRows(stage.current, expanded) : []),
     // treeTick is the dependency that matters; the DOM read is deliberate.
@@ -1351,6 +1369,8 @@ export const DesignEditor = () => {
                 label={labelFor(selected)}
                 busy={asking}
                 onAsk={(instruction) => void onAsk(instruction)}
+                sections={sections}
+                onTarget={setSelectedId}
               />
             </>
           ) : (

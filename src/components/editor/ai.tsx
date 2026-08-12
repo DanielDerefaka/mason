@@ -28,16 +28,45 @@ const SHORT: Record<string, string> = {
     'Make responsive',
 }
 
+export type AiSection = { id: string; name: string }
+
 export const AiPanel = ({
   label,
   busy,
   onAsk,
+  sections = [],
+  onTarget,
 }: {
   label: string
   busy: boolean
   onAsk: (instruction: string) => void
+  /** The page's top-level sections, for `/name` addressing. */
+  sections?: AiSection[]
+  onTarget?: (id: string) => void
 }) => {
   const [instruction, setInstruction] = useState('')
+
+  /**
+   * `/name` picks what the request is about.
+   *
+   * Without it the only way to aim at a section is to find and click it first,
+   * which means leaving the sentence half-typed. Typing `/` lists the page's
+   * sections; choosing one selects that node, so the request that follows
+   * lands on it — the same target the rest of the editor is already using,
+   * rather than a second idea of "current" that could disagree with it.
+   */
+  const slash = /(?:^|\s)\/([\w-]*)$/.exec(instruction)
+  const matches = slash
+    ? sections.filter((section) =>
+        section.name.toLowerCase().replace(/\s+/g, '-').includes(slash[1].toLowerCase()),
+      )
+    : []
+
+  const choose = (section: AiSection) => {
+    onTarget?.(section.id)
+    // Replace the token with the name so the sentence still reads back.
+    setInstruction((current) => current.replace(/(?:^|\s)\/[\w-]*$/, ` the ${section.name} `))
+  }
 
   const submit = (text: string) => {
     const trimmed = text.trim()
@@ -58,6 +87,21 @@ export const AiPanel = ({
         request.
       </p>
 
+      {matches.length > 0 && (
+        <div className="max-h-40 overflow-y-auto rounded-md border border-white/10 bg-[#141416]">
+          {matches.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => choose(section)}
+              className="block w-full px-2.5 py-1.5 text-left text-[11px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              /{section.name.toLowerCase().replace(/\s+/g, '-')}
+            </button>
+          ))}
+        </div>
+      )}
+
       <textarea
         value={instruction}
         onChange={(event) => setInstruction(event.target.value)}
@@ -70,7 +114,7 @@ export const AiPanel = ({
           }
         }}
         rows={3}
-        placeholder="Make this button wider and use the primary colour…"
+        placeholder="Make this button wider… or type / to pick a section"
         className="w-full resize-none rounded-md border border-white/10 bg-white/[0.04] p-2.5 text-xs outline-none placeholder:text-white/30 focus:border-white/25"
       />
 
