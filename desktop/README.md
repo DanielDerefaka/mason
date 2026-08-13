@@ -54,13 +54,27 @@ mark recomposed to Apple's dock proportions (tile at ~82% of the canvas,
 22% corner radius), and it is swapped in at runtime because dev runs inside
 Electron's own binary.
 
+## Updating
+
+The app updates itself. On launch it fetches a manifest from the rolling
+`webapp-latest` release, and a newer payload is downloaded, sha256-verified,
+extracted into userData and booted on the next launch — no reinstall and,
+while the binary is unsigned, no Gatekeeper: the executable never changes.
+Shipping an app update is:
+
+```bash
+npm run bundle          # rebuild the payload from the current tree
+npm run publish:webapp  # tar, hash, replace the rolling release assets
+```
+
+Installed apps pick it up on their next launch. Only shell changes (main.js,
+Electron itself) still need a dmg release — that tier waits on notarisation,
+after which electron-updater can carry it too.
+
 ## Not done yet
 
 - **Signing/notarisation** — `npm run dist` is unsigned; distribution needs
   an Apple Developer ID in the config.
-- **Update flow** — the UI updates with `npm run bundle` + a new build, not
-  over the air. If the shell stabilises and only the web app changes, a
-  "reload from server" escape hatch or electron-updater is the next step.
 - **Deep links** (`mason://`) for opening share links straight into the app.
 - **`ELECTRON_RUN_AS_NODE`** — VS Code exports it, which makes `electron .`
   run as plain Node; the npm scripts strip it, so always launch through them.

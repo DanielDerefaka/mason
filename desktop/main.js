@@ -18,9 +18,21 @@
  * sign-in — the marketing site is in the bundle but nothing navigates to it.
  */
 
-import { app, BrowserWindow, Menu, dialog, shell, utilityProcess } from 'electron'
+import { app, BrowserWindow, Menu, dialog, net, shell, utilityProcess } from 'electron'
+import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { get } from 'node:http'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { createServer } from 'node:net'
 import { join } from 'node:path'
 
@@ -123,10 +135,164 @@ ${serverLog.slice(-12).join('')}`,
 // `webapp`, not `app`: a folder named app/ flips electron-builder into its
 // legacy two-package.json layout and it tries to package the web server as
 // the Electron application itself.
-const serverDir = () =>
+const bundledDir = () =>
   app.isPackaged
     ? join(process.resourcesPath, 'app-server')
     : join(import.meta.dirname, 'webapp')
+
+/* ------------------------------------------------------------------ *
+ * Over-the-air payloads
+ *
+ * The webapp changes with the site; the shell does not. So the shell boots
+ * the newest payload from its own data directory, falling back to the one
+ * baked into the binary, and a launch-time check fetches a manifest naming
+ * the current payload — new one available, download, verify, install, offer
+ * a restart. No reinstall, and while the binary is unsigned, crucially no
+ * Gatekeeper: the executable never changes, only data in userData.
+ * ------------------------------------------------------------------ */
+
+const MANIFEST_URL =
+  process.env.MASON_MANIFEST_URL ??
+  'https://github.com/DanielDerefaka/mason-releases/releases/download/webapp-latest/manifest.json'
+
+const payloadRoot = () => join(app.getPath('userData'), 'webapp')
+/** Written last during install, so a half-written payload is never current. */
+const currentFile = () => join(payloadRoot(), 'current')
+
+const payloadVersion = (dir) => {
+  try {
+    return JSON.parse(readFileSync(join(dir, 'payload.json'), 'utf8')).version ?? null
+  } catch {
+    return null
+  }
+}
+
+/** The directory to boot: the installed payload if valid, else the bundled one. */
+const serverDir = () => {
+  try {
+    const version = readFileSync(currentFile(), 'utf8').trim()
+    const dir = join(payloadRoot(), version)
+    if (existsSync(join(dir, 'server.js')) && existsSync(join(dir, 'payload.json'))) {
+      return dir
+    }
+  } catch {
+    // No installed payload — the bundled one is the normal case.
+  }
+  return bundledDir()
+}
+
+/** Electron's net follows redirects, which GitHub release assets require. */
+const fetchTo = (url, destination) =>
+  new Promise((resolve, reject) => {
+    const request = net.request(url)
+    request.on('response', (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`${url} answered ${response.statusCode}`))
+        return
+      }
+      const file = createWriteStream(destination)
+      response.on('data', (chunk) => file.write(chunk))
+      response.on('end', () => file.end(resolve))
+      response.on('error', reject)
+    })
+    request.on('error', reject)
+    request.end()
+  })
+
+const fetchJson = (url) =>
+  new Promise((resolve, reject) => {
+    const request = net.request(url)
+    request.on('response', (response) => {
+      let body = ''
+      response.on('data', (chunk) => (body += chunk))
+      response.on('end', () => {
+        try {
+          resolve(JSON.parse(body))
+        } catch {
+          reject(new Error(`${url} was not JSON`))
+        }
+      })
+      response.on('error', reject)
+    })
+    request.on('error', reject)
+    request.end()
+  })
+
+const checkForPayloadUpdate = async (win) => {
+  const running = payloadVersion(serverDir())
+  let manifest
+  try {
+    manifest = await fetchJson(MANIFEST_URL)
+  } catch (error) {
+    record(`[ota] manifest unreachable: ${error.message}\n`)
+    return
+  }
+  if (!manifest?.version || !manifest.url || manifest.version === running) return
+
+  const target = join(payloadRoot(), manifest.version)
+  if (!existsSync(join(target, 'server.js'))) {
+    record(`[ota] downloading payload ${manifest.version}\n`)
+    const tarball = join(app.getPath('temp'), `mason-payload-${manifest.version}.tar.gz`)
+    try {
+      await fetchTo(manifest.url, tarball)
+
+      // Verified before extraction: the payload is executed code, and a
+      // manifest fetched over the network must not be the only authority on
+      // what arrives. The hash pins the bytes the publisher actually built.
+      const digest = createHash('sha256').update(readFileSync(tarball)).digest('hex')
+      if (manifest.sha256 && digest !== manifest.sha256) {
+        record(`[ota] checksum mismatch for ${manifest.version} — discarded\n`)
+        rmSync(tarball, { force: true })
+        return
+      }
+
+      const staging = `${target}.partial`
+      rmSync(staging, { recursive: true, force: true })
+      mkdirSync(staging, { recursive: true })
+      const untar = spawnSync('/usr/bin/tar', ['-xzf', tarball, '-C', staging])
+      rmSync(tarball, { force: true })
+      if (untar.status !== 0) {
+        record(`[ota] extraction failed for ${manifest.version}\n`)
+        rmSync(staging, { recursive: true, force: true })
+        return
+      }
+      renameSync(staging, target)
+    } catch (error) {
+      record(`[ota] update failed: ${error.message}\n`)
+      return
+    }
+  }
+
+  writeFileSync(currentFile(), manifest.version)
+  record(`[ota] payload ${manifest.version} installed\n`)
+
+  // Keep the new payload and the one still running; everything older goes.
+  for (const entry of readdirSync(payloadRoot(), { withFileTypes: true })) {
+    if (entry.isDirectory() && entry.name !== manifest.version && entry.name !== running) {
+      rmSync(join(payloadRoot(), entry.name), { recursive: true, force: true })
+    }
+  }
+
+  if (process.env.MASON_OTA_TEST) {
+    console.log(`[ota] installed ${manifest.version}`)
+    app.exit(0)
+    return
+  }
+
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'info',
+    message: 'Mason has updated itself',
+    detail:
+      'The new version is ready. Restart to switch to it — your work is saved in your account either way.',
+    buttons: ['Restart now', 'Later'],
+    defaultId: 0,
+    cancelId: 1,
+  })
+  if (response === 0) {
+    app.relaunch()
+    app.exit(0)
+  }
+}
 
 const startServer = (port) => {
   // Forked rather than required: Next owns its process — its own signal
@@ -316,6 +482,14 @@ const createWindow = (origin) => {
   // Straight into the product. Signed out, the middleware answers with the
   // sign-in page; there is no route to the marketing site from here.
   void win.loadURL(`${origin}/dashboard`)
+
+  // After the window is up, quietly. An update check must never sit between
+  // the person and their canvas.
+  if (!SMOKE && !DEV_URL) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(() => void checkForPayloadUpdate(win), 3000)
+    })
+  }
   return win
 }
 
@@ -331,6 +505,7 @@ const boot = async () => {
       die('Mason could not start', `No local port was available: ${error.message}.`)
       return
     }
+    console.log(`[mason] payload ${payloadVersion(serverDir()) ?? 'unstamped'} from ${serverDir()}`)
     startServer(port)
     origin = `http://${HOST}:${port}`
     try {

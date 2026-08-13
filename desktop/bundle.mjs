@@ -13,7 +13,7 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = join(import.meta.dirname, '..')
@@ -58,4 +58,17 @@ cpSync(join(root, '.next', 'standalone'), app, { recursive: true })
 cpSync(join(root, '.next', 'static'), join(app, '.next', 'static'), { recursive: true })
 cpSync(join(root, 'public'), join(app, 'public'), { recursive: true })
 
-console.log('bundled into desktop/webapp — `npm run smoke` to verify, `npm run dist` to package')
+/**
+ * The payload's identity, for over-the-air updates.
+ *
+ * The web commit, not the shell version: the payload changes with the site
+ * and the shell does not, so numbering it off the shell would mean bumping a
+ * binary nobody needs to reinstall.
+ */
+const sha = execSync('git rev-parse --short HEAD', { cwd: root, encoding: 'utf8' }).trim()
+writeFileSync(
+  join(app, 'payload.json'),
+  JSON.stringify({ version: sha, builtAt: new Date().toISOString() }) + '\n',
+)
+
+console.log(`payload ${sha} — bundled into desktop/webapp. npm run smoke to verify, npm run dist to package.`)
