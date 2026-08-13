@@ -18,9 +18,10 @@
  * sign-in — the marketing site is in the bundle but nothing navigates to it.
  */
 
-import { app, BrowserWindow, Menu, shell, utilityProcess } from 'electron'
+import { app, BrowserWindow, Menu, dialog, shell, utilityProcess } from 'electron'
 import { get } from 'node:http'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { join } from 'node:path'
 
 /**
@@ -47,7 +48,25 @@ const DEV_URL = process.env.MASON_URL ?? null
 
 /** Loopback only — the bundled server must not be reachable off the machine. */
 const HOST = '127.0.0.1'
-const PORT = Number(process.env.MASON_PORT ?? 34_115)
+
+/**
+ * Asked of the OS rather than fixed. A hardcoded port means the app loses a
+ * race with whatever else fancied 34115 on somebody's machine — and the way
+ * that loss presented was a dock icon with no window behind it.
+ */
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    if (process.env.MASON_PORT) {
+      resolve(Number(process.env.MASON_PORT))
+      return
+    }
+    const probe = createServer()
+    probe.once('error', reject)
+    probe.listen(0, HOST, () => {
+      const { port } = probe.address()
+      probe.close(() => resolve(port))
+    })
+  })
 
 /** Boot, assert the page loaded, quit. What CI can check without a person. */
 const SMOKE = Boolean(process.env.ELECTRON_SMOKE)
@@ -57,6 +76,44 @@ const SMOKE = Boolean(process.env.ELECTRON_SMOKE)
  * ------------------------------------------------------------------ */
 
 let server = null
+
+/**
+ * What the server said, kept for the moment it dies.
+ *
+ * A startup failure used to exit without a word: dock icon, no window, gone —
+ * which reads as "the app is broken" and is undebuggable from a screenshot.
+ * Now the tail of the server's output goes in a dialog and the whole of it
+ * into a log file the person can send.
+ */
+const serverLog = []
+const logFile = () => join(app.getPath('userData'), 'server.log')
+
+const record = (line) => {
+  const text = String(line)
+  serverLog.push(text)
+  if (serverLog.length > 200) serverLog.shift()
+  try {
+    mkdirSync(app.getPath('userData'), { recursive: true })
+    appendFileSync(logFile(), text)
+  } catch {
+    // The log is a diagnostic, not a dependency.
+  }
+}
+
+const die = (title, detail) => {
+  dialog.showErrorBox(
+    title,
+    `${detail}
+
+The server's log is at:
+${logFile()}
+
+` +
+      `Last output:
+${serverLog.slice(-12).join('')}`,
+  )
+  app.exit(1)
+}
 
 /**
  * Packaged, the server lives beside the asar rather than inside it: Next
@@ -71,22 +128,39 @@ const serverDir = () =>
     ? join(process.resourcesPath, 'app-server')
     : join(import.meta.dirname, 'webapp')
 
-const startServer = () => {
+const startServer = (port) => {
   // Forked rather than required: Next owns its process — its own signal
   // handling, its own exit — and Electron's main process is not the place
   // for either. utilityProcess is Electron's supported way to run plain Node.
   server = utilityProcess.fork(join(serverDir(), 'server.js'), [], {
     cwd: serverDir(),
+    // The person's own environment, with ours on top. A child built from
+    // scratch has no PATH and no HOME, which is the kind of thing that works
+    // on the machine that built it and nowhere else.
     env: {
+      ...process.env,
       NODE_ENV: 'production',
       HOSTNAME: HOST,
-      PORT: String(PORT),
+      PORT: String(port),
     },
     stdio: 'pipe',
     serviceName: 'mason-server',
   })
-  server.stdout?.on('data', (line) => process.stdout.write(`[server] ${line}`))
-  server.stderr?.on('data', (line) => process.stderr.write(`[server] ${line}`))
+  server.stdout?.on('data', (line) => {
+    record(line)
+    process.stdout.write(`[server] ${line}`)
+  })
+  server.stderr?.on('data', (line) => {
+    record(line)
+    process.stderr.write(`[server] ${line}`)
+  })
+  // A server that dies before the window exists is a startup failure, and
+  // waiting out the poll before saying so is twenty silent seconds.
+  server.once('exit', (code) => {
+    if (BrowserWindow.getAllWindows().length === 0 && !SMOKE) {
+      die('Mason could not start', `Its internal server exited with code ${code}.`)
+    }
+  })
 }
 
 /** Polls until the server answers, so the window never shows a dead page. */
@@ -250,13 +324,24 @@ const boot = async () => {
   if (DEV_URL) {
     origin = new URL(DEV_URL).origin
   } else {
-    startServer()
-    origin = `http://${HOST}:${PORT}`
+    let port
+    try {
+      port = await freePort()
+    } catch (error) {
+      die('Mason could not start', `No local port was available: ${error.message}.`)
+      return
+    }
+    startServer(port)
+    origin = `http://${HOST}:${port}`
     try {
       await waitForServer(origin)
-    } catch (error) {
-      console.error(`[mason] ${error.message}`)
-      app.exit(1)
+    } catch {
+      if (SMOKE) {
+        console.error('[smoke] server never answered')
+        app.exit(1)
+        return
+      }
+      die('Mason could not start', 'Its internal server never answered.')
       return
     }
   }

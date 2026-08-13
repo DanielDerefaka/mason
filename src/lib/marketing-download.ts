@@ -12,13 +12,13 @@
  * stays where it is.
  */
 export const DESKTOP = {
-  version: '0.1.0',
+  version: '0.1.1',
   releasesRepo: 'https://github.com/DanielDerefaka/mason-releases',
   mac: {
     label: 'Download for Mac',
     /** Apple Silicon. An Intel build is a second target when somebody asks. */
     requirement: 'macOS 12 or later, Apple Silicon',
-    url: 'https://github.com/DanielDerefaka/mason-releases/releases/download/v0.1.0/Mason-0.1.0-arm64.dmg',
+    url: 'https://github.com/DanielDerefaka/mason-releases/releases/download/v0.1.1/Mason-0.1.1-arm64.dmg',
   },
   /**
    * Unsigned for now, and the page says so rather than letting Gatekeeper's

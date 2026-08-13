@@ -24,7 +24,8 @@ npm run bundle     # builds the web app for desktop and folds it into webapp/
 npm start          # boots the bundled server and opens the window
 npm run dev        # the shell pointed at localhost:3000 instead
 npm run smoke      # boots windowless, asserts the page loaded, exits
-npm run dist       # .dmg / .zip into desktop/release (unsigned)
+npm run dist       # .dmg / .zip into desktop/release (unsigned without Apple creds)
+npm run smoke:dist # smoke the PACKAGED app — run after every dist, no exceptions
 ```
 
 `npm run bundle` refuses to run while the dev server is up — `next build`
