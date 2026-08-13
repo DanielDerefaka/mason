@@ -4,6 +4,7 @@ import {
   NODE_ATTR,
   assignNodeIds,
   canEditInline,
+  sectionScope,
   duplicateNode,
   moveNode,
   parseLength,
@@ -45,6 +46,80 @@ describe('assignNodeIds', () => {
     expect(
       (root.querySelector('[data-mason-id="0.0"]') as HTMLElement).textContent,
     ).toBe('second')
+  })
+})
+
+describe('what is not a layer', () => {
+  /**
+   * A generated design carries its own stylesheet. Stamping it made it a
+   * layer: first row of the tree, labelled with its own CSS, a slot in the AI
+   * panel's section list — and selectable, so a user could delete every hover,
+   * focus state and breakpoint the design had and see nothing happen on
+   * screen to explain it.
+   */
+  it('does not stamp the design stylesheet', () => {
+    const root = mount('<style>.a{color:red}</style><section><h1>A</h1></section>')
+    assignNodeIds(root)
+
+    expect(root.querySelector('style')?.hasAttribute(NODE_ATTR)).toBe(false)
+    expect(ids(root)).toEqual(['1', '1.0'])
+  })
+
+  it('keeps the ids a true child path, so a restamp lands on the same nodes', () => {
+    // The skipped element still occupies its index — otherwise every id after
+    // the stylesheet would shift by one and no selection would survive.
+    const root = mount('<div><style>.a{}</style><p>first</p><p>second</p></div>')
+    assignNodeIds(root)
+
+    expect(
+      (root.querySelector('[data-mason-id="0.2"]') as HTMLElement).textContent,
+    ).toBe('second')
+  })
+})
+
+describe('sectionScope', () => {
+  /**
+   * Addressing a section by name in the AI panel read the stage's own
+   * children, and a generated design wraps everything in one div — so the only
+   * destination on offer was "Group", and every renamed section was
+   * unreachable.
+   */
+  it('descends through the wrapper a design puts everything in', () => {
+    const root = mount('<div><header>A</header><section>B</section><footer>C</footer></div>')
+    assignNodeIds(root)
+
+    expect(sectionScope(root).tagName).toBe('DIV')
+    expect(Array.from(sectionScope(root).children).map((c) => c.tagName)).toEqual([
+      'HEADER',
+      'SECTION',
+      'FOOTER',
+    ])
+  })
+
+  it('stays put when the design is already a run of sections', () => {
+    const root = mount('<header>A</header><section>B</section>')
+    assignNodeIds(root)
+
+    expect(sectionScope(root)).toBe(root)
+  })
+
+  it('does not mistake a single section for its own contents', () => {
+    // One wrapper holding one section: descending twice would offer the
+    // section's heading and paragraph as destinations.
+    const root = mount('<div><section><h1>A</h1><p>b</p></section></div>')
+    assignNodeIds(root)
+
+    expect(Array.from(sectionScope(root).children).map((c) => c.tagName)).toEqual(['SECTION'])
+  })
+
+  it('ignores the stylesheet when deciding what the wrapper holds', () => {
+    const root = mount('<div><style>.a{}</style><section><h1>A</h1></section></div>')
+    assignNodeIds(root)
+
+    expect(Array.from(sectionScope(root).children).map((c) => c.tagName)).toEqual([
+      'STYLE',
+      'SECTION',
+    ])
   })
 })
 
@@ -188,8 +263,24 @@ describe('canEditInline', () => {
     expect(canEditInline(first('<p>Hello</p>'))).toBe(true)
   })
 
-  it('rejects a node with element children, so typing cannot eat the subtree', () => {
-    expect(canEditInline(first('<div><span>Hello</span></div>'))).toBe(false)
+  it('accepts a heading with a line break in it', () => {
+    // The commonest headline there is. The old rule refused any element child
+    // at all, so double-clicking a two-line heading did nothing and said
+    // nothing.
+    expect(canEditInline(first('<h1>Every ad dollar,<br>traced to revenue.</h1>'))).toBe(true)
+  })
+
+  it('accepts a run of text with formatting inside it', () => {
+    expect(canEditInline(first('<p>Ship <strong>faster</strong> today</p>'))).toBe(true)
+  })
+
+  it('rejects a node with structural children, so typing cannot eat the subtree', () => {
+    expect(canEditInline(first('<div><section>Hello</section></div>'))).toBe(false)
+    expect(canEditInline(first('<div><p>a</p><p>b</p></div>'))).toBe(false)
+  })
+
+  it('rejects a link inside the text, which typing would destroy', () => {
+    expect(canEditInline(first('<p>Read the <a href="#">terms</a></p>'))).toBe(false)
   })
 
   it('rejects empty text', () => {

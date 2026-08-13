@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -78,12 +78,9 @@ export const AiPanel = ({
   }
 
   return (
-    <section className="flex flex-col gap-2.5 p-3">
-      <h3 className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] text-white/40 uppercase">
-        <Sparkles className="size-3" />
-        Ask AI
-      </h3>
-
+    // No heading of its own: the dock this sits in already carries one, and
+    // two "Ask AI" labels in a 300px panel read as a rendering fault.
+    <section className="flex flex-col gap-2.5 p-3 pt-1">
       <p className="text-muted-foreground text-[11px] leading-relaxed">
         {label === 'whole page' ? (
           <>

@@ -73,7 +73,9 @@ export default function RootLayout({
               disableTransitionOnChange
             >
                 {children}
-                <Toaster />
+                {/* Lifted clear of the canvas toolbar, which puts zoom in the
+                    bottom-right corner sonner otherwise lands in. */}
+                <Toaster offset={{ bottom: '96px' }} />
               </ThemeProvider>
             </ReduxProvider>
           </ConvexClientProvider>

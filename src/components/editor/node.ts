@@ -39,11 +39,28 @@ export const assignNodeIds = (root: HTMLElement) => {
   const walk = (element: Element, path: string) => {
     element.setAttribute(NODE_ATTR, path)
     Array.from(element.children).forEach((child, index) => {
+      // The index still counts what is skipped, so an id stays a true child
+      // path and restamping lands on the same nodes.
+      if (UNSTAMPED.has(child.tagName)) return
       walk(child, path ? `${path}.${index}` : String(index))
     })
   }
-  Array.from(root.children).forEach((child, index) => walk(child, String(index)))
+  Array.from(root.children).forEach((child, index) => {
+    if (UNSTAMPED.has(child.tagName)) return
+    walk(child, String(index))
+  })
 }
+
+/**
+ * Elements that are in the markup but are not part of the design.
+ *
+ * A generated design carries its own stylesheet, and stamping it made it a
+ * layer: it sat at the top of the tree labelled with its own CSS, filled a
+ * slot in the AI panel's section list, and could be selected and deleted —
+ * which strips every hover, focus state and breakpoint the design has, with
+ * nothing on screen to say what just happened.
+ */
+const UNSTAMPED = new Set(['STYLE', 'SCRIPT', 'LINK', 'META', 'TITLE'])
 
 /**
  * Strips the editor's own bookkeeping before the markup is stored.
@@ -202,11 +219,54 @@ export const duplicateNode = (element: HTMLElement): HTMLElement | null => {
   return copy
 }
 
-/** Nodes whose content is text we can let the user type over in place. */
+/**
+ * Elements that are part of a run of text rather than a break in it.
+ *
+ * `contenteditable` handles these natively, so a heading containing them is
+ * still one piece of text to type over.
+ */
+const INLINE_CONTENT = new Set([
+  'BR', 'SPAN', 'STRONG', 'EM', 'B', 'I', 'U', 'S', 'SMALL', 'MARK', 'CODE', 'SUB', 'SUP',
+])
+
+const NEVER_EDITABLE = ['IMG', 'INPUT', 'SVG', 'BR', 'HR']
+
+/**
+ * Nodes whose content is text we can let the user type over in place.
+ *
+ * The rule used to be "no element children at all", which quietly refused the
+ * commonest heading there is — one with a `<br>` in it — and refused it with
+ * no feedback, so double-clicking a two-line headline did nothing. What makes
+ * typing unsafe is a *structural* child, where editing would swallow a
+ * subtree; a line break or a bold run is part of the same sentence.
+ */
 export const canEditInline = (element: HTMLElement): boolean =>
-  element.children.length === 0 &&
+  !NEVER_EDITABLE.includes(element.tagName) &&
   (element.textContent ?? '').trim().length > 0 &&
-  !['IMG', 'INPUT', 'SVG', 'BR', 'HR'].includes(element.tagName)
+  Array.from(element.querySelectorAll('*')).every((node) => INLINE_CONTENT.has(node.tagName))
+
+/**
+ * The element whose children are the page's sections.
+ *
+ * A generated design is almost always one wrapper holding everything, so
+ * reading the stage's own children offers a single destination called "Group"
+ * — which defeats addressing a section by name entirely.
+ *
+ * Exactly one level, and only past a wrapper that holds something. Descending
+ * further would start listing the cards inside a section, which is an
+ * inventory rather than a set of destinations, and a chain of single wrappers
+ * would walk all the way to a leaf. This is the same reading the project
+ * export uses to find where a page's sections begin.
+ */
+export const sectionScope = (root: HTMLElement): HTMLElement => {
+  const stamped = (element: HTMLElement) =>
+    Array.from(element.children).filter((child) => child.hasAttribute(NODE_ATTR))
+
+  const children = stamped(root)
+  return children.length === 1 && stamped(children[0] as HTMLElement).length > 0
+    ? (children[0] as HTMLElement)
+    : root
+}
 
 /** A CSS length as {value, unit}, for a control that has to round-trip it. */
 export const parseLength = (input: string): { value: number; unit: string } => {

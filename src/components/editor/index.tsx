@@ -48,6 +48,7 @@ import {
   canDropLayer,
   canEditInline,
   componentAncestor,
+  directText,
   componentName,
   componentsIn,
   pushToInstances,
@@ -65,6 +66,7 @@ import {
   moveNode,
   readStyle,
   renameNode,
+  sectionScope,
   serialise,
   setHidden,
   setLocked,
@@ -140,11 +142,14 @@ export const DesignEditor = () => {
    *
    * The outermost run of elements only — descending further lists every card
    * on the page, which is an inventory rather than a set of destinations.
+   * `sectionScope` finds where that run actually starts: a generated design
+   * wraps everything in one div, so reading the stage's own children offered
+   * exactly one destination, called "Group".
    */
   const sections = useMemo(() => {
     const root = stage.current
     if (!root) return []
-    return Array.from(root.children).flatMap((child) => {
+    return Array.from(sectionScope(root).children).flatMap((child) => {
       const node = child as HTMLElement
       const id = node.getAttribute(NODE_ATTR)
       return id ? [{ id, name: labelFor(node) }] : []
@@ -471,7 +476,18 @@ export const DesignEditor = () => {
   /** Double-click types straight into the design rather than the side panel. */
   const onStageDoubleClick = (event: React.MouseEvent) => {
     const node = nodeFor(event.target)
-    if (!node || !canEditInline(node)) return
+    if (!node) return
+    if (!canEditInline(node)) {
+      // Refusing without saying so is what made this look broken. Only for a
+      // node that holds text of its own — double-clicking a container is a
+      // way of reaching into it, not a failed edit.
+      if (directText(node)) {
+        toast.message('This one has to be edited in the panel', {
+          description: 'It holds more than a single run of text.',
+        })
+      }
+      return
+    }
 
     event.stopPropagation()
     setSelectedId(node.getAttribute(NODE_ATTR))

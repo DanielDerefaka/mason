@@ -19,7 +19,7 @@ would otherwise look like arbitrary code.
 ```bash
 npm run dev          # then, in another terminal:
 npm run smoke        # 18 live checks against a running server
-npm test             # 282 unit tests, no server needed
+npm test             # 458 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
