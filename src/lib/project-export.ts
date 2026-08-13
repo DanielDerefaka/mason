@@ -1,4 +1,5 @@
 import { COMPONENT_ATTR, readDesign, type DesignModel } from '@/lib/design-model'
+import { findRepeats, referenceFor, type Extraction } from '@/lib/component-split'
 import { childrenToJsx, elementToJsx } from '@/lib/html-to-jsx'
 import { parseDeclarations, toTailwind } from '@/lib/tailwind-from-css'
 import type { Shape } from '@/redux/slice/shapes'
@@ -64,8 +65,93 @@ const slug = (name: string) =>
  */
 const PAGE_CLASS = 'page'
 
-const rootOf = (body: HTMLElement): HTMLElement =>
-  body.children.length === 1 ? (body.firstElementChild as HTMLElement) : body
+/** Elements that are in the markup but are not content. */
+const NOT_CONTENT = new Set(['STYLE', 'SCRIPT', 'LINK', 'META', 'TITLE'])
+
+const contentChildren = (element: Element): HTMLElement[] =>
+  Array.from(element.children).filter(
+    (child) => !NOT_CONTENT.has(child.tagName),
+  ) as HTMLElement[]
+
+/**
+ * The element whose children are the page's sections.
+ *
+ * Two mistakes were folded into the one line this replaces. It counted the
+ * design's own stylesheet as a child, so a body of `[<style>, <div>]` had two
+ * children and it never descended at all — and it only ever descended one
+ * level anyway, while a generated design routinely nests two or three
+ * wrappers before the content starts.
+ *
+ * Between them, every section of the page ended up inside a single component
+ * named after the tag of whatever wrapper it stopped on. An exported project
+ * was one 300-line file called `Div.tsx`.
+ *
+ * Descends while there is exactly one content child that has content of its
+ * own, which lands on the first element that genuinely holds several things.
+ */
+const rootOf = (body: HTMLElement): HTMLElement => {
+  /**
+   * A wrapper is a plain box that exists to hold a layout. A section is
+   * anything that says what it is — a landmark tag, or something carrying its
+   * own heading — and descending through one of those would take a page of
+   * six sections and mistake one section's insides for the whole page.
+   */
+  const isWrapper = (element: HTMLElement) =>
+    element.tagName === 'DIV' &&
+    !LANDMARKS[element.tagName] &&
+    !ownHeading(element) &&
+    contentChildren(element).length > 0
+
+  let scope: HTMLElement = body
+  // Bounded so a column of single-child wrappers cannot walk to a leaf.
+  for (let depth = 0; depth < 6; depth += 1) {
+    const children = contentChildren(scope)
+    if (children.length !== 1 || !isWrapper(children[0])) break
+    scope = children[0]
+  }
+  return scope
+}
+
+/**
+ * What a landmark tag is called when it has no heading to be named after.
+ *
+ * `Div` is what a section was called before this, which tells a reader
+ * nothing and reads as a bug in the exporter — which, given the file was the
+ * whole page, it was.
+ */
+const LANDMARKS: Record<string, string> = {
+  NAV: 'SiteNav',
+  HEADER: 'SiteHeader',
+  FOOTER: 'SiteFooter',
+  MAIN: 'MainContent',
+  ASIDE: 'Sidebar',
+  FORM: 'FormSection',
+  SECTION: 'Section',
+  ARTICLE: 'Article',
+}
+
+/**
+ * A section's name, in the order a reader would guess it.
+ *
+ * Its own heading first, because that is what the section is called on the
+ * page. Then the landmark it is, which is a real name for a nav or a footer.
+ * A plain wrapper falls back to its position, since `Section2` at least says
+ * where it is; a name taken from the tag would call half a page `Div`.
+ */
+const sectionName = (section: HTMLElement, position: number): string => {
+  const heading = ownHeading(section)
+  if (heading) return identifier(heading, 'Section')
+
+  const landmark = LANDMARKS[section.tagName]
+  if (landmark && landmark !== 'Section') return landmark
+
+  // A wrapper whose only landmark child is a nav is the page's header, which
+  // is worth more than its position.
+  const inner = contentChildren(section)
+  if (inner.length > 0 && inner[0].tagName === 'NAV') return 'SiteHeader'
+
+  return `Section${position}`
+}
 
 /**
  * The heading a section is named after — its own, not one belonging to
@@ -94,11 +180,23 @@ const designStylesheet = (body: HTMLElement): string =>
     .join('\n\n')
     .replace(/\.mason-design\b/g, `.${PAGE_CLASS}`)
 
-const component = (name: string, jsx: string, imports: string[]): string => {
+const component = (
+  name: string,
+  jsx: string,
+  imports: string[],
+  props: string[] = [],
+): string => {
   const head = imports.length
     ? `${imports.map((child) => `import { ${child} } from './${child}'`).join('\n')}\n\n`
     : ''
-  return `${head}export const ${name} = () => (\n${jsx}\n)\n`
+  if (props.length === 0) return `${head}export const ${name} = () => (\n${jsx}\n)\n`
+
+  // Typed inline rather than as a named interface: the props are the parts of
+  // one shape that vary, and a reader is better served seeing them here than
+  // following a name to the line above.
+  const signature = props.map((prop) => `${prop}: string`).join('; ')
+  const destructured = props.join(', ')
+  return `${head}export const ${name} = ({ ${destructured} }: { ${signature} }) => (\n${jsx}\n)\n`
 }
 
 /**
@@ -316,6 +414,10 @@ export default nextConfig
  * everywhere Mason renders the design and wrong in a project on somebody
  * else's machine, where there is no origin to be relative to.
  */
+/** The same quoting rule the JSX writer uses, for values passed as props. */
+const quoted = (value: string) =>
+  value.includes('"') ? `{${JSON.stringify(value)}}` : `"${value}"`
+
 const absolute = (origin: string) => (value: string) =>
   value.startsWith('/api/image/') ? `${origin}${value}` : value
 
@@ -344,10 +446,37 @@ export const buildProject = (
     names.set(entry.name, unique(identifier(entry.name), taken))
   }
 
-  /** Which elements are a component boundary, and under what name. */
+  /**
+   * The shapes that repeat, found before anything is written.
+   *
+   * A section that draws the same card three times becomes a section that
+   * draws one card component three times with different words in it — which
+   * is what somebody writing this by hand would have done, and the difference
+   * between an export you would keep and one you would rewrite.
+   */
+  /**
+   * Searched inside each section, never across them. Two sections that happen
+   * to share a shape are still two sections: the page's outline is what makes
+   * `page.tsx` readable, and collapsing `Services` and `Work` into one
+   * component used twice would throw both names away.
+   */
+  const repeats = contentChildren(root).flatMap((section) =>
+    findRepeats(section, (base) => unique(base, taken)),
+  )
+  const repeatOf = new Map<Element, Extraction>()
+  for (const extraction of repeats) {
+    for (const instance of extraction.instances.keys()) repeatOf.set(instance, extraction)
+  }
+
+  /** Which elements are a component boundary, and what stands in for them. */
   const boundary = (element: Element): string | null => {
     const given = element.getAttribute(COMPONENT_ATTR)?.trim()
-    return given ? (names.get(given) ?? null) : null
+    if (given) {
+      const name = names.get(given)
+      if (name) return `<${name} />`
+    }
+    const extraction = repeatOf.get(element)
+    return extraction ? referenceFor(extraction, element as HTMLElement, quoted) : null
   }
 
   /** The components referenced inside a subtree, for its import list. */
@@ -355,8 +484,12 @@ export const buildProject = (
     const found = new Set<string>()
     for (const node of Array.from(element.querySelectorAll<HTMLElement>(`[${COMPONENT_ATTR}]`))) {
       if (node === self) continue
-      const name = boundary(node)
+      const given = node.getAttribute(COMPONENT_ATTR)?.trim()
+      const name = given ? names.get(given) : undefined
       if (name) found.add(name)
+    }
+    for (const [instance, extraction] of repeatOf) {
+      if (instance !== self && element.contains(instance)) found.add(extraction.name)
     }
     return Array.from(found)
   }
@@ -370,6 +503,27 @@ export const buildProject = (
     files.push({
       path: `components/${name}.tsx`,
       content: component(name, elementToJsx(element, { boundary, url }, 1), referencedIn(element, element)),
+    })
+  }
+
+  /**
+   * The repeated shapes themselves, written from their first instance with
+   * the parts that vary standing in as props.
+   */
+  for (const extraction of repeats) {
+    emitted.add(extraction.name)
+    files.push({
+      path: `components/${extraction.name}.tsx`,
+      content: component(
+        extraction.name,
+        elementToJsx(
+          extraction.template,
+          { boundary, url, textSlots: extraction.textSlots, attrSlots: extraction.attrSlots },
+          1,
+        ),
+        referencedIn(extraction.template, extraction.template),
+        extraction.props,
+      ),
     })
   }
 
@@ -393,10 +547,7 @@ export const buildProject = (
       continue
     }
 
-    const name = unique(
-      identifier(ownHeading(child) || child.tagName.toLowerCase(), 'Section'),
-      taken,
-    )
+    const name = unique(sectionName(child as HTMLElement, pageChildren.length + 1), taken)
     emit(child, name)
     pageChildren.push(name)
   }

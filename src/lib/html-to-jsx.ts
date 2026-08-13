@@ -106,6 +106,13 @@ export type JsxOptions = {
   boundary?: (element: Element) => string | null
   /** Rewrites `src` and `href`, for making image routes absolute. */
   url?: (value: string) => string
+  /**
+   * Elements whose text is a prop rather than a literal, and whose attributes
+   * are. Used when writing the one component a repeated shape becomes: the
+   * template is an instance with the parts that vary replaced by their names.
+   */
+  textSlots?: Map<Element, string>
+  attrSlots?: Map<Element, Record<string, string>>
 }
 
 const attributes = (element: Element, options: JsxOptions): string[] => {
@@ -125,10 +132,17 @@ const attributes = (element: Element, options: JsxOptions): string[] => {
       continue
     }
 
-    const value =
-      (name === 'src' || name === 'href') && options.url ? options.url(attribute.value) : attribute.value
     // data-* and aria-* are already what React wants; everything else may not be.
     const prop = name.startsWith('data-') || name.startsWith('aria-') ? name : (RENAMED[name] ?? name)
+
+    const slot = options.attrSlots?.get(element)?.[name]
+    if (slot) {
+      props.push(`${prop}={${slot}}`)
+      continue
+    }
+
+    const value =
+      (name === 'src' || name === 'href') && options.url ? options.url(attribute.value) : attribute.value
     props.push(`${prop}=${quote(value)}`)
   }
 
@@ -175,8 +189,17 @@ const render = (node: Node, depth: number, options: JsxOptions, root: Node): str
   // here would put a <style> tag in the middle of a component.
   if (tagOf(element) === 'style') return []
 
-  const component = element === root ? null : options.boundary?.(element)
-  if (component) return [`${pad}<${component} />`]
+  // The boundary returns the whole reference, props and all, so a repeated
+  // shape can arrive as `<NavLink label="Home" href="#home" />`.
+  const reference = element === root ? null : options.boundary?.(element)
+  if (reference) return [`${pad}${reference}`]
+
+  const textSlot = options.textSlots?.get(element)
+  if (textSlot) {
+    const props = attributes(element, options)
+    const open = props.length > 0 ? `<${tagOf(element)} ${props.join(' ')}` : `<${tagOf(element)}`
+    return [`${pad}${open}>{${textSlot}}</${tagOf(element)}>`]
+  }
 
   const tag = tagOf(element)
   const props = attributes(element, options)

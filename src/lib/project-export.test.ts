@@ -103,9 +103,11 @@ describe('elementToJsx', () => {
   })
 
   it('references a nested component rather than writing it out twice', () => {
+    // The boundary returns the whole reference, props and all, so a repeated
+    // shape can arrive as `<NavLink label="Home" />`.
     const jsx = elementToJsx(
       mount('<section><div data-mason-component="Card"><p>a</p></div></section>'),
-      { boundary: (element) => element.getAttribute('data-mason-component') },
+      { boundary: (element) => (element.hasAttribute('data-mason-component') ? '<Card />' : null) },
     )
 
     expect(jsx).toContain('<Card />')
@@ -116,7 +118,7 @@ describe('elementToJsx', () => {
     // The boundary is asked of everything except the element the render
     // started from; without that exception this recurses until the stack ends.
     const jsx = elementToJsx(mount('<div data-mason-component="Card"><p>a</p></div>'), {
-      boundary: (element) => element.getAttribute('data-mason-component'),
+      boundary: (element) => (element.hasAttribute('data-mason-component') ? '<Card />' : null),
     })
 
     expect(jsx).not.toContain('<Card />')
@@ -195,6 +197,99 @@ describe('buildProject', () => {
     const withImage = build('<div><section><img alt="" src="/api/image/x"></section></div>')
 
     expect(files.concat(withImage).some((entry) => entry.content.includes('https://mason.example/api/image/x'))).toBe(true)
+  })
+
+  it('does not put a whole page in one component called Div', () => {
+    /**
+     * What a real export produced: the design's body was `[<style>, <div>]`,
+     * which the old reading counted as two children and so never descended
+     * past — and it only descended one level anyway, while a generated design
+     * nests two or three wrappers before the content starts. Every section of
+     * the page came out inside a single 300-line `Div.tsx`.
+     */
+    const real = build(
+      '<style>.mason-design .cta:hover{opacity:.8}</style>' +
+        '<div class="page-root">' +
+        '<div class="inner">' +
+        '<header><nav><a href="#">Home</a></nav></header>' +
+        '<section><h2>Services</h2><p>What we do.</p></section>' +
+        '<section><h2>Work</h2><p>Selected projects.</p></section>' +
+        '<footer><p>© 2026</p></footer>' +
+        '</div></div>',
+    )
+
+    const components = real
+      .filter((entry) => entry.path.startsWith('components/'))
+      .map((entry) => entry.path)
+
+    expect(components).not.toContain('components/Div.tsx')
+    expect(components).toEqual(
+      expect.arrayContaining([
+        'components/SiteHeader.tsx',
+        'components/Services.tsx',
+        'components/Work.tsx',
+        'components/SiteFooter.tsx',
+      ]),
+    )
+  })
+
+  it('names a landmark rather than its tag, and a plain wrapper by position', () => {
+    const named = build(
+      '<div><nav><a href="#">Home</a></nav>' +
+        '<div><p>no heading here</p><p>nor here</p></div>' +
+        '<footer><p>©</p></footer></div>',
+    )
+
+    const paths = named.map((entry) => entry.path)
+    expect(paths).toContain('components/SiteNav.tsx')
+    expect(paths).toContain('components/Section2.tsx')
+    expect(paths).toContain('components/SiteFooter.tsx')
+  })
+
+  it('turns a repeated shape into one component taking props', () => {
+    /**
+     * The complaint this answers: a section that draws the same card three
+     * times was exported as that card written out three times. What varies
+     * between the instances is content, so it becomes props.
+     */
+    const cards = build(
+      '<div><section><h2>Features</h2><div class="grid">' +
+        '<div class="card"><h3>Fast</h3><p>Draw it.</p></div>' +
+        '<div class="card"><h3>Faithful</h3><p>Your palette.</p></div>' +
+        '<div class="card"><h3>Yours</h3><p>Export it.</p></div>' +
+        '</div></section></div>',
+    )
+
+    const card = file(cards, 'components/FeatureCard.tsx')
+    expect(card).toContain('export const FeatureCard = ({ title, body }: { title: string; body: string })')
+    expect(card).toContain('>{title}<')
+    expect(card).toContain('>{body}<')
+    // Written once, not three times.
+    expect(card).not.toContain('Faithful')
+
+    const section = file(cards, 'components/Features.tsx')
+    expect(section).toContain("import { FeatureCard } from './FeatureCard'")
+    expect(section).toContain('<FeatureCard title="Fast" body="Draw it." />')
+    expect(section).toContain('<FeatureCard title="Yours" body="Export it." />')
+  })
+
+  it('makes a prop of an attribute that varies, so links still go somewhere', () => {
+    const nav = build(
+      '<div><nav><a href="#home">Home</a><a href="#work">Work</a><a href="#about">About</a></nav>' +
+        '<section><h2>Body</h2></section></div>',
+    )
+
+    const link = file(nav, 'components/NavLink.tsx')
+    expect(link).toContain('{ label, href }: { label: string; href: string }')
+    expect(link).toContain('href={href}')
+    expect(file(nav, 'components/SiteNav.tsx')).toContain('<NavLink label="Home" href="#home" />')
+  })
+
+  it('leaves a shape that appears once written where it is', () => {
+    const once = build('<div><section><h2>Solo</h2><div class="card"><p>only one</p></div></section></div>')
+
+    expect(once.map((entry) => entry.path)).not.toContain('components/Card.tsx')
+    expect(file(once, 'components/Solo.tsx')).toContain('only one')
   })
 
   it('still produces a page that runs when the design has no sections', () => {
