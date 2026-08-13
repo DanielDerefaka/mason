@@ -23,6 +23,9 @@ export const isBypassRoute = [
   '/api/image/(.*)',
   '/blog(.*)',
   '/about-us(.*)',
+  // The desktop download. Public reading like the blog, and bypass for the
+  // same reason: being signed in should not hide the installer.
+  '/download(.*)',
   // The landing page too. As a public route it bounced signed-in visitors to
   // the dashboard, so anyone with an account could never reach their own
   // marketing site again without signing out — and the header on /blog and

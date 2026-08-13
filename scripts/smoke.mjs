@@ -27,6 +27,7 @@ const PUBLIC_PAGES = [
   '/',
   '/about-us',
   '/blog',
+  '/download',
   '/auth/sign-in',
   '/auth/sign-up',
   '/auth/forgot-password',

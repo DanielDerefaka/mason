@@ -11,6 +11,7 @@ export const HEADER_NAV: NavItem[] = [
   { label: 'About Us', href: '/about-us' },
   { label: 'Features', href: '/#services', sectionId: 'services' },
   { label: 'How It Works', href: '/#approach', sectionId: 'approach' },
+  { label: 'Download', href: '/download' },
   { label: 'Blog', href: '/blog' },
 ]
 
@@ -46,6 +47,7 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
       { label: 'Features', href: '/#services' },
       { label: 'How it works', href: '/#approach' },
       { label: 'FAQs', href: '/#faqs' },
+      { label: 'Download for Mac', href: '/download' },
       { label: 'Start free', href: '/auth/sign-up' },
     ],
   },
