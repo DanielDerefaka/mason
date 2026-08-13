@@ -7,23 +7,31 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction, internalQuery } from './_generated/server'
 import { Password } from '@convex-dev/auth/providers/Password'
-import { ResendOTP, ResendOTPPasswordReset } from './email'
+import { ResendOTPPasswordReset } from './email'
 
 /**
  * Email flows are only wired up when a Resend key is present.
  *
  * Attaching a provider whose apiKey is undefined makes every sign-in attempt
  * fail at construction, not just the flows that need email — so a deployment
- * without the key keeps working, minus reset and verification.
+ * without the key keeps working, minus reset.
  */
 const emailConfigured = Boolean(process.env.AUTH_RESEND_KEY)
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Password({
-      ...(emailConfigured
-        ? { reset: ResendOTPPasswordReset, verify: ResendOTP }
-        : {}),
+      /**
+       * Reset only — deliberately not `verify`.
+       *
+       * Wiring `verify: ResendOTP` gates sign-up AND sign-in behind an
+       * emailed code, and there is no screen anywhere that collects it: the
+       * reset flow has its two-step UI, sign-up does not. The day the key was
+       * first set on production, every new sign-up would have received a code
+       * with nowhere to type it and been stuck unverified. Verification is a
+       * feature to build — the code-entry step first, this line second.
+       */
+      ...(emailConfigured ? { reset: ResendOTPPasswordReset } : {}),
       // Carries the extra sign-up fields onto the user record. Password auth
       // identifies users by email, so email is required even though the
       // tutorial's block only shows name fields.
