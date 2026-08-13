@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { FileText, Download, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
+import { FileText, Download, FolderDown, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { DESIGN_SCOPE, sanitisePartialHtml } from '@/lib/sanitise'
@@ -26,6 +26,7 @@ export const GeneratedUI = ({
   onOpenChat,
   onExport,
   onExportPrompt,
+  onExportProject,
   onEdit,
   onMobile,
   mobileRunning,
@@ -39,6 +40,8 @@ export const GeneratedUI = ({
   onExport?: () => void
   /** The design as a build brief, for rebuilding it in another stack. */
   onExportPrompt?: () => void
+  /** The design as a Next.js project that runs. */
+  onExportProject?: () => void
   onEdit?: () => void
   onMobile?: () => void
   mobileRunning?: boolean
@@ -176,6 +179,18 @@ export const GeneratedUI = ({
             >
               <FileText className="size-3" />
               Prompt
+            </button>
+          )}
+          {onExportProject && (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onExportProject}
+              title="Download a Next.js project: tokens, a component per section, Tailwind"
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
+            >
+              <FolderDown className="size-3" />
+              Project
             </button>
           )}
         </div>

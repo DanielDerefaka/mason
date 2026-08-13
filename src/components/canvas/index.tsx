@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+
+import { useCanvasImage } from '@/hooks/use-canvas-image'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
 import type { Shape, Tool } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
@@ -17,7 +19,12 @@ import { DesignChat } from './shapes/design-chat'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { useStyles } from '@/hooks/use-styles'
-import { exportDesignHtml, exportDesignPrompt, exportFramePng } from '@/lib/export'
+import {
+  exportDesignHtml,
+  exportDesignProject,
+  exportDesignPrompt,
+  exportFramePng,
+} from '@/lib/export'
 import { toast } from 'sonner'
 import { AutoSave } from './autosave'
 import { ToolBar } from './toolbar'
@@ -60,6 +67,7 @@ const ShapeView = ({
   onOpenChat,
   onExport,
   onExportPrompt,
+  onExportProject,
   onEdit,
   onMobile,
   mobileRunning,
@@ -79,6 +87,7 @@ const ShapeView = ({
   onOpenChat?: () => void
   onExport?: () => void
   onExportPrompt?: () => void
+  onExportProject?: () => void
   onEdit?: () => void
   onMobile?: () => void
   mobileRunning?: boolean
@@ -99,6 +108,7 @@ const ShapeView = ({
         onOpenChat={onOpenChat}
         onExport={onExport}
         onExportPrompt={onExportPrompt}
+        onExportProject={onExportProject}
         onEdit={onEdit}
         onMobile={onMobile}
         mobileRunning={mobileRunning}
@@ -219,6 +229,24 @@ const ShapeView = ({
         className={cn(base, 'select-none', selected && 'ring-2 ring-white/80')}
         style={{
           ...style,
+          /**
+           * The invisible image, and it was never the image.
+           *
+           * Tailwind's preflight sets `img, video { max-width: 100% }`. The
+           * world container is absolutely positioned with no width of its own,
+           * and every shape inside it is absolute too — nothing in flow to
+           * measure — so it shrink-to-fits to zero. A hundred per cent of zero
+           * is zero, and `max-width` clamps the used width however explicit
+           * the `width` beside it is: the element laid out 0 wide and its full
+           * height, which is why an image was the only shape this could
+           * happen to. Everything else on the canvas is a div.
+           *
+           * It leaves no trace anywhere the existing diagnostics look. The
+           * file uploads, the shape is created, `onError` never fires because
+           * the picture decoded perfectly — it is simply painted into a box
+           * with no width.
+           */
+          maxWidth: 'none',
           // Crops rather than stretches, the way an image fill behaves in a
           // design tool. Dragging a corner should reframe the picture, not
           // squash whoever is in it.
@@ -534,6 +562,7 @@ export const Canvas = () => {
     tool,
     selectedId,
     selectedIds,
+    screenToWorld,
     selectShape,
     toggleSelected,
     selectAll,
@@ -598,6 +627,19 @@ export const Canvas = () => {
     })
   }
 
+  /**
+   * The design as a project that runs, rather than a page or a brief.
+   *
+   * The same reading behind the brief, emitted as files: tokens in
+   * `globals.css`, a component per section, the markup as Tailwind.
+   */
+  const onExportProject = (shape: Shape) => {
+    const files = exportDesignProject(shape, styleGuide)
+    toast.success('Next.js project exported', {
+      description: `${files.length} files. npm install, then npm run dev.`,
+    })
+  }
+
   const onExport = (shape: Shape) => {
     if (shape.kind === 'generated-ui') {
       exportDesignHtml(shape, styleGuide)
@@ -608,6 +650,54 @@ export const Canvas = () => {
       .then(() => toast.success('Frame exported'))
       .catch(() => toast.error('Could not export that frame'))
   }
+  /**
+   * Images arrive by drop and by paste, not only through the file picker.
+   *
+   * A browser will only hand a page the bytes of a local file through one of
+   * three gestures — a file input, a drop, or a paste — because a page cannot
+   * read a path. The picker was the only one wired up, which made dragging a
+   * photo onto a canvas do nothing, and that is the gesture people try first.
+   *
+   * All three end at the same `place()`, so there is one upload path and one
+   * set of rules about size and type.
+   */
+  const dropAt = useRef<{ x: number; y: number } | null>(null)
+  const { place: placeImages } = useCanvasImage(
+    () =>
+      dropAt.current ?? screenToWorld({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
+  )
+  const [overFiles, setOverFiles] = useState(false)
+
+  /** A drag carrying files, as opposed to a shape being dragged on the canvas. */
+  const hasFiles = (event: React.DragEvent) =>
+    Array.from(event.dataTransfer.types).includes('Files')
+
+  /**
+   * Paste is a window listener because the canvas is not focusable, so the
+   * event never reaches it. Typing into a field keeps its own paste.
+   */
+  const pasteRef = useRef<(event: ClipboardEvent) => void>(() => {})
+  pasteRef.current = (event: ClipboardEvent) => {
+    const files = event.clipboardData?.files
+    if (!files?.length) return
+    const target = event.target
+    if (
+      target instanceof HTMLElement &&
+      (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)
+    ) {
+      return
+    }
+    // Pasted images have no drop point, so they land in the middle of the view.
+    dropAt.current = null
+    void placeImages(files)
+  }
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => pasteRef.current(event)
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [])
+
   const { generateWorkflow, workflowRunningFor } = useWorkflow()
   const { generateMobile, mobileRunningFor } = useMobileVersion()
   const [inspirationOpen, setInspirationOpen] = useState(false)
@@ -765,6 +855,26 @@ export const Canvas = () => {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onDragOver={(event) => {
+          if (!hasFiles(event)) return
+          // Without preventDefault the browser navigates to the dropped file.
+          event.preventDefault()
+          setOverFiles(true)
+        }}
+        onDragLeave={(event) => {
+          if (event.target === event.currentTarget) setOverFiles(false)
+        }}
+        onDrop={(event) => {
+          if (!hasFiles(event)) return
+          event.preventDefault()
+          setOverFiles(false)
+          const rect = event.currentTarget.getBoundingClientRect()
+          dropAt.current = screenToWorld({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          })
+          void placeImages(event.dataTransfer.files)
+        }}
         className={cn(
           // h-full cannot resolve a percentage against a flex-1 parent with no
           // definite height, which collapses the canvas to zero. Absolute fill
@@ -779,6 +889,17 @@ export const Canvas = () => {
           backgroundPosition: `${viewport.translate.x}px ${viewport.translate.y}px`,
         }}
       >
+        {overFiles && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-40 grid place-items-center bg-sky-500/5 ring-2 ring-sky-400/60 ring-inset"
+          >
+            <span className="rounded-full bg-sky-500 px-3 py-1 text-xs font-medium text-white shadow-lg">
+              Drop to add
+            </span>
+          </div>
+        )}
+
         <div
           className="absolute top-0 left-0 origin-top-left"
           style={{
@@ -795,6 +916,9 @@ export const Canvas = () => {
               onGenerateWorkflow={() => void generateWorkflow(shape)}
               onOpenChat={() => toggleDesignChat(shape.id)}
               onExport={() => onExport(shape)}
+              onExportProject={
+                shape.kind === 'generated-ui' ? () => onExportProject(shape) : undefined
+              }
               onExportPrompt={
                 shape.kind === 'generated-ui' ? () => onExportPrompt(shape) : undefined
               }
