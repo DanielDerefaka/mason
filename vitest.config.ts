@@ -23,6 +23,9 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.test.ts'],
   },
+  // The panel tests render components, so JSX has to compile without a
+  // React import in every file.
+  esbuild: { jsx: 'automatic' },
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
   },

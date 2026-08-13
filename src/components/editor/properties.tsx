@@ -148,9 +148,18 @@ export const Properties = ({
     section.swatches.map((swatch) => ({ name: swatch.name, value: swatch.color })),
   )
 
-  // Sections holding state of their own — a split corner control, an edited
-  // draft of the markup — are keyed to the node, so selecting something else
-  // does not carry one node's working state onto another.
+  /**
+   * Sections holding state of their own — a split corner control, an edited
+   * draft of the markup — are keyed to the node, so selecting something else
+   * does not carry one node's working state onto another.
+   *
+   * Each key is namespaced by its section. Two siblings sharing a key is not a
+   * cosmetic mistake: React matches keyed children through a map, a duplicate
+   * loses its match on the next update, and the section is re-inserted without
+   * the old one being removed. It renders correctly once and grows by one copy
+   * on every re-render after that — which looks like a rendering bug anywhere
+   * except where it is.
+   */
   const key = element.getAttribute(NODE_ATTR) ?? ''
   const isFree = ['absolute', 'fixed'].includes(readStyle(element, 'position'))
   const arranges = canAcceptDrop(element)
@@ -190,7 +199,7 @@ export const Properties = ({
         <Layout element={element} spacing={spacing} onStyle={onStyle} onStyles={onStyles} />
       )}
       <Dimensions element={element} onStyle={onStyle} onStyles={onStyles} />
-      <Appearance key={key} element={element} radii={radii} onStyle={onStyle} onStyles={onStyles} />
+      <Appearance key={`appearance-${key}`} element={element} radii={radii} onStyle={onStyle} onStyles={onStyles} />
 
       {isImage && (
         <ImageSection
@@ -216,7 +225,7 @@ export const Properties = ({
       <Fill element={element} swatches={swatches} onStyle={onStyle} onStyles={onStyles} />
       <Stroke element={element} swatches={swatches} onStyles={onStyles} />
       <Effects element={element} onStyle={onStyle} />
-      <Code key={key} element={element} onReplace={onReplace} />
+      <Code key={`code-${key}`} element={element} onReplace={onReplace} />
       <Export element={element} onExport={onExport} />
     </div>
   )
