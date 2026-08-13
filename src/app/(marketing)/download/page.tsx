@@ -80,11 +80,22 @@ export default function DownloadPage() {
               <h2 className="text-foreground text-[14px] font-semibold">
                 First launch on macOS
               </h2>
+              {/* Not the folklore "right-click → Open": an ad-hoc-signed app
+                  on Apple Silicon gets the "damaged" dialog, which offers no
+                  override at all. The quarantine flag is the whole problem,
+                  and removing it is the one step that actually works. */}
               <p className="text-muted-foreground mt-2 text-[13px] leading-relaxed">
-                This build isn&apos;t notarised with Apple yet, so macOS will warn you the
-                first time. Right-click the app, choose <span className="text-foreground">Open</span>,
-                and confirm — once. Every launch after that is normal. Notarised builds
-                are coming; the download will simply stop needing this paragraph.
+                This build isn&apos;t notarised with Apple yet, so macOS will claim the app
+                is &ldquo;damaged&rdquo;. It isn&apos;t — that is Apple&apos;s wording for
+                &ldquo;not notarised&rdquo;. Drag Mason to Applications, then run this once
+                in Terminal:
+              </p>
+              <code className="text-foreground bg-muted mt-3 block w-fit rounded-lg px-3 py-2 font-mono text-[12.5px]">
+                xattr -cr /Applications/Mason.app
+              </code>
+              <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
+                Then open it normally — every launch after that is ordinary. Notarised
+                builds are coming, and this paragraph leaves with them.
               </p>
             </div>
           )}
