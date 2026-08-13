@@ -1,7 +1,7 @@
 {
   "name": "mason-desktop",
   "productName": "Mason",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Mason for desktop \u2014 sketches in, interfaces out.",
   "main": "main.js",
