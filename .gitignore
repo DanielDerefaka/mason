@@ -2,6 +2,10 @@
 
 # dependencies
 /node_modules
+# The desktop shell keeps its own dependencies.
+desktop/node_modules
+desktop/release
+desktop/webapp
 /.pnp
 .pnp.*
 .yarn/*

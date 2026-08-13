@@ -1,0 +1,57 @@
+{
+  "name": "mason-desktop",
+  "productName": "Mason",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mason for desktop \u2014 sketches in, interfaces out.",
+  "main": "main.js",
+  "scripts": {
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "dev": "env -u ELECTRON_RUN_AS_NODE MASON_URL=http://localhost:3000 electron .",
+    "smoke": "env -u ELECTRON_RUN_AS_NODE ELECTRON_SMOKE=1 electron .",
+    "dist": "electron-builder --mac",
+    "bundle": "node bundle.mjs"
+  },
+  "devDependencies": {
+    "electron": "^38.2.1",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "design.mason.desktop",
+    "productName": "Mason",
+    "files": [
+      "main.js",
+      "package.json",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "webapp",
+        "to": "app-server"
+      }
+    ]
+  },
+  "type": "module"
+}

@@ -11,6 +11,30 @@ const nextConfig: NextConfig = {
   // The dev badge sits bottom-left, exactly where the canvas puts undo and
   // redo, and it takes the clicks meant for them.
   devIndicators: false,
+
+  /**
+   * The desktop app.
+   *
+   * The whole application ships inside the Electron binary as a standalone
+   * server and runs on the user's machine — except the three route families
+   * that hold keys. A model key, a stock-photo key and a billing token can
+   * never ship to end users, so those routes proxy to the deployment, and the
+   * caller's Convex JWT rides the forwarded cookie: it is signed by Convex,
+   * not by the host that set it, so production verifies it exactly as if the
+   * request had come from the site. Credits and rate limits stay enforced
+   * where the keys live.
+   *
+   * Both are opt-in by env so the web build is byte-identical to before.
+   */
+  ...(process.env.DESKTOP_BUILD ? { output: 'standalone' as const } : {}),
+  async rewrites() {
+    const upstream = process.env.DESKTOP_UPSTREAM
+    if (!upstream) return []
+    return ['generate', 'image', 'polar'].map((family) => ({
+      source: `/api/${family}/:path*`,
+      destination: `${upstream}/api/${family}/:path*`,
+    }))
+  },
 };
 
 /**
