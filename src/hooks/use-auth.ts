@@ -56,12 +56,28 @@ export const useAuthentication = () => {
     lastname: string
     username: string
   }) => {
+    /**
+     * The backend's rule, enforced here because its rejection is unreadable
+     * from the client: Convex redacts uncaught errors in production, so a
+     * too-short password comes back as a generic server error. The toast used
+     * to blame the email for it — someone tried three addresses before the
+     * real answer showed up in the deployment logs.
+     */
+    if (data.password.length < 8) {
+      toast.error('Passwords need at least 8 characters.')
+      return
+    }
+
     setPending(true)
     try {
       await signIn('password', { ...data, flow: 'signUp' })
       router.push('/dashboard')
     } catch {
-      toast.error('Could not create that account. Try a different email.')
+      // With length checked above, the usual remaining cause is an address
+      // that already has an account.
+      toast.error('Could not create that account', {
+        description: 'If you already have an account with this email, sign in instead.',
+      })
     } finally {
       setPending(false)
     }

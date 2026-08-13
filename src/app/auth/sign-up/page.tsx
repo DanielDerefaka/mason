@@ -67,7 +67,18 @@ export default function SignUpPage() {
               <Label htmlFor="pwd" className="text-title text-sm">
                 Password
               </Label>
-              <Input type="password" required name="pwd" id="pwd" className="input sz-md variant-mixed" />
+              {/* minLength matches the backend's rule, so the browser refuses
+                  the form before Convex would — the server's rejection is
+                  redacted to a generic error the client cannot explain. */}
+              <Input
+                type="password"
+                required
+                minLength={8}
+                name="pwd"
+                id="pwd"
+                className="input sz-md variant-mixed"
+              />
+              <p className="text-muted-foreground text-xs">At least 8 characters.</p>
             </div>
 
             <Button className="w-full" disabled={pending}>
