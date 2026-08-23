@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono, Manrope, Inter, Fraunces, Outfit } from "next/font/google";
 import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
@@ -64,6 +65,12 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${outfit.variable} ${inter.variable} ${fraunces.variable} antialiased`}
         >
+          <Script
+            src="https://datafa.st/js/script.js"
+            data-website-id="dfid_6YC1RxSs1SLge4Me6Am0C"
+            data-domain="sketchmason.com"
+            strategy="afterInteractive"
+          />
           <ConvexClientProvider>
             <ReduxProvider>
               <ThemeProvider
