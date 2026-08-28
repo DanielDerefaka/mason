@@ -1,9 +1,10 @@
-import { ApproachSection } from '@/components/marketing/home/ApproachSection'
+import { CaseInPointSection } from '@/components/marketing/home/CaseInPointSection'
+import { CreditsSection } from '@/components/marketing/home/CreditsSection'
 import { CtaSection } from '@/components/marketing/home/CtaSection'
 import { FaqSection } from '@/components/marketing/home/FaqSection'
+import { FeatureSections } from '@/components/marketing/home/FeatureSections'
 import { HeroSection } from '@/components/marketing/home/HeroSection'
-import { IntroductionSection } from '@/components/marketing/home/IntroductionSection'
-import { MarqueeStrip } from '@/components/marketing/home/MarqueeStrip'
+import { ManifestoSection } from '@/components/marketing/home/ManifestoSection'
 import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 
 export const metadata = {
@@ -13,19 +14,21 @@ export const metadata = {
 }
 
 /**
- * Seven sections, down from ten. The tech-stack strip, the featured-works
- * grid and the platform logo wall were all built to hold a studio's client
- * work; with nothing real to put in them they were only repeating the same
- * four screenshots, so they are gone rather than filled with filler.
+ * The order is the reference's: a left-aligned hero over the product, one
+ * feature per screen, the capability grid, proof, a statement, what it costs,
+ * questions, and the close. The marquee strip and the two-column "approach"
+ * grid went with the old layout — each feature now gets a section of its own
+ * rather than a card in a grid.
  */
 export default function Home() {
   return (
     <>
       <HeroSection />
-      <IntroductionSection />
+      <FeatureSections />
       <ServicesSection />
-      <MarqueeStrip />
-      <ApproachSection />
+      <CaseInPointSection />
+      <ManifestoSection />
+      <CreditsSection />
       <FaqSection />
       <CtaSection />
     </>

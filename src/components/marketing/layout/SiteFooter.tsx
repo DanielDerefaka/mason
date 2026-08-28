@@ -5,6 +5,7 @@ import {
   FacebookIcon,
   InstagramIcon,
   LinkedInIcon,
+  LogoMark,
   TwitterIcon,
 } from "@/components/marketing/icons";
 import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/marketing-nav";
@@ -18,70 +19,105 @@ const SOCIAL_ICONS = {
 
 export function SiteFooter() {
   return (
-    <footer className="border-hairline border-t">
-      {/* Social bar — four cells split by hairline dividers. */}
-      <div className="border-hairline grid grid-cols-1 border-b sm:grid-cols-2 lg:grid-cols-4">
-        {SOCIAL_LINKS.map((social) => {
-          const Icon = SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
-          return (
-            <a
-              key={social.label}
-              href={social.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="border-hairline text-muted-foreground hover:text-foreground group flex items-center justify-between border-b px-6 py-4 transition-colors duration-300 last:border-b-0 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:border-r lg:border-b-0 lg:last:border-r-0 lg:[&:nth-child(2n)]:border-r"
-            >
-              <span className="flex items-center gap-2.5 text-[14px] leading-[22.4px]">
-                <Icon className="h-4 w-4" />
-                {social.label}
+    <footer className="relative border-t border-hairline bg-surface px-6 py-10 md:px-8 md:py-12">
+      {/* Brighter run along the top edge so the surface reads as lifted, not just darker. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.14] to-transparent"
+      />
+
+      <div className="container-home !px-0">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)] md:gap-8">
+          <div>
+            <Link href="/" aria-label="Mason home" className="inline-flex items-center gap-2.5">
+              <LogoMark className="h-7 w-7 text-foreground" />
+              <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
+                Mason
               </span>
-              <ArrowRightIcon className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </a>
-          );
-        })}
-      </div>
+            </Link>
+            <p className="mt-4 max-w-[280px] text-[0.85rem] leading-relaxed text-muted-foreground">
+              Finished interfaces from the roughest sketch you can draw.
+            </p>
 
-      {/* Link columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {FOOTER_COLUMNS.map((col) => (
-          <div
-            key={col.title}
-            className="border-hairline border-b px-6 py-10 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:border-r lg:[&:nth-child(2n)]:border-r"
-          >
-            <h3 className="text-muted-foreground mb-6 text-[14px] leading-[22.4px]">
-              {col.title}
-            </h3>
-            <ul className="space-y-3">
-              {col.links.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-foreground/85 hover:text-foreground text-[14px] leading-[22.4px] transition-colors duration-300"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {/* Plain GET: the sign-up page prefills from `?email=`, so no client JS is needed. */}
+            <form
+              className="mt-6 flex max-w-[320px] items-center gap-2"
+              action="/auth/sign-up"
+              method="get"
+            >
+              <label htmlFor="footer-email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="footer-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@studio.com"
+                className="h-10 flex-1 rounded-full border border-border bg-transparent px-4 text-[0.85rem] text-foreground outline-none placeholder:text-faint focus:border-white/30"
+              />
+              <button
+                type="submit"
+                aria-label="Start free"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:-translate-y-0.5"
+              >
+                <ArrowRightIcon className="h-4 w-4" />
+              </button>
+            </form>
+            <p className="mt-2 text-[0.75rem] text-faint">Start free — no card needed.</p>
           </div>
-        ))}
 
-        <div className="border-hairline border-b px-6 py-10">
-          <h3 className="text-muted-foreground mb-6 text-[14px] leading-[22.4px]">Contact</h3>
-          <ul className="text-foreground/85 space-y-3 text-[14px] leading-[22.4px]">
-            <li>
-              Email:{" "}
-              <a href={`mailto:${CONTACT.email}`} className="hover:text-foreground transition-colors">
-                {CONTACT.email}
-              </a>
-            </li>
-            <li>{CONTACT.location}</li>
-          </ul>
+          {FOOTER_COLUMNS.map((col) => (
+            <div key={col.title}>
+              <h3 className="mb-4 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-faint">
+                {col.title}
+              </h3>
+              <ul className="space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-[0.85rem] leading-[1.6] text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div className="text-muted-foreground py-6 text-center text-[13px] leading-[20px]">
-        {COPYRIGHT}
+        <div className="mt-10 flex flex-col gap-4 border-t border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-[0.8rem] text-faint">{COPYRIGHT}</p>
+            <a
+              href={`mailto:${CONTACT.email}`}
+              className="text-[0.8rem] text-faint transition-colors hover:text-foreground"
+            >
+              {CONTACT.email}
+            </a>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {SOCIAL_LINKS.map((social) => {
+              const Icon = SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
+              if (!Icon) return null;
+              return (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={social.label}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </footer>
   );

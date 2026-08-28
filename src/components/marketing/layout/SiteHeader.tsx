@@ -8,27 +8,17 @@ import { LogoMark, MenuIcon } from "@/components/marketing/icons";
 import { HEADER_NAV, HOME_SECTION_IDS, SECTION_TO_NAV } from "@/lib/marketing-nav";
 import { cn } from "@/lib/utils";
 import { MobileNav } from "./MobileNav";
-import { ThemeToggle } from "./ThemeToggle";
 
 /**
- * Full-bleed 72px header. Transparent at the top of the page, translucent + blurred once
- * content scrolls beneath it. The active nav item on the home page is chosen by an
- * IntersectionObserver over the page sections — not by click.
+ * Full-bleed sticky header, always translucent. The active nav item on the home
+ * page is chosen by an IntersectionObserver over the page sections — not by click.
  */
 export function SiteHeader() {
   const pathname = usePathname();
   const isHome = pathname === "/";
 
-  const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("hero");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     if (!isHome) return;
@@ -59,53 +49,55 @@ export function SiteHeader() {
 
   return (
     <>
-      <header
-        className={cn(
-          "fixed inset-x-0 top-0 z-50 h-[72px] transition-colors duration-300",
-          scrolled && "bg-background/70 backdrop-blur-xl"
-        )}
-      >
-        <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between px-6 md:px-10 lg:px-[60px]">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Mason home">
-            <LogoMark className="h-[22px] w-[22px] text-foreground" />
-            <span className="font-sans text-[16px] leading-4 font-bold tracking-[-0.16px] text-foreground">
+      <header className="sticky top-0 z-[100] border-b border-hairline bg-[rgba(10,10,10,0.72)] backdrop-blur-[20px] backdrop-saturate-[1.4]">
+        <div className="flex items-center justify-between px-6 py-3.5 md:px-8">
+          <Link href="/" aria-label="Mason home" className="flex items-center gap-2.5">
+            <LogoMark className="h-7 w-7 text-foreground" />
+            <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
               Mason
             </span>
           </Link>
 
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-7 lg:flex">
-            {HEADER_NAV.map((item) => {
-              const active = item.label === activeLabel;
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    "text-[14px] leading-[22.4px] transition-colors duration-300",
-                    active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+          {/* Everything that is not the logo sits in one right-aligned row:
+              page links, then Sign in, then the pill. The reference keeps
+              the links flush against the actions rather than centred, and
+              the links carry no padding of their own — the row's gap is the
+              spacing. The logo is Home, so Home is dropped from the list. */}
+          <nav className="hidden items-center gap-5 lg:flex xl:gap-7">
+            {HEADER_NAV.filter((item) => item.href !== "/").map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={cn(
+                  "text-[0.85rem] transition-colors hover:text-foreground",
+                  item.label === activeLabel ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="/auth/sign-in"
+              className="text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign in
+            </Link>
+            {/* `!` overrides beat `.marketing .pill`, which outranks a plain utility. */}
+            <Link href="/auth/sign-up" className="pill pill-primary !px-5 !py-2 !text-[0.84rem]">
+              Start free
+            </Link>
           </nav>
 
-          <div className="flex shrink-0 items-center gap-4">
-            <ThemeToggle />
-            <Link
-              href="/auth/sign-up"
-              className="pill pill-secondary hidden !px-[15px] !py-[8px] !text-[12px] !leading-[19.2px] sm:inline-flex"
-            >
+          {/* Below lg the row collapses to the pill and the menu button. */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <Link href="/auth/sign-up" className="pill pill-primary !px-4 !py-1.5 !text-[0.8rem]">
               Start free
             </Link>
             <button
               type="button"
               aria-label="Open menu"
               onClick={() => setMenuOpen(true)}
-              className="text-foreground lg:hidden"
+              className="text-foreground"
             >
               <MenuIcon className="h-6 w-6" />
             </button>

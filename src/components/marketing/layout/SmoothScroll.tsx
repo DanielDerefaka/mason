@@ -32,7 +32,8 @@ export function SmoothScroll() {
       const target = document.querySelector(hash);
       if (!target) return;
       e.preventDefault();
-      lenis.scrollTo(target as HTMLElement, { offset: -72 });
+      // The sticky header is 68px tall; land the section just beneath it.
+      lenis.scrollTo(target as HTMLElement, { offset: -68 });
       window.history.replaceState(null, "", hash);
     };
 

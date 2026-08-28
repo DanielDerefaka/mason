@@ -7,8 +7,8 @@ import { FAQS } from "@/lib/marketing-content";
 import { cn } from "@/lib/utils";
 
 /**
- * Click-driven, MULTI-OPEN accordion — the reference lets any number of rows
- * sit open at once, so open state is a Set of indices rather than one index.
+ * Click-driven, MULTI-OPEN accordion — any number of rows can sit open at
+ * once, so open state is a Set of indices rather than one index.
  *
  * Panel height is animated with the `grid-template-rows: 0fr -> 1fr` trick so
  * the transition is smooth without measuring scrollHeight.
@@ -31,42 +31,40 @@ export function FaqSection() {
   }, []);
 
   return (
-    <section id="faqs" className="py-[80px] md:py-[110px] lg:py-[140px]">
-      <div className="container-site">
-        {/* Heading */}
-        <h2 className="text-foreground font-display mb-[56px] text-center text-[30px] leading-[32px] font-normal tracking-[-1.2px] md:text-[46px] md:leading-[46px] md:tracking-[-2.2px] lg:text-[62px] lg:leading-[62px] lg:tracking-[-3.2px]">
-          Frequently Asked <span className="font-display-italic">Questions</span>
-        </h2>
+    <section id="faqs" className="section-pad">
+      <div className="container-home reveal">
+        <div className="mx-auto max-w-[640px] text-center">
+          <span className="eyebrow">FAQ</span>
+          <h2 className="font-display text-[clamp(2.1rem,4vw,3.1rem)] leading-[1.05] font-medium tracking-[-0.03em] text-muted-foreground">
+            Questions, <span className="text-foreground">answered.</span>
+          </h2>
+        </div>
 
-        {/* Accordion */}
-        <div className="mx-auto w-full max-w-[880px]">
+        <div className="mx-auto mt-10 w-full max-w-[760px] space-y-3">
           {FAQS.map((faq, index) => {
             const isOpen = openRows.has(index);
             const panelId = `faq-panel-${index}`;
             const triggerId = `faq-trigger-${index}`;
+            // The content numbers its questions ("1. ...") but the glass rows
+            // carry no numbering, so the prefix is stripped at render.
+            const question = faq.question.replace(/^\d+\.\s*/, "");
 
             return (
-              <div
-                key={faq.question}
-                className={cn(
-                  "border-hairline mb-[12px] rounded-[12px] border bg-transparent transition-[border-color] duration-[400ms] ease-out",
-                  !isOpen && "hover:border-[var(--border)]",
-                )}
-              >
+              <div key={faq.question} className="card-surface">
                 <button
                   type="button"
                   id={triggerId}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   onClick={() => toggle(index)}
-                  className="flex w-full cursor-pointer items-center justify-between gap-[16px] px-[18px] py-[16px] text-left md:px-[24px] md:py-[18px]"
+                  className="flex w-full cursor-pointer items-center justify-between gap-4 px-6 py-5 text-left"
                 >
-                  <span className="text-foreground font-sans text-[15px] leading-[22px] md:text-[16px] md:leading-[24px]">
-                    {faq.question}
+                  <span className="font-display text-[1.05rem] font-medium tracking-[-0.02em] text-foreground">
+                    {question}
                   </span>
                   <ChevronDownIcon
                     className={cn(
-                      "text-muted-foreground h-[18px] w-[18px] shrink-0 transition-transform duration-[350ms] ease-in-out",
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-[350ms] ease-in-out",
                       isOpen && "rotate-180",
                     )}
                   />
@@ -83,7 +81,7 @@ export function FaqSection() {
                 >
                   <div className="overflow-hidden">
                     <p
-                      className="text-muted-foreground font-sans text-[15px] leading-[24px] px-[18px] pb-[20px] md:px-[24px]"
+                      className="px-6 pb-5 text-[0.95rem] leading-relaxed text-muted-foreground"
                       aria-hidden={!isOpen}
                     >
                       {faq.answer}

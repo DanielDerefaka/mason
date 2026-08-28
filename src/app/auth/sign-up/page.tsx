@@ -1,10 +1,10 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { AtSign, Lock, Mail, User } from 'lucide-react'
+
+import { AuthShell, Field } from '@/components/auth/AuthShell'
 import { useAuthentication } from '@/hooks/use-auth'
 
 export default function SignUpPage() {
@@ -25,77 +25,88 @@ export default function SignUpPage() {
   }
 
   return (
-    <section className="flex min-h-screen bg-zinc-50 px-4 py-16 md:py-32 dark:bg-transparent">
-      <form onSubmit={onSubmit} className="bg-card m-auto h-fit w-full max-w-sm rounded-[calc(var(--radius)+0.125rem)] border p-0.5 shadow-md dark:[--color-muted:var(--color-zinc-900)]">
-        <div className="p-8 pb-6">
+    <AuthShell
+      title="Open your canvas"
+      subtitle="Create an account to start from your first sketch."
+      footer={
+        <span>
+          Have an account?{' '}
+          <Link href="/auth/sign-in" className="text-[#d9dcd8]/80 hover:text-[#d9dcd8]">
+            Sign in
+          </Link>
+        </span>
+      }
+    >
+      <form onSubmit={onSubmit}>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              id="firstname"
+              name="firstname"
+              label="First name"
+              type="text"
+              autoComplete="given-name"
+              required
+              icon={<User className="h-[18px] w-[18px]" />}
+            />
+            <Field
+              id="lastname"
+              name="lastname"
+              label="Last name"
+              type="text"
+              autoComplete="family-name"
+              required
+              icon={<User className="h-[18px] w-[18px]" />}
+            />
+          </div>
+
+          <Field
+            id="email"
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            required
+            defaultValue={presetEmail}
+            icon={<Mail className="h-[18px] w-[18px]" />}
+          />
+
+          <Field
+            id="username"
+            name="username"
+            label="Username"
+            type="text"
+            autoComplete="username"
+            required
+            icon={<AtSign className="h-[18px] w-[18px]" />}
+          />
+
           <div>
-            <h1 className="mb-1 mt-4 text-xl font-semibold">Create your account</h1>
-            <p className="text-sm">Welcome! Create an account to get started</p>
-          </div>
-
-          <div className="mt-6 space-y-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="firstname" className="block text-sm">
-                  Firstname
-                </Label>
-                <Input type="text" required name="firstname" id="firstname" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastname" className="block text-sm">
-                  Lastname
-                </Label>
-                <Input type="text" required name="lastname" id="lastname" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="block text-sm">
-                Email
-              </Label>
-              <Input type="email" required name="email" id="email" defaultValue={presetEmail} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="username" className="block text-sm">
-                Username
-              </Label>
-              <Input type="text" required name="username" id="username" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pwd" className="text-title text-sm">
-                Password
-              </Label>
-              {/* minLength matches the backend's rule, so the browser refuses
-                  the form before Convex would — the server's rejection is
-                  redacted to a generic error the client cannot explain. */}
-              <Input
-                type="password"
-                required
-                minLength={8}
-                name="pwd"
-                id="pwd"
-                className="input sz-md variant-mixed"
-              />
-              <p className="text-muted-foreground text-xs">At least 8 characters.</p>
-            </div>
-
-            <Button className="w-full" disabled={pending}>
-              {pending ? 'Creating account…' : 'Continue'}
-            </Button>
+            {/* minLength matches the backend's rule, so the browser refuses
+                the form before Convex would — the server's rejection is
+                redacted to a generic error the client cannot explain. */}
+            <Field
+              id="pwd"
+              name="pwd"
+              label="Password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              icon={<Lock className="h-[18px] w-[18px]" />}
+            />
+            <p className="mt-1.5 text-left text-[12px] text-[#919191]">At least 8 characters.</p>
           </div>
         </div>
 
-        <div className="bg-muted rounded-(--radius) border p-3">
-          <p className="text-accent-foreground text-center text-sm">
-            Have an account ?
-            <Button asChild variant="link" className="px-2">
-              <Link href="/auth/sign-in">Sign In</Link>
-            </Button>
-          </p>
-        </div>
+        <button
+          type="submit"
+          disabled={pending}
+          className="mx-auto mt-8 block w-full rounded-full bg-[#d9dcd8] px-5 py-4 text-[15px] font-semibold text-[#222222] transition-opacity hover:opacity-90 disabled:opacity-40 sm:max-w-[340px]"
+        >
+          {pending ? 'Creating account…' : 'Continue'}
+        </button>
       </form>
-    </section>
+    </AuthShell>
   )
 }

@@ -16,17 +16,32 @@ import type { ApproachStep, FaqItem, ServiceCard } from '@/types/marketing-conte
  * ------------------------------------------------------------------ */
 
 export const HERO = {
-  eyebrow: 'Sketch In. Product Out.',
-  /** Runs alternate between the display sans and the Fraunces italic. */
-  headline: [
-    { text: 'Draw', italic: false },
-    { text: 'Rectangles', italic: true },
-    { text: 'Ship', italic: true },
-    { text: 'Interfaces', italic: false },
+  eyebrow: 'Sketch a screen. Build a design system. Ship the interface.',
+  /**
+   * Three runs — grey, white, grey — and short enough to sit on one line at
+   * a 1320px measure. Everything after the lead used to wrap to three lines,
+   * which pushed the capture below the fold and lost the reference's shape:
+   * one statement, then the product.
+   */
+  headline: {
+    lead: 'Rough rectangles in,',
+    emphasis: 'finished interfaces',
+    tail: 'out.',
+  },
+  /**
+   * Six lines in two columns of three. Each must fit one line at the
+   * column width (about fifty characters), or the columns stop lining up.
+   */
+  checklist: [
+    { lead: 'Sketch the layout', rest: ', boxes and a label or two' },
+    { lead: 'Mood board in', rest: ', design system out' },
+    { lead: 'Streams onto the canvas', rest: ', beside your sketch' },
+    { lead: 'Revise by asking', rest: ', only what you mention moves' },
+    { lead: 'Grow it into a flow', rest: ', screen by screen' },
+    { lead: 'Autosaved, every stroke', rest: ', with the history yours' },
   ],
-  subhead: 'Finished screens from the roughest sketch you can draw.',
-  primaryCta: { label: 'Start free', href: '/auth/sign-up' },
-  secondaryCta: { label: 'See how it works', href: '/#approach' },
+  /** The one link under the checklist: grey kicker, white label. */
+  aside: { kicker: 'Also on the desktop', label: 'Download for Mac', href: '/download' },
   image: {
     src: '/images/hero-canvas.webp',
     alt: 'The Mason canvas: an inspiration board holding a reference image, an empty frame, and beside them a full landing page generated from them.',
@@ -38,8 +53,10 @@ export const HERO = {
  * ------------------------------------------------------------------ */
 
 export const INTRODUCTION = {
-  headline: ['Sketches, not prompts.', 'Systems, not screenshots.'],
-  body: 'Mason reads the shape you drew and builds the screen it implies — using a design system derived from your own mood board, so the fifth screen still looks like the first.',
+  eyebrow: 'Why sketches',
+  /** Read as one paragraph; the manifesto brightens it word by word on scroll. */
+  statement:
+    'Sketches, not prompts. Systems, not screenshots. Mason reads the shape you drew and builds the screen it implies, using a design system taken from your own mood board — so the fifth screen still looks like the first, and the flow around it looks like both.',
   primaryCta: { label: 'About us', href: '/about-us' },
   secondaryCta: { label: 'Read the blog', href: '/blog' },
 }
@@ -49,22 +66,65 @@ export const INTRODUCTION = {
  * ------------------------------------------------------------------ */
 
 export const SERVICES_INTRO = {
-  headline: ['Everything between', 'a box and a build.'],
+  eyebrow: 'Everything in the box',
+  /** Two runs: the lead sits grey, the emphasis sits white. */
+  headline: { lead: 'Everything between', emphasis: 'a box and a build.' },
+  body: 'One canvas, one design system, and every step from the first rectangle to the last screen of the flow.',
   primaryCta: { label: 'Start free', href: '/auth/sign-up' },
   secondaryCta: { label: 'Read the blog', href: '/blog' },
 }
 
 export const SERVICES: ServiceCard[] = [
-  { lines: ['Infinite', 'Canvas'], icon: 'globe' },
-  { lines: ['Mood Board', 'Style Guides'], icon: 'edit' },
-  { lines: ['Sketch to', 'Interface'], icon: 'cart' },
-  { lines: ['Streamed', 'Generation'], icon: 'bars' },
-  { lines: ['Inspiration', 'References'], icon: 'plane' },
-  { lines: ['Consistent', 'Design Tokens'], icon: 'puzzle' },
-  { lines: ['Design Chat', '& Revisions'], icon: 'bolt' },
-  { lines: ['Flow', 'Generation'], icon: 'navigation' },
-  { lines: ['Contrast', 'Checked Palettes'], icon: 'rocket' },
-  { lines: ['Autosave &', 'Full History'], icon: 'tools' },
+  {
+    title: 'Infinite canvas',
+    description: 'Sketches, references and generated screens side by side, with room to spread out.',
+    icon: 'globe',
+  },
+  {
+    title: 'Mood board style guides',
+    description: 'Drop in the images that carry the feeling and get a design system written from them.',
+    icon: 'edit',
+  },
+  {
+    title: 'Sketch to interface',
+    description: 'A labelled rectangle is an instruction. The screen it implies gets built.',
+    icon: 'cart',
+  },
+  {
+    title: 'Streamed generation',
+    description: 'The interface arrives on the canvas as it is made, so a wrong turn shows in seconds.',
+    icon: 'bars',
+  },
+  {
+    title: 'Inspiration references',
+    description: 'Up to six images per project steer palette, density and type — never copied in.',
+    icon: 'plane',
+  },
+  {
+    title: 'Consistent design tokens',
+    description: 'Every colour, face and radius is bound to a role, so the fifth screen matches the first.',
+    icon: 'puzzle',
+  },
+  {
+    title: 'Design chat & revisions',
+    description: 'Say what should change on any screen. Only what you asked about moves.',
+    icon: 'bolt',
+  },
+  {
+    title: 'Flow generation',
+    description: 'Ask for the flow and get the screens a user would actually reach next.',
+    icon: 'navigation',
+  },
+  {
+    title: 'Contrast-checked palettes',
+    description: 'The pairings that decide legibility are checked before they reach the canvas.',
+    icon: 'rocket',
+  },
+  {
+    title: 'Autosave & full history',
+    description: 'Every stroke is kept and a drag is one undo step, not fifty.',
+    icon: 'tools',
+  },
 ]
 
 /* ------------------------------------------------------------------ *
@@ -84,7 +144,8 @@ export const MARQUEE_ITEMS = [
 
 export const APPROACH: ApproachStep[] = [
   {
-    title: 'Mood Board First',
+    title: 'Mood board first',
+    headline: ['Start from the images you love,', 'not a blank palette.'],
     body: [
       { text: 'Drop in the images that carry the feeling you want. We read them for ' },
       { text: 'palette, contrast and type', bold: true },
@@ -93,7 +154,8 @@ export const APPROACH: ApproachStep[] = [
     visual: 'marquee',
   },
   {
-    title: 'Sketch The Screen',
+    title: 'Sketch the screen',
+    headline: ['Draw the structure,', 'skip the pixels.'],
     body: [
       { text: 'Rectangles, circles and a few labels. The sketch decides ' },
       { text: 'layout and reading order', bold: true },
@@ -102,7 +164,8 @@ export const APPROACH: ApproachStep[] = [
     visual: 'phones',
   },
   {
-    title: 'Watch It Build',
+    title: 'Watch it build',
+    headline: ['See the screen arrive', 'while it is still being made.'],
     body: [
       { text: 'The interface streams onto the canvas beside your sketch, so if the layout is going the wrong way you know ' },
       { text: 'within seconds', bold: true },
@@ -111,7 +174,8 @@ export const APPROACH: ApproachStep[] = [
     visual: 'dashboard',
   },
   {
-    title: 'Revise By Asking',
+    title: 'Revise by asking',
+    headline: ['Change one thing', 'without losing the rest.'],
     body: [
       { text: 'Open the chat on any screen and say what you want changed. Only ' },
       { text: 'what you asked about', bold: true },
@@ -120,7 +184,8 @@ export const APPROACH: ApproachStep[] = [
     visual: 'editor',
   },
   {
-    title: 'Grow It Into A Flow',
+    title: 'Grow it into a flow',
+    headline: ['One screen is a mock.', 'A flow is a product.'],
     body: [
       { text: 'One screen is a mock. Ask for the flow and you get the screens a user would ' },
       { text: 'actually reach next', bold: true },
@@ -129,7 +194,8 @@ export const APPROACH: ApproachStep[] = [
     visual: 'cms-table',
   },
   {
-    title: 'Nothing To Lose',
+    title: 'Nothing to lose',
+    headline: ['Every stroke kept,', 'every step reversible.'],
     body: [
       { text: 'Every stroke autosaves and the whole history is yours — a drag is ' },
       { text: 'one undo step', bold: true },
@@ -149,6 +215,60 @@ export const CMS_ROWS = [
   { title: 'Empty state — no projects yet', date: '39s' },
   { title: 'All handoffs — review queue', date: '71s' },
 ]
+
+/* ------------------------------------------------------------------ *
+ * Case in point
+ *
+ * The two generated captures are the only place the site shows output
+ * rather than describing it, so they get a section of their own.
+ * ------------------------------------------------------------------ */
+
+export const CASE_IN_POINT = {
+  eyebrow: 'Case in point',
+  headline: { lead: 'Six rectangles in.', emphasis: 'A landing page out.' },
+  body: 'A header box, a hero box with two smaller boxes inside it, a row of three cards and a footer. That was the whole sketch. The page on the right is what came back, built from a design system read off two reference images.',
+  points: [
+    { lead: 'Layout from the sketch', rest: ' — reading order and hierarchy exactly as drawn.' },
+    { lead: 'Palette from the board', rest: ' — colour and type taken from the references.' },
+    { lead: 'Ready to grow', rest: ' — every later screen shares the same shell.' },
+  ],
+  cta: { label: 'Try it on your own sketch', href: '/auth/sign-up' },
+  images: {
+    page: {
+      src: '/images/generated-page.webp',
+      alt: 'A full landing page generated by Mason from a rectangle sketch.',
+      width: 1300,
+      height: 820,
+    },
+    detail: {
+      src: '/images/generated-detail.webp',
+      alt: 'A close crop of the generated landing page showing its card row.',
+      width: 1300,
+      height: 600,
+    },
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Credits
+ *
+ * What a credit buys, stated as rows rather than a price list; plan prices
+ * live in the app, where they are read from the billing config.
+ * ------------------------------------------------------------------ */
+
+export const CREDITS = {
+  eyebrow: 'Credits',
+  headline: { lead: 'Pay for generations.', emphasis: 'Everything else is free.' },
+  quote: 'A credit is one generation — a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing and everything else on the canvas costs nothing.',
+  rows: [
+    { label: 'Style guide from a mood board', value: '1 credit' },
+    { label: 'Screen from a sketch', value: '1 credit' },
+    { label: 'Each page in a generated flow', value: '1 credit' },
+    { label: 'Revision from the design chat', value: '1 credit' },
+    { label: 'Canvas, references, history', value: 'Free' },
+  ],
+  cta: { label: 'Start free', href: '/auth/sign-up' },
+}
 
 /* ------------------------------------------------------------------ *
  * FAQs + CTA
@@ -183,7 +303,7 @@ export const FAQS: FaqItem[] = [
 ]
 
 export const CTA = {
-  headline: ['Draw The Shape.', 'Get The Product.'],
-  secondaryCta: { label: 'Read the blog', href: '/blog' },
+  headline: { lead: 'Draw the shape.', emphasis: 'Get the product.' },
+  body: 'Free to start. The first style guide and screen are on us.',
   primaryCta: { label: 'Start free', href: '/auth/sign-up' },
 }

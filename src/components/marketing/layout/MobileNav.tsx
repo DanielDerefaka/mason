@@ -7,7 +7,7 @@ import { CloseIcon, LogoMark } from "@/components/marketing/icons";
 import { HEADER_NAV } from "@/lib/marketing-nav";
 import { cn } from "@/lib/utils";
 
-/** Slide-in menu used below the 1001px desktop breakpoint. */
+/** Slide-in menu used below the `lg` desktop breakpoint. */
 export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     document.documentElement.style.overflow = open ? "hidden" : "";
@@ -17,9 +17,10 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
   }, [open]);
 
   return (
+    // Sits above the z-[100] header so the bar is covered while the menu is open.
     <div
       className={cn(
-        "fixed inset-0 z-[60] lg:hidden",
+        "fixed inset-0 z-[110] lg:hidden",
         open ? "pointer-events-auto" : "pointer-events-none"
       )}
       aria-hidden={!open}
@@ -33,42 +34,46 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
       />
       <div
         className={cn(
-          "bg-background absolute inset-y-0 right-0 flex w-full max-w-[360px] flex-col transition-transform duration-400 ease-out",
+          "absolute inset-y-0 right-0 flex w-full max-w-[360px] flex-col border-l border-hairline bg-[#0f0f0f] transition-transform duration-400 ease-out",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="flex h-[72px] items-center justify-between px-6">
+        <div className="flex h-[68px] items-center justify-between px-6">
           <span className="flex items-center gap-2.5">
-            <LogoMark className="text-foreground h-[22px] w-[22px]" />
-            <span className="text-foreground text-[16px] font-bold tracking-[-0.16px]">
+            <LogoMark className="h-7 w-7 text-foreground" />
+            <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
               Mason
             </span>
           </span>
-          <button type="button" aria-label="Close menu" onClick={onClose}>
-            <CloseIcon className="text-foreground h-6 w-6" />
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={onClose}
+            className="text-foreground"
+          >
+            <CloseIcon className="h-6 w-6" />
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1 px-6 pt-6">
+        <nav className="flex flex-col px-6 pt-4">
           {HEADER_NAV.map((item) => (
             <Link
               key={item.label}
               href={item.href}
               onClick={onClose}
-              className="text-foreground border-hairline border-b py-4 text-[22px] tracking-[-0.5px]"
+              className="border-b border-hairline py-3.5 font-display text-[1.35rem] font-medium tracking-[-0.03em] text-foreground"
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="mt-auto p-6">
-          <Link
-            href="/contact"
-            onClick={onClose}
-            className="pill pill-primary w-full justify-center"
-          >
-            Let&apos;s Connect
+        <div className="mt-auto flex flex-col gap-3 p-6">
+          <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
+            Sign in
+          </Link>
+          <Link href="/auth/sign-up" onClick={onClose} className="pill pill-primary w-full">
+            Start free
           </Link>
         </div>
       </div>

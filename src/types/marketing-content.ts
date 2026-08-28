@@ -1,6 +1,7 @@
 export interface ServiceCard {
-  /** Two-line label, exactly as the reference splits it. */
-  lines: [string, string];
+  title: string;
+  /** One sentence under the title; the card is a glass tile, not a label. */
+  description: string;
   icon:
     | "globe"
     | "edit"
@@ -16,6 +17,8 @@ export interface ServiceCard {
 
 export interface ApproachStep {
   title: string;
+  /** Section heading in two runs: the lead sits grey, the emphasis sits white. */
+  headline: [string, string];
   /** Paragraph split into runs so the reference's inline bolding is preserved. */
   body: { text: string; bold?: boolean }[];
   visual:
