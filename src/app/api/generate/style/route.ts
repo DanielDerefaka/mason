@@ -4,7 +4,7 @@ import { fetchMutation } from 'convex/nextjs'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
-import { anthropicProvider, MODEL } from '@/lib/anthropic'
+import { describeGenerationFailure, modelForRequestText } from '@/lib/byok'
 import { CreditsBalanceQuery, MoodBoardImagesQuery } from '@/convex/query.config'
 import { resolveFont } from '@/lib/fonts'
 import { BrandQuery } from '@/convex/query.config'
@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // BYOK: the request's own key, direct to Anthropic; not charged for, and
+    // that is a decision — the visitor pays Anthropic.
+    const { model, byok } = modelForRequestText(request)
+
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) {
       return NextResponse.json(
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       )
     }
-    if (balance <= 0) {
+    if (!byok && balance <= 0) {
       return NextResponse.json(
         { success: false, message: 'You are out of credits' },
         { status: 402 },
@@ -106,7 +110,7 @@ export async function POST(request: NextRequest) {
      * hop and the model is obliged to fill it in.
      */
     const result = await generateText({
-      model: anthropicProvider(MODEL),
+      model,
       // The default effort thinks for minutes on a task this open-ended, and
       // the extra deliberation drifts toward a generic palette rather than the
       // one in the images.
@@ -173,17 +177,18 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     await fetchMutation(api.project.saveStyleGuide, { projectId, styleGuide }, { token })
     // Charged only once there is something to show for it.
-    const { balance: remaining } = await fetchMutation(api.credits.spend, {}, { token })
+    const remaining = byok
+      ? balance
+      : (await fetchMutation(api.credits.spend, {}, { token })).balance
 
     return NextResponse.json({ success: true, styleGuide, credits: remaining })
   } catch (error) {
-    console.error('[generate/style]', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to generate style guide',
-      },
-      { status: 500 },
+    const { status, message } = describeGenerationFailure(
+      '[generate/style]',
+      error,
+      request,
+      'Failed to generate style guide',
     )
+    return NextResponse.json({ success: false, message }, { status })
   }
 }

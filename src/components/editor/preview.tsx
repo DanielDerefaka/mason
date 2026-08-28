@@ -2,11 +2,11 @@
 
 import { ArrowLeft, Loader2, Monitor, Smartphone, Tablet } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
+import { useWorkspacePath } from '@/hooks/use-workspace-path'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 
@@ -28,7 +28,7 @@ const WIDTHS = [
 
 export const DesignPreview = () => {
   const { projectId, design, styleGuide, loading } = useDesignEditor()
-  const { session } = useParams<{ session: string }>()
+  const workspace = useWorkspacePath()
   const [width, setWidth] = useState<(typeof WIDTHS)[number]['key']>('full')
   const column = useRef<HTMLDivElement>(null)
   const [overflowing, setOverflowing] = useState(false)
@@ -44,7 +44,7 @@ export const DesignPreview = () => {
     return vars as React.CSSProperties
   }, [styleGuide])
 
-  const back = `/dashboard/${session}/editor?project=${projectId ?? ''}&design=${design?.id ?? ''}`
+  const back = `${workspace}/editor?project=${projectId ?? ''}&design=${design?.id ?? ''}`
 
   /**
    * Does the design actually fit the chosen width?

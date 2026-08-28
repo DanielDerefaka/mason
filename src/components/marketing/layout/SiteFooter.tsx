@@ -17,7 +17,15 @@ const SOCIAL_ICONS = {
   LinkedIn: LinkedInIcon,
 } as const;
 
-export function SiteFooter() {
+/**
+ * `freeWeek` comes from the server layout. During the week every "start"
+ * destination in the footer — the email form and the sign-up links — points
+ * at the free canvas instead of the sign-up page.
+ */
+export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
+  const startHref = freeWeek ? "/try" : "/auth/sign-up";
+  const linkHref = (href: string) => (freeWeek && href === "/auth/sign-up" ? "/try" : href);
+
   return (
     <footer className="relative border-t border-hairline bg-surface px-6 py-10 md:px-8 md:py-12">
       {/* Brighter run along the top edge so the surface reads as lifted, not just darker. */}
@@ -42,7 +50,7 @@ export function SiteFooter() {
             {/* Plain GET: the sign-up page prefills from `?email=`, so no client JS is needed. */}
             <form
               className="mt-6 flex max-w-[320px] items-center gap-2"
-              action="/auth/sign-up"
+              action={startHref}
               method="get"
             >
               <label htmlFor="footer-email" className="sr-only">
@@ -76,7 +84,7 @@ export function SiteFooter() {
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link
-                      href={link.href}
+                      href={linkHref(link.href)}
                       className="text-[0.85rem] leading-[1.6] text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}

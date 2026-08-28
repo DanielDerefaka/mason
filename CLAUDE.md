@@ -3,7 +3,7 @@
 Turns hand-drawn sketches into finished interfaces. Next 15.5 (App Router) ·
 Convex · Redux Toolkit · Tailwind v4 · Vercel AI SDK.
 
-Live at `mason-puce.vercel.app`. Convex dev is `cheery-basilisk-43`, production is
+Live at `sketchmason.com` (the Vercel deployment `mason-puce.vercel.app` behind it). Convex dev is `cheery-basilisk-43`, production is
 `brave-corgi-499` — **separate databases**, so nothing made while developing exists in
 production.
 
@@ -18,8 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 18 live checks against a running server
-npm test             # 463 unit tests, no server needed
+npm run smoke        # 22 live checks against a running server
+npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
+npm test             # 592 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -42,6 +43,21 @@ exit code.
 `thinking`/`effort` are both dropped by agentrouter.org, which is why generation used to
 return 200 with an empty body: the model spent its whole budget reasoning. If a model call
 misbehaves in a way that makes no sense, verify the transport before debugging the prompt.
+
+**A green `npm run smoke` does not mean the page works.** It fetches, so it only ever sees
+what the server rendered. `/try` answered 200 for a week while being an error boundary in
+every real browser: the server renders a Suspense fallback and the client shell throws on
+hydration. `npm run smoke:browser` drives a real headless Chrome and fails on a console
+error, an uncaught exception or the error boundary appearing. Run it before believing a
+page is fine.
+
+**`state.shapes.entities` is the entity adapter's state, not the table of shapes.** The
+table is one level further in, at `state.shapes.entities.entities`, so `state.shapes.ids`
+is undefined and `state.shapes.entities[id]` is undefined — both silently. The names
+collide and three separate files got it wrong: one crashed `/try` on mount, one left the
+instruction bar permanently disabled, one broke remix. Go through
+`shapesAdapter.getSelectors()` and hand it `state.shapes.entities`. `shapes.test.ts` scans
+`src/` for both mistakes.
 
 **Secrets never get echoed.** Env inspections are masked, `.env`/`.env.local` stay
 gitignored, and every commit is preceded by a staged-diff secret scan. `convex env list`

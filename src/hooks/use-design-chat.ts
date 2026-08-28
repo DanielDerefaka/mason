@@ -1,6 +1,7 @@
 'use client'
 
 import { toast } from 'sonner'
+import { generateFetch, noteGenerateRefusal } from '@/lib/try/generate-fetch'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import type { ChatMessage } from '@/redux/slice/chat'
 import {
@@ -56,15 +57,16 @@ export const useDesignChat = () => {
     const previousHtml = design.html
 
     try {
-      const response = await fetch('/api/generate/revise', {
+      const response = await generateFetch('/api/generate/revise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, html: previousHtml, instruction: trimmed }),
       })
 
       if (!response.ok || !response.body) {
+        const refusal = noteGenerateRefusal(response)
         const body = (await response.json().catch(() => null)) as { message?: string } | null
-        throw new Error(body?.message ?? 'Could not revise the design')
+        throw new Error(refusal ?? body?.message ?? 'Could not revise the design')
       }
 
       const reader = response.body.getReader()

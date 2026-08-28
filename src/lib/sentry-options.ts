@@ -1,4 +1,12 @@
-import type { ErrorEvent, EventHint } from '@sentry/nextjs'
+import type { ErrorEvent, Event, EventHint } from '@sentry/nextjs'
+
+/**
+ * `@sentry/nextjs` re-exports `Event` but not `TransactionEvent`, and the
+ * transaction hook is typed against the narrower one. It is the same shape
+ * Sentry declares, restated rather than imported from `@sentry/core` — that
+ * package is only here as a dependency of a dependency.
+ */
+type TransactionEvent = Event & { type: 'transaction' }
 
 /**
  * What every Sentry client in this app shares.
@@ -94,5 +102,16 @@ export const sentryOptions = {
   ignoreErrors: IGNORED,
   beforeSend(event: ErrorEvent, _hint: EventHint) {
     return redact(event) as ErrorEvent
+  },
+  /**
+   * The same scrubbing for traces, which `beforeSend` never sees.
+   *
+   * A performance event is not an error, so it takes the other hook — and it
+   * carries request URLs and span attributes, which is exactly where a key
+   * put in a query string or an outgoing header ends up. Scrubbing only
+   * errors would leave the quieter of the two channels open.
+   */
+  beforeSendTransaction(event: TransactionEvent) {
+    return redact(event) as TransactionEvent
   },
 }

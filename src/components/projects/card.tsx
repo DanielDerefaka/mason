@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
-import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, designScope, sanitiseHtml } from '@/lib/sanitise'
 import { useProjects } from '@/hooks/use-projects'
 import type { Doc } from '../../../convex/_generated/dataModel'
 
@@ -43,7 +43,10 @@ export const ProjectCard = ({
   const design = project.thumbnailDesignId
     ? stored.shapes?.find((shape) => shape.id === project.thumbnailDesignId)
     : undefined
-  const preview = design?.html?.trim() ? sanitiseHtml(design.html) : null
+  // Scoped to this card alone: the grid shows many projects, and a design
+  // styled under the shared class restyles every thumbnail beside it.
+  const scope = designScope(project._id)
+  const preview = design?.html?.trim() ? sanitiseHtml(design.html, scope) : null
 
   const commit = () => {
     setEditing(false)
@@ -80,7 +83,7 @@ export const ProjectCard = ({
                a card is a link. */
             <div
               aria-hidden
-              className={`${DESIGN_SCOPE} pointer-events-none absolute top-0 left-0 origin-top-left`}
+              className={`${DESIGN_SCOPE} ${scope} pointer-events-none absolute top-0 left-0 origin-top-left`}
               style={{ width: 1280, transform: 'scale(0.25)' }}
               dangerouslySetInnerHTML={{ __html: preview }}
             />

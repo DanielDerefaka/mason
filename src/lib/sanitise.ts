@@ -70,6 +70,25 @@ const isSafeUrl = (value: string) => {
  */
 export const DESIGN_SCOPE = 'mason-design'
 
+/**
+ * A scope of its own for one design among many.
+ *
+ * The regression this exists for: every design rendered under the same
+ * `.mason-design` class, and every design's stylesheet was rewritten to sit
+ * beneath that same class — so on any page showing more than one at a time
+ * (the gallery, the dashboard grid, a canvas with two frames on it) each
+ * design restyled its neighbours. The first card's `h1 { color: red }` turned
+ * every other card's headings red.
+ *
+ * Only for views that render and never write back. What is stored stays
+ * scoped to the shared class, and `scopeSelectors` re-targets between the two
+ * rather than nesting one inside the other.
+ */
+export const designScope = (key: string) => {
+  const suffix = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return suffix ? `${DESIGN_SCOPE}-${suffix}` : DESIGN_SCOPE
+}
+
 /* ------------------------------------------------------------------ *
  * CSS
  *
@@ -162,6 +181,8 @@ const sanitiseDeclarations = (body: string): string =>
  * dropped, because `body { background: … }` is how a design states its own page
  * colour and throwing it away would leave the design unpainted.
  */
+const APPLIED_SCOPE = new RegExp(`^\\.${DESIGN_SCOPE}(-[a-z0-9]+)?(?![\\w-])\\s*`)
+
 const scopeSelectors = (selectorList: string, scope: string): string =>
   splitTop(selectorList, ',')
     .map((selector) => selector.trim())
@@ -180,19 +201,57 @@ const scopeSelectors = (selectorList: string, scope: string): string =>
        *
        * It looked like opening the preview corrupting the design, because the
        * damage was written back on the next save.
+       *
+       * Any scope this module has applied before is stripped, not just this
+       * one, so a stored stylesheet scoped to the shared class can be
+       * re-targeted at a per-design scope (see `designScope`) and back again
+       * without ever nesting.
        */
-      if (selector === scope || selector.startsWith(`${scope} `)) return selector
+      const bare = selector.replace(APPLIED_SCOPE, '').trim()
+      if (!bare) return scope
 
-      return /^(html|body|:root)\b/i.test(selector)
-        ? selector.replace(/^(html|body|:root)/i, scope)
-        : `${scope} ${selector}`
+      /**
+       * A selector may not begin with a sibling combinator.
+       *
+       * `+ nav` scoped by prefix becomes `.mason-design + nav`, which is not
+       * inside the design at all — it is whatever the application happens to
+       * render next to it. The one selector shape that walks *out* of the
+       * subtree the scope exists to confine it to, so it is dropped rather
+       * than rewritten; a child combinator (`> nav`) stays, being still
+       * beneath the wrapper.
+       */
+      if (/^[+~]/.test(bare)) return ''
+
+      return /^(html|body|:root)\b/i.test(bare)
+        ? bare.replace(/^(html|body|:root)/i, scope)
+        : `${scope} ${bare}`
     })
+    .filter(Boolean)
     .join(', ')
 
 /** At-rules whose contents are ordinary rules, so they are scoped recursively. */
 const NESTED_AT_RULES = /^@(media|supports|layer|container)\b/i
-/** At-rules whose contents are not selectors and must not be scoped. */
-const FLAT_AT_RULES = /^@(keyframes|-webkit-keyframes|font-face|page|counter-style|property)\b/i
+/** Stops and declarations, not selectors: scoped never, cleaned per stop. */
+const KEYFRAMES_AT_RULE = /^@(-webkit-)?keyframes\b/i
+/** At-rules whose contents are plain declarations and must not be scoped. */
+const FLAT_AT_RULES = /^@(font-face|page|counter-style|property)\b/i
+
+/**
+ * Cleans the declarations inside a keyframes body, leaving the stops alone.
+ *
+ * The regression this exists for: the whole body was passed through
+ * untouched, on the grounds that `0%` is not a selector — true, and it meant
+ * `@keyframes x { to { background: url(https://elsewhere/p.gif) } }` was the
+ * one place in a design's stylesheet that could still fetch from anywhere.
+ * The stop stays verbatim; only what is inside each block is filtered.
+ *
+ * Keyframe blocks do not nest, so one pass is enough.
+ */
+const sanitiseKeyframes = (body: string): string =>
+  body.replace(/([^{}]*)\{([^{}]*)\}/g, (_match, stop: string, declarations: string) => {
+    const safe = sanitiseDeclarations(declarations)
+    return safe ? `${stop.trim()}{${safe}}` : ''
+  })
 
 export const sanitiseCss = (css: string, scope = `.${DESIGN_SCOPE}`): string => {
   // Comments first: they can hide a brace and desynchronise the walk below.
@@ -221,11 +280,19 @@ export const sanitiseCss = (css: string, scope = `.${DESIGN_SCOPE}`): string => 
           if (NESTED_AT_RULES.test(prelude)) {
             const inner = sanitiseCss(body, scope)
             if (inner) rules.push(`${prelude}{${inner}}`)
-          } else if (FLAT_AT_RULES.test(prelude)) {
+          } else if (KEYFRAMES_AT_RULE.test(prelude)) {
             // Keyframe stops are percentages, not selectors — scoping them
             // would produce `.mason-design 0%`, which matches nothing and
-            // silently kills every animation in the design.
-            rules.push(`${prelude}{${body}}`)
+            // silently kills every animation in the design. The declarations
+            // inside each stop are still cleaned.
+            const inner = sanitiseKeyframes(body)
+            if (inner.trim()) rules.push(`${prelude}{${inner}}`)
+          } else if (FLAT_AT_RULES.test(prelude)) {
+            // @font-face above all: its `src` is a fetch like any other, and
+            // it used to be the one declaration in a design that could point
+            // anywhere it liked.
+            const declarations = sanitiseDeclarations(body)
+            if (declarations) rules.push(`${prelude}{${declarations}}`)
           }
           // Everything else — @import above all — is dropped.
         } else {
@@ -247,7 +314,7 @@ export const sanitiseCss = (css: string, scope = `.${DESIGN_SCOPE}`): string => 
   return rules.join('')
 }
 
-export const sanitiseHtml = (html: string): string => {
+export const sanitiseHtml = (html: string, scope: string = DESIGN_SCOPE): string => {
   if (typeof window === 'undefined') return ''
 
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
@@ -278,7 +345,7 @@ export const sanitiseHtml = (html: string): string => {
       // Rewritten rather than trusted. Everything that survives is confined
       // beneath the design's wrapper, so a stylesheet can shape the design and
       // cannot touch the application rendering it.
-      const safe = sanitiseCss(element.textContent ?? '')
+      const safe = sanitiseCss(element.textContent ?? '', `.${scope}`)
       if (!safe) element.remove()
       else element.textContent = safe
       continue
@@ -289,6 +356,16 @@ export const sanitiseHtml = (html: string): string => {
 
       if (URL_ATTRS.has(name)) {
         if (!isSafeUrl(attr.value)) element.removeAttribute(attr.name)
+        continue
+      }
+      if (name === 'style') {
+        // Held to the same rule as the stylesheet. It was kept verbatim, and
+        // it is the same language: `style="background:url(https://elsewhere)"`
+        // fetched from anywhere it liked, which is the exfiltration the
+        // stylesheet rules exist to prevent, one attribute to the left.
+        const safe = sanitiseDeclarations(attr.value)
+        if (safe) element.setAttribute('style', safe)
+        else element.removeAttribute(attr.name)
         continue
       }
       // Covers onclick, onerror and every other handler in one rule.
@@ -321,7 +398,7 @@ const stripOrphanAttributes = (html: string): string => {
  * A stream is cut off mid-tag most of the time, and the parser closes whatever
  * is dangling — which is exactly what we want for a live preview.
  */
-export const sanitisePartialHtml = (html: string): string => {
+export const sanitisePartialHtml = (html: string, scope: string = DESIGN_SCOPE): string => {
   const fenceless = html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/, '')
-  return sanitiseHtml(stripOrphanAttributes(fenceless))
+  return sanitiseHtml(stripOrphanAttributes(fenceless), scope)
 }

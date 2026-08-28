@@ -25,12 +25,14 @@ import {
   Undo2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { useGuest } from '@/components/try/guest-context'
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
+import { canvasPathOf, useWorkspacePath } from '@/hooks/use-workspace-path'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
+import { generateFetch } from '@/lib/try/generate-fetch'
 import { cn } from '@/lib/utils'
 
 import { useMutation } from 'convex/react'
@@ -97,7 +99,8 @@ import { exportDesignHtml, exportDesignPrompt, exportDesignProject } from '@/lib
  */
 export const DesignEditor = () => {
   const { projectId, design, styleGuide, loading, status, saveHtml } = useDesignEditor()
-  const { session } = useParams<{ session: string }>()
+  const workspace = useWorkspacePath()
+  const { requireAccount } = useGuest()
 
   const stage = useRef<HTMLDivElement>(null)
   const artboard = useRef<HTMLDivElement>(null)
@@ -424,7 +427,7 @@ export const DesignEditor = () => {
     const target = selected
 
     try {
-      const response = await fetch('/api/generate/node', {
+      const response = await generateFetch('/api/generate/node', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, instruction, html: target.outerHTML }),
@@ -988,7 +991,7 @@ export const DesignEditor = () => {
     restamp(replacement)
   }
 
-  const onExport = (kind: 'html' | 'brief' | 'project') => {
+  const onExport = async (kind: 'html' | 'brief' | 'project') => {
     if (!design) return
     // Exported from the live DOM rather than the last save, so a download
     // taken mid-edit is the design on screen.
@@ -996,6 +999,9 @@ export const DesignEditor = () => {
     if (kind === 'html') exportDesignHtml(current, styleGuide)
     else if (kind === 'brief') exportDesignPrompt(current, styleGuide)
     else {
+      // The project is the export that asks a guest for an account. HTML and
+      // the brief stay free; outside /try this resolves true at once.
+      if (!(await requireAccount())) return
       const files = exportDesignProject(current, styleGuide)
       toast.success('Next.js project exported', {
         description: `${files.length} files. npm install, then npm run dev.`,
@@ -1194,7 +1200,7 @@ export const DesignEditor = () => {
    * `../canvas` resolved against whatever the current path happened to be,
    * which is how this ended up pointing at the project list.
    */
-  const back = `/dashboard/${session}/canvas${projectId ? `?project=${projectId}` : ''}`
+  const back = `${canvasPathOf(workspace)}${projectId ? `?project=${projectId}` : ''}`
 
   if (loading) {
     return (
@@ -1291,7 +1297,7 @@ export const DesignEditor = () => {
               tab — which is how anyone showing this to someone else will
               want it. */}
           <Link
-            href={`/dashboard/${session}/preview?project=${projectId ?? ''}&design=${design.id}`}
+            href={`${workspace}/preview?project=${projectId ?? ''}&design=${design.id}`}
             aria-label="Preview"
             title="Preview full screen"
             className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] transition-colors hover:bg-white/[0.06]"

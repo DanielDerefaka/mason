@@ -5,6 +5,12 @@ import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
 
 import { stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
+import {
+  DESIGN_GENERATED_EVENT,
+  generateFetch,
+  noteGenerateRefusal,
+  type DesignGeneratedDetail,
+} from '@/lib/try/generate-fetch'
 import { useContinueDesign } from '@/hooks/use-continue-design'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
@@ -50,15 +56,18 @@ export const useFrame = () => {
       form.append('image', image, 'frame.png')
       form.append('projectId', projectId)
       form.append('frameLabel', frame.label ?? '')
+      // Empty rather than absent, so the route sees the field either way.
+      form.append('instruction', frame.instruction ?? '')
 
-      const response = await fetch('/api/generate', { method: 'POST', body: form })
+      const response = await generateFetch('/api/generate', { method: 'POST', body: form })
 
       if (!response.ok || !response.body) {
+        const refusal = noteGenerateRefusal(response)
         const message = await response
           .json()
           .then((body: { message?: string }) => body.message)
           .catch(() => null)
-        throw new Error(message ?? 'Failed to generate the design')
+        throw new Error(refusal ?? message ?? 'Failed to generate the design')
       }
 
       // Added only once the response is on its way, so a rejected request does
@@ -74,6 +83,7 @@ export const useFrame = () => {
           fill: 'transparent',
           sourceFrameId: frame.id,
           label: frame.label,
+          instruction: frame.instruction,
           html: '',
           streaming: true,
         }),
@@ -112,6 +122,15 @@ export const useFrame = () => {
 
       dispatch(
         setGeneratedHtml({ id, html: stripOutcomeMarkers(markup), streaming: false }),
+      )
+
+      // The /try shell publishes to Explore from this; the dashboard has no
+      // listener. The sketch is the PNG the model was shown, so the gallery
+      // shows exactly what produced the design.
+      window.dispatchEvent(
+        new CustomEvent<DesignGeneratedDetail>(DESIGN_GENERATED_EVENT, {
+          detail: { designId: id, frameId: frame.id, sketch: image },
+        }),
       )
 
       if (cut) {

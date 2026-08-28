@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { generateText, tool } from 'ai'
-import { anthropicProvider, MODEL } from '@/lib/anthropic'
+import { describeGenerationFailure, modelForRequestText } from '@/lib/byok'
 import { CreditsBalanceQuery } from '@/convex/query.config'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { prompts } from '@/prompts'
@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
      * If flows are ever priced per plan rather than per page, this is the
      * line that changes.
      */
+    // BYOK: the request's own key, direct to Anthropic; not charged for, and
+    // that is a decision — the visitor pays Anthropic.
+    const { model, byok } = modelForRequestText(request)
+
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
 
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Each page costs a credit, so refuse a flow that would run dry halfway.
     // This half of the guard cannot move above the body, because how many
     // credits the flow needs is something the body says.
-    if (balance < pageCount) {
+    if (!byok && balance < pageCount) {
       return NextResponse.json(
         { message: `A ${pageCount}-page flow needs ${pageCount} credits; you have ${balance}.` },
         { status: 402 },
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Same forced-tool trick as the style guide: the gateway drops
     // output_config, so a schema only survives as a tool.
     const result = await generateText({
-      model: anthropicProvider(MODEL),
+      model,
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 2000,
       system: prompts.workflow.plan.system,
@@ -83,10 +87,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ pages: parsed.data.pages.slice(0, pageCount) })
   } catch (error) {
-    console.error('[generate/workflow/plan]', error)
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : 'Failed to plan the flow' },
-      { status: 500 },
+    const { status, message } = describeGenerationFailure(
+      '[generate/workflow/plan]',
+      error,
+      request,
+      'Failed to plan the flow',
     )
+    return NextResponse.json({ message }, { status })
   }
 }

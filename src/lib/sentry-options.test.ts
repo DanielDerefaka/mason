@@ -61,6 +61,23 @@ describe('scrubbing', () => {
     expect(out).toContain('application/json')
   })
 
+  /**
+   * A visitor's own Anthropic key rides in on `x-api-key` for one request and
+   * must never be stored — and an error report is storage. Both places a
+   * failed BYOK request could carry it: the header, and the message the SDK
+   * writes when Anthropic refuses the key.
+   */
+  it('drops a visitor key sent as x-api-key, and scrubs it from the message that quotes it', () => {
+    const key = 'sk-ant-api03-VISITORVISITORVISITORVISITOR'
+    const out = send({
+      message: `Anthropic refused the request: invalid x-api-key ${key}`,
+      request: { headers: { 'X-Api-Key': key, 'content-type': 'multipart/form-data' } },
+      exception: { values: [{ value: `APICallError: 401 for key ${key}` }] },
+    })
+    expect(out).not.toContain('VISITOR')
+    expect(out).toContain('multipart/form-data')
+  })
+
   it('survives a circular-free but deeply nested event without hanging', () => {
     let nested: Record<string, unknown> = { key: 'sk-ant-api03-DEEPDEEPDEEP' }
     for (let i = 0; i < 20; i += 1) nested = { nested }

@@ -814,12 +814,16 @@ No markdown fence, no commentary, no explanation. Markup only.`,
      * as being "of" a MacBook Air is what made the model design MacBook Air
      * pages out of unrelated sketches.
      */
-    user: (screenName: string, referenceCount = 0) =>
+    user: (screenName: string, referenceCount = 0, instruction?: string) =>
       `Turn the first image — a sketch${screenName ? ` of a screen called "${screenName}"` : ''} — into a finished design. ` +
       (referenceCount > 0
         ? `The ${referenceCount === 1 ? 'image' : `${referenceCount} images`} after it ${referenceCount === 1 ? 'is a reference' : 'are references'} for the look, not the layout. `
         : '') +
-      `Follow the sketch's layout, use the supplied design system, and return only the HTML fragment.`,
+      `Follow the sketch's layout, use the supplied design system, and return only the HTML fragment.` +
+      // A sentence from the person who drew it, when they gave one. Quoted and
+      // attributed rather than merged into the instructions, so a request
+      // that reads like a command stays a description of the sketch.
+      (instruction ? `\n\nThe person who drew this says: "${instruction}"` : ''),
   },
   styleGuide: {
     system: styleGuideSystem,

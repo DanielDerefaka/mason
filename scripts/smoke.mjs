@@ -4,8 +4,10 @@
  * Three things, against a server that is already running:
  *
  *   1. Every public page renders — status 200, real markup, no Next error
- *      overlay. This is the check that catches a build that compiles and a
- *      page that still throws once React runs.
+ *      overlay. Server-side only: /try answered 200 here for a week while
+ *      being an error boundary in every real browser, because the page the
+ *      server renders is a Suspense fallback and the crash was in the
+ *      hydrated shell. `npm run smoke:browser` is the check for that.
  *   2. Every protected page refuses an anonymous visitor. A page that answers
  *      200 without a session is a leak, and it is not visible from the code —
  *      it depends on the middleware matcher, which has been wrong before.
@@ -14,8 +16,9 @@
  *      before the model does" is the single most valuable thing to assert, and
  *      it costs nothing to assert because no model is ever reached.
  *
- * Deliberately no browser and no dependencies. Vitest covers the pure layer;
- * this covers wiring, which is where the remaining defects live.
+ * Deliberately no browser and no dependencies, so it is free to run as often
+ * as you like. Vitest covers the pure layer, this covers wiring, and
+ * `scripts/smoke-browser.mjs` covers what only happens once the bundle runs.
  *
  *   npm run dev          # in one terminal
  *   npm run smoke        # in another
@@ -31,6 +34,10 @@ const PUBLIC_PAGES = [
   '/auth/sign-in',
   '/auth/sign-up',
   '/auth/forgot-password',
+  // The free canvas and the gallery: bypass routes, so they must answer 200
+  // to a visitor with no cookie at all.
+  '/try',
+  '/explore',
 ]
 
 /** Anonymous visitors belong at sign-in, not inside. */
@@ -127,6 +134,23 @@ const main = async () => {
       (response.status >= 300 && response.status < 400 && location.includes('/auth/sign-in'))
 
     record(path, refused, refused ? '' : `status ${response.status}`)
+  }
+
+  console.log('\nAdmission endpoint answers a stranger')
+  // Always 200 with an `admission` key: a token when the secret is set, null
+  // when it is not. Either is right; a 500 or a redirect to sign-in is not —
+  // the whole point of the route is that nobody has a session yet.
+  try {
+    const admit = await fetch(`${BASE}/api/try/admit`, { method: 'POST', redirect: 'manual' })
+    const body = admit.status === 200 ? await admit.json().catch(() => null) : null
+    const shaped = body !== null && typeof body === 'object' && 'admission' in body
+    record(
+      '/api/try/admit',
+      admit.status === 200 && shaped,
+      admit.status !== 200 ? `status ${admit.status}` : shaped ? '' : 'no admission key in the body',
+    )
+  } catch (error) {
+    record('/api/try/admit', false, error instanceof Error ? error.message : String(error))
   }
 
   console.log('\nWebhook rejects an unsigned payload')

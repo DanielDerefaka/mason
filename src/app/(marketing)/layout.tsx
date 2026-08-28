@@ -3,6 +3,7 @@ import { RevealObserver } from '@/components/marketing/layout/RevealObserver'
 import { SiteFooter } from '@/components/marketing/layout/SiteFooter'
 import { SiteHeader } from '@/components/marketing/layout/SiteHeader'
 import { SmoothScroll } from '@/components/marketing/layout/SmoothScroll'
+import { isFreeWeek } from '@/lib/try/free-week'
 
 /**
  * The public site.
@@ -13,14 +14,18 @@ import { SmoothScroll } from '@/components/marketing/layout/SmoothScroll'
  * sticky rather than fixed, so `main` needs no top padding.
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+  // Read here, on the server, and threaded down as a prop: the header and
+  // footer are client components and must not read the env themselves.
+  const freeWeek = isFreeWeek()
+
   return (
     <div className="marketing min-h-screen">
       <SmoothScroll />
       <Preloader />
       <RevealObserver />
-      <SiteHeader />
+      <SiteHeader freeWeek={freeWeek} />
       <main>{children}</main>
-      <SiteFooter />
+      <SiteFooter freeWeek={freeWeek} />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
+import { generateFetch } from '@/lib/try/generate-fetch'
 import { useAppDispatch } from '@/redux/hooks'
 import { addGeneratedUI, setGeneratedHtml, type Shape } from '@/redux/slice/shapes'
 
@@ -43,7 +44,7 @@ export const useWorkflow = () => {
     toast.loading('Planning the flow…', { id: 'workflow' })
 
     try {
-      const planResponse = await fetch('/api/generate/workflow/plan', {
+      const planResponse = await generateFetch('/api/generate/workflow/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceHtml: source.html, pageCount: WORKFLOW_PAGE_COUNT }),
@@ -81,7 +82,7 @@ export const useWorkflow = () => {
           }),
         )
 
-        const response = await fetch('/api/generate/workflow', {
+        const response = await generateFetch('/api/generate/workflow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

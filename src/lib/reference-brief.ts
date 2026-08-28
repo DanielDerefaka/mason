@@ -1,10 +1,9 @@
 import { fetchMutation } from 'convex/nextjs'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
-import { generateText, tool } from 'ai'
+import { generateText, tool, type LanguageModel } from 'ai'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { anthropicProvider, MODEL } from '@/lib/anthropic'
 import { fetchImageParts } from '@/lib/fetch-image'
 import { prompts } from '@/prompts'
 import { ReferenceBriefSchema, type ReferenceBrief } from '@/types/style-guide'
@@ -46,10 +45,20 @@ const briefVersion = () => {
   return `b${(hash >>> 0).toString(36)}`
 }
 
+/**
+ * The model is passed in rather than built here, and that is the point.
+ *
+ * This used to reach for the house provider directly, which meant a visitor
+ * generating on their own key still had their inspiration board read on our
+ * account — an unmetered model call on a request that deliberately spends no
+ * credit. Taking the caller's model makes the key follow the request it
+ * belongs to.
+ */
 export const ensureReferenceBrief = async (
   projectId: Id<'projects'>,
   urls: string[],
   stored: { brief: ReferenceBrief | null; key: string | null },
+  model: LanguageModel,
 ): Promise<ReferenceBrief | null> => {
   if (urls.length === 0) return null
 
@@ -63,7 +72,7 @@ export const ensureReferenceBrief = async (
     let brief: unknown = null
 
     await generateText({
-      model: anthropicProvider(MODEL),
+      model,
       providerOptions: { anthropic: { effort: 'low' } },
       maxOutputTokens: 4000,
       system: prompts.referenceBrief.system,

@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { getByokKey } from '@/lib/try/byok-client'
 import type { StyleGuide } from '@/types/style-guide'
 
 export type GenerateStyleGuideRequest = { projectId: string }
@@ -11,7 +12,17 @@ export type GenerateStyleGuideResponse = {
 
 export const styleGuideApi = createApi({
   reducerPath: 'styleGuideApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api/generate' }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/api/generate',
+    // The one generation call that does not go through `generateFetch`, so
+    // the visitor's own key is added here instead — same header, same rule:
+    // only when one is stored, and only on /api/generate.
+    prepareHeaders: (headers) => {
+      const key = getByokKey()
+      if (key) headers.set('x-api-key', key)
+      return headers
+    },
+  }),
   tagTypes: ['StyleGuide'],
   endpoints: (builder) => ({
     generateStyleGuide: builder.mutation<GenerateStyleGuideResponse, GenerateStyleGuideRequest>({

@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
+import type { Id } from './_generated/dataModel'
 
 /**
  * Sharing a design with someone who has no account.
@@ -57,8 +58,38 @@ export const revokeShare = mutation({
       .unique()
 
     if (!share || share.userId !== userId) throw new Error('Link not found')
+    // The social card goes with the link; nothing else can reach it.
+    if (share.previewStorageId) {
+      await ctx.storage.delete(share.previewStorageId as Id<'_storage'>).catch(() => {})
+    }
     await ctx.db.delete(share._id)
     return { success: true }
+  },
+})
+
+/**
+ * Attaches the PNG that becomes the link's social card.
+ *
+ * Uploaded by the browser after the share is created, because the design is
+ * rendered there and nowhere else. Replacing deletes the previous blob: a
+ * card nobody can reach any more is storage paid for forever.
+ */
+export const setPreview = mutation({
+  args: { token: v.string(), storageId: v.string() },
+  handler: async (ctx, { token, storageId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (userId === null) throw new Error('Not authenticated')
+
+    const share = await ctx.db
+      .query('shares')
+      .withIndex('by_token', (q) => q.eq('token', token))
+      .unique()
+    if (!share || share.userId !== userId) throw new Error('Link not found')
+
+    if (share.previewStorageId && share.previewStorageId !== storageId) {
+      await ctx.storage.delete(share.previewStorageId as Id<'_storage'>).catch(() => {})
+    }
+    await ctx.db.patch(share._id, { previewStorageId: storageId })
   },
 })
 
@@ -110,6 +141,9 @@ export const getSharedDesign = query({
       label: design.label ?? 'Design',
       width: design.width ?? null,
       styleGuide: project.styleGuide ?? null,
+      previewUrl: share.previewStorageId
+        ? await ctx.storage.getUrl(share.previewStorageId as Id<'_storage'>)
+        : null,
     }
   },
 })

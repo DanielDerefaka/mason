@@ -37,6 +37,12 @@ export default defineSchema({
     designId: v.string(),
     userId: v.id('users'),
     createdAt: v.number(),
+    /**
+     * A PNG of the design for the link's social card. Optional because a
+     * share made before /try existed has none, and the page falls back to a
+     * generated card.
+     */
+    previewStorageId: v.optional(v.string()),
   })
     .index('by_token', ['token'])
     .index('by_project', ['projectId']),
@@ -135,5 +141,107 @@ export default defineSchema({
   credits: defineTable({
     userId: v.id('users'),
     balance: v.number(),
+    /**
+     * The ticket the last spend handed out, cleared by the refund that uses
+     * it. `credits.refund` is callable from the browser, so without this a
+     * client could simply call it in a loop; with it, a refund is only ever
+     * the undoing of a spend that actually happened.
+     */
+    refundTicket: v.optional(v.string()),
   }).index('by_user', ['userId']),
+
+  /**
+   * Everything /try knows about an anonymous user.
+   *
+   * A separate table rather than fields on `users`: that table belongs to
+   * Convex Auth, and the auth callback inserts here in the same transaction
+   * that creates the user, so the two cannot drift. The row outlives the
+   * conversion to a real account — `convertedAt` is set, nothing is deleted —
+   * because the signal counts are read from it.
+   */
+  guests: defineTable({
+    userId: v.id('users'),
+    createdAt: v.number(),
+    ipHash: v.optional(v.string()),
+    /** YYYY-MM-DD (UTC) of the last pool generation; one per day. */
+    lastPoolDay: v.optional(v.string()),
+    poolUses: v.number(),
+    /** Personal credits earned (share on X). Spent after the pool. */
+    bonus: v.number(),
+    sharedAt: v.optional(v.number()),
+    keyAddedAt: v.optional(v.number()),
+    /** Which bucket the last spend came from, so refund puts it back in the right place. */
+    lastSpendSource: v.optional(v.union(v.literal('pool'), v.literal('bonus'))),
+    /** The ticket the last spend handed out; see `credits.refundTicket`. */
+    refundTicket: v.optional(v.string()),
+    /** Set when the anonymous user converts; the row is kept for the signal counts. */
+    convertedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId'])
+    /**
+     * Exactly the question `purgeStale` asks: unconverted, and older than the
+     * cutoff. `convertedAt` comes first so the range covers only rows that can
+     * still be purged — converted rows are kept for ever, and an index on
+     * `createdAt` alone would make every nightly run walk the whole growing
+     * pile of them before reaching anything it could delete.
+     */
+    .index('by_converted_created', ['convertedAt', 'createdAt']),
+
+  /** The community pool: one row per UTC day, counting draws. */
+  pool_days: defineTable({ day: v.string(), used: v.number() }).index('by_day', ['day']),
+
+  /** Guest sessions created per network per day — the throttle behind admission. */
+  guest_ips: defineTable({ ipHash: v.string(), day: v.string(), count: v.number() }).index(
+    'by_ip_day',
+    ['ipHash', 'day'],
+  ),
+
+  /**
+   * What /explore shows.
+   *
+   * A snapshot of one design and the sketch that produced it, copied out of
+   * the project at publish time. Copied rather than referenced so the public
+   * gallery never reads a project document — the other designs on that canvas
+   * were not published, and a query that has to open the project to find the
+   * one that was is a query one bug away from showing the rest.
+   */
+  gallery: defineTable({
+    userId: v.id('users'),
+    projectId: v.id('projects'),
+    designId: v.string(),
+    label: v.string(),
+    instruction: v.optional(v.string()),
+    /** Snapshot of the design markup — Explore must not read whole projects. */
+    html: v.string(),
+    /** The sketch that produced it: the frame plus the shapes overlapping it, ids as stored. */
+    sketch: v.any(),
+    sketchStorageId: v.optional(v.id('_storage')),
+    visible: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    remixes: v.number(),
+  })
+    .index('by_design', ['designId'])
+    .index('by_visible_created', ['visible', 'createdAt'])
+    .index('by_user', ['userId']),
+
+  /** Daily counters per signal kind; see `lib/signals.ts` for the kinds. */
+  signals: defineTable({ kind: v.string(), day: v.string(), count: v.number() }).index(
+    'by_kind_day',
+    ['kind', 'day'],
+  ),
+
+  /**
+   * A one-time handover of a guest's project to an existing account.
+   *
+   * Signing in as someone else swaps the session, and the guest's work would
+   * be stranded on the anonymous user. The guest mints a claim before signing
+   * in and redeems it after, and the project follows them.
+   */
+  project_claims: defineTable({
+    token: v.string(),
+    projectId: v.id('projects'),
+    fromUserId: v.id('users'),
+    createdAt: v.number(),
+  }).index('by_token', ['token']),
 })

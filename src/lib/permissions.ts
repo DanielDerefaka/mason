@@ -31,17 +31,28 @@ export const isBypassRoute = [
   // marketing site again without signing out — and the header on /blog and
   // /about-us links straight to it.
   '/',
+  // The free canvas, the gallery and the admission endpoint. Bypass, and
+  // emphatically not public: a public route bounces any authenticated session
+  // to the dashboard, and a guest on /try *is* an authenticated session (an
+  // anonymous one). Listed as public, /try would bounce its own visitors to
+  // /dashboard, which sends anonymous users back to /try — a loop.
+  '/try(.*)',
+  '/explore(.*)',
+  '/api/try/(.*)',
+  // The auth screens. They were public, which was right until guests existed:
+  // a public route bounces *any* authenticated session to /dashboard, and the
+  // dashboard sends an anonymous one back to /try. A guest who clicked "Keep
+  // your work" could therefore never reach a sign-up form — the one path out
+  // of a guest session was the one path the middleware would not allow.
+  // Bypassed here, and src/app/auth/layout.tsx does the bouncing instead: it
+  // can tell a real account from an anonymous one, which the middleware cannot.
+  '/auth/(.*)',
 ]
 
 /**
- * Reachable while signed out. A signed-in user hitting one is sent to the
- * dashboard — which is why the blog is a bypass route instead: it is public
- * reading, and signing in should not lock you out of it.
+ * Everything not bypassed needs a session. There is no third category any
+ * more: "public" used to mean "reachable signed out, and redirected away when
+ * signed in", and the redirect half of that is what locked guests out of
+ * signing up. Where a signed-in visitor should be sent elsewhere, the page's
+ * own layout decides — it knows whether the session is an account or a guest.
  */
-export const isPublicRoutes = [
-  '/auth/sign-in',
-  '/auth/sign-up',
-  // Whoever needs this is by definition not signed in, so leaving it out
-  // bounced them to the page they could not get past.
-  '/auth/forgot-password',
-]

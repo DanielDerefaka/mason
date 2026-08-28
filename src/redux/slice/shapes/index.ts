@@ -35,6 +35,12 @@ export type Shape = {
   src?: string
   /** The frame this design was generated from. */
   sourceFrameId?: string
+  /**
+   * What the person said the frame is, in words. Set on a frame in /try and
+   * copied onto the design it produced, so Explore can show the sketch, the
+   * sentence and the result together.
+   */
+  instruction?: string
   /** True while the model is still streaming into `html`. */
   streaming?: boolean
   /**

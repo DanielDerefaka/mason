@@ -48,6 +48,12 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  // Open Graph images must be absolute URLs, and a share card is the first
+  // place a relative one silently fails: the crawler sees a path and no host.
+  // `||`, not `??`: the variable is defined-but-empty on a deployment where
+  // someone cleared it, and `new URL("")` throws — which is every page of the
+  // site failing to render, from a metadata line.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://sketchmason.com"),
   title: "Mason",
   description: "Turn sketches into production-ready designs.",
 };

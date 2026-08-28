@@ -8,7 +8,16 @@ import { HEADER_NAV } from "@/lib/marketing-nav";
 import { cn } from "@/lib/utils";
 
 /** Slide-in menu used below the `lg` desktop breakpoint. */
-export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MobileNav({
+  open,
+  onClose,
+  freeWeek = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Threaded from the server layout via the header; see SiteHeader. */
+  freeWeek?: boolean;
+}) {
   useEffect(() => {
     document.documentElement.style.overflow = open ? "hidden" : "";
     return () => {
@@ -72,8 +81,12 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
           <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
             Sign in
           </Link>
-          <Link href="/auth/sign-up" onClick={onClose} className="pill pill-primary w-full">
-            Start free
+          <Link
+            href={freeWeek ? "/try" : "/auth/sign-up"}
+            onClick={onClose}
+            className="pill pill-primary w-full"
+          >
+            {freeWeek ? "Try free" : "Start free"}
           </Link>
         </div>
       </div>

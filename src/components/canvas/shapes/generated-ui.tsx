@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef } from 'react'
 import { FileText, Download, FolderDown, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
-import { DESIGN_SCOPE, sanitisePartialHtml } from '@/lib/sanitise'
+import { DESIGN_SCOPE, designScope, sanitisePartialHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 import { useStyles } from '@/hooks/use-styles'
 import { useGoogleFont } from '@/hooks/use-google-font'
+import { useGuest } from '@/components/try/guest-context'
+import { ExploreSwitch } from '@/components/try/explore-switch'
 
 /**
  * The generated design.
@@ -49,7 +51,17 @@ export const GeneratedUI = ({
 }) => {
   const dispatch = useAppDispatch()
   const { styleGuide } = useStyles()
+  const { requireAccount } = useGuest()
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // The project export is the one that asks a guest for an account; HTML and
+  // the brief stay free. Outside /try there is no provider and this is a
+  // resolved promise, so the dashboard's button behaves as it always has.
+  const exportProject = async () => {
+    if (!onExportProject) return
+    if (!(await requireAccount())) return
+    onExportProject()
+  }
 
   // The design references var(--font-family); this is what actually fetches it.
   useGoogleFont(
@@ -57,7 +69,11 @@ export const GeneratedUI = ({
     styleGuide?.typography.styles.map((style) => style.weight) ?? [],
   )
 
-  const html = useMemo(() => sanitisePartialHtml(shape.html ?? ''), [shape.html])
+  // One scope per shape. A canvas holds as many designs as you draw frames
+  // for, each with a stylesheet written as if it were the only page in the
+  // world; under one shared class the second generation restyled the first.
+  const scope = designScope(shape.id)
+  const html = useMemo(() => sanitisePartialHtml(shape.html ?? '', scope), [shape.html, scope])
 
   const variables = useMemo(() => {
     const vars: Record<string, string> = {}
@@ -92,6 +108,9 @@ export const GeneratedUI = ({
       // picture of an interface, not a working one, so there is nothing in
       // there that wants the click more.
       onPointerDown={onGrab}
+      // How the /try shell finds this design's DOM to photograph it for a
+      // share card: `[data-design-id=<id>] .mason-design`.
+      data-design-id={shape.id}
       className={cn(
         'absolute rounded-lg ring-1',
         selected ? 'ring-2 ring-sky-400' : 'ring-white/15',
@@ -106,6 +125,7 @@ export const GeneratedUI = ({
       )}
       {onGenerateWorkflow && !shape.streaming && (
         <div className="absolute -top-7 right-0 flex items-center gap-2">
+          <ExploreSwitch designId={shape.id} ready={Boolean(shape.html)} />
           <button
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
@@ -185,7 +205,7 @@ export const GeneratedUI = ({
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={onExportProject}
+              onClick={() => void exportProject()}
               title="Download a Next.js project: tokens, a component per section, Tailwind"
               className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
             >
@@ -229,7 +249,7 @@ export const GeneratedUI = ({
         style={variables}
       >
         {html ? (
-          <div className={DESIGN_SCOPE} dangerouslySetInnerHTML={{ __html: html }} />
+          <div className={`${DESIGN_SCOPE} ${scope}`} dangerouslySetInnerHTML={{ __html: html }} />
         ) : (
           <div className="grid h-40 place-items-center text-xs text-white/40">
             Waiting for the first chunk…

@@ -1,9 +1,9 @@
 'use client'
 
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
@@ -21,6 +21,23 @@ import { StyleGuideSchema } from '@/types/style-guide'
  */
 export const SharedDesign = ({ token }: { token: string }) => {
   const shared = useQuery(api.shares.getSharedDesign, { token })
+  const recordOpen = useMutation(api.signals.recordShareOpen)
+
+  /**
+   * One of the three numbers the free week is judged on, counted here rather
+   * than in the server render it used to sit in: a shared link is fetched by
+   * X's card crawler, Slack's, and every preview bot in between, so the count
+   * was mostly robots. A crawler does not run this.
+   *
+   * Guarded by a ref because strict mode runs effects twice, and best effort
+   * because a design must never fail to appear over a counter.
+   */
+  const counted = useRef(false)
+  useEffect(() => {
+    if (counted.current) return
+    counted.current = true
+    void recordOpen({ token }).catch(() => undefined)
+  }, [recordOpen, token])
 
   const guide = StyleGuideSchema.safeParse(shared?.styleGuide)
   const styleGuide = guide.success ? guide.data : null

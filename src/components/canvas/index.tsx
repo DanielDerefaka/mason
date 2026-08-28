@@ -16,7 +16,8 @@ import { updateShape } from '@/redux/slice/shapes'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useWorkspacePath } from '@/hooks/use-workspace-path'
 import { useDesignChat } from '@/hooks/use-design-chat'
 import { useStyles } from '@/hooks/use-styles'
 import {
@@ -597,7 +598,7 @@ export const Canvas = () => {
   } = useInfiniteCanvas()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { session } = useParams<{ session: string }>()
+  const workspace = useWorkspacePath()
   const { generateDesign, generatingFrameId } = useFrame()
   const { styleGuide } = useStyles()
 
@@ -606,9 +607,7 @@ export const Canvas = () => {
     const project = searchParams.get('project')
     // Absolute: a relative push resolved against the current path, which put
     // the editor under /dashboard/canvas/editor rather than the session.
-    router.push(
-      `/dashboard/${session}/editor?project=${project ?? ''}&design=${shape.id}`,
-    )
+    router.push(`${workspace}/editor?project=${project ?? ''}&design=${shape.id}`)
   }
 
   /** Frames leave as a PNG of the sketch; designs leave as a standalone page. */

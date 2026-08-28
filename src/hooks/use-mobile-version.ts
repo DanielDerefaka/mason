@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
+import { generateFetch } from '@/lib/try/generate-fetch'
 import { useContinueDesign } from '@/hooks/use-continue-design'
 
 import { useAppDispatch } from '@/redux/hooks'
@@ -51,7 +52,7 @@ export const useMobileVersion = () => {
     const id = nanoid()
 
     try {
-      const response = await fetch('/api/generate/mobile', {
+      const response = await generateFetch('/api/generate/mobile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, html: design.html }),

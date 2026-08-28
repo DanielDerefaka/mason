@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { DESIGN_SCOPE, sanitiseCss, sanitiseHtml, sanitisePartialHtml } from './sanitise'
+import {
+  DESIGN_SCOPE,
+  designScope,
+  sanitiseCss,
+  sanitiseHtml,
+  sanitisePartialHtml,
+} from './sanitise'
 
 /**
  * The sanitiser stands between model output and dangerouslySetInnerHTML, and
@@ -306,5 +312,133 @@ describe('sanitiseCss — idempotence', () => {
   it('is idempotent inside a media query too', () => {
     const once = sanitiseCss('@media (max-width: 640px) { .nav { display: none } }')
     expect(sanitiseCss(once)).toBe(once)
+  })
+})
+
+
+describe('sanitiseCss — the ways out of the scope', () => {
+  /**
+   * The regression this exists for: prefixing put the scope in front of
+   * whatever the selector was, and a selector may begin with a combinator.
+   * `.mason-design + nav` is not a rule about the design — it is a rule about
+   * whatever the application renders beside it, which is how a generated
+   * design could reach the editor's own chrome.
+   */
+  it.each(['+ nav', '~ .sidebar', '+ *'])('drops the sibling selector %s', (selector) => {
+    expect(sanitiseCss(`${selector} { display: none }`)).toBe('')
+  })
+
+  it('keeps a child selector, which is still inside the design', () => {
+    expect(sanitiseCss('> nav { color: red }')).toBe(`.${DESIGN_SCOPE} > nav{color: red}`)
+  })
+
+  it('drops only the escaping half of a selector list', () => {
+    expect(sanitiseCss('.card, + nav { color: red }')).toBe(`.${DESIGN_SCOPE} .card{color: red}`)
+  })
+})
+
+describe('sanitiseCss — at-rules that fetch', () => {
+  /**
+   * The regression this exists for: keyframes and @font-face bodies were
+   * pushed through untouched — correctly, for the stops, which are not
+   * selectors — and that made them the one place in a design's stylesheet
+   * that could still name a third-party host. Opening a shared design told
+   * that host who was reading it.
+   */
+  it('drops a remote font source but keeps the face', () => {
+    const css = sanitiseCss("@font-face { font-family: X; src: url(https://elsewhere.test/f.woff2) }")
+    expect(css).toContain('@font-face')
+    expect(css).not.toContain('elsewhere.test')
+  })
+
+  it('drops a remote fetch inside a keyframe stop, keeping the animation', () => {
+    const css = sanitiseCss(
+      '@keyframes spin { 0% { transform: rotate(0) } to { background: url(https://elsewhere.test/p.gif) } }',
+    )
+    expect(css).toContain('@keyframes spin')
+    expect(css).toContain('0%{transform: rotate(0)}')
+    expect(css).not.toContain('elsewhere.test')
+  })
+
+  it('never scopes a keyframe stop, which would kill the animation', () => {
+    expect(sanitiseCss('@keyframes fade { from { opacity: 0 } }')).not.toContain(
+      `.${DESIGN_SCOPE} from`,
+    )
+  })
+
+  it('drops a face that has nothing left worth keeping', () => {
+    expect(sanitiseCss('@font-face { src: url(https://elsewhere.test/f.woff2) }')).toBe('')
+  })
+})
+
+describe('the style attribute', () => {
+  /**
+   * The regression this exists for: `style` was on the allow-list and kept
+   * verbatim, so every rule about where a design may fetch from could be
+   * skipped by writing the declaration inline instead of in the stylesheet.
+   */
+  it('drops a remote fetch from an inline style', () => {
+    const html = sanitiseHtml('<div style="background: url(https://elsewhere.test/p.gif)">x</div>')
+    expect(html).not.toContain('elsewhere.test')
+  })
+
+  it('keeps the rest of the declarations around the one it drops', () => {
+    const html = sanitiseHtml(
+      '<div style="color: red; background: url(https://elsewhere.test/p.gif); padding: 4px">x</div>',
+    )
+    expect(html).toContain('color: red')
+    expect(html).toContain('padding: 4px')
+    expect(html).not.toContain('elsewhere.test')
+  })
+
+  it('keeps an inline image and the app\'s own image route', () => {
+    const html = sanitiseHtml('<div style="background: url(/api/image/photo)">x</div>')
+    expect(html).toContain('/api/image/photo')
+  })
+
+  it('drops an expression() however it is written', () => {
+    const html = sanitiseHtml('<div style="width: expression(alert(1))">x</div>')
+    expect(html).not.toContain('expression')
+  })
+})
+
+describe('one design among many', () => {
+  /**
+   * The regression this exists for: every design was wrapped in the same
+   * class and every stylesheet scoped to it, so the gallery, the dashboard
+   * grid and any canvas with two frames on it had each design restyling its
+   * neighbours.
+   */
+  const scope = designScope('k57abc')
+
+  it('confines a design to its own scope when asked', () => {
+    expect(sanitiseCss('.card { color: red }', `.${scope}`)).toBe(`.${scope} .card{color: red}`)
+  })
+
+  it('re-targets a stylesheet that was stored under the shared scope', () => {
+    const stored = sanitiseCss('.card { color: red }')
+    expect(sanitiseCss(stored, `.${scope}`)).toBe(`.${scope} .card{color: red}`)
+  })
+
+  it('re-targets back again, so nothing is one-way', () => {
+    const perDesign = sanitiseCss('.card { color: red }', `.${scope}`)
+    expect(sanitiseCss(perDesign)).toBe(`.${DESIGN_SCOPE} .card{color: red}`)
+  })
+
+  it('rewrites the stylesheet inside the markup to match', () => {
+    const html = sanitiseHtml('<style>.card { color: red }</style><div class="card">x</div>', scope)
+    expect(html).toContain(`.${scope} .card`)
+    expect(html).not.toContain(`.${DESIGN_SCOPE} .card`)
+  })
+
+  it('does not mistake a design\'s own class for a scope', () => {
+    expect(sanitiseCss('.mason-designer .card { color: red }')).toBe(
+      `.${DESIGN_SCOPE} .mason-designer .card{color: red}`,
+    )
+  })
+
+  it('falls back to the shared scope rather than an empty one', () => {
+    expect(designScope('')).toBe(DESIGN_SCOPE)
+    expect(designScope('---')).toBe(DESIGN_SCOPE)
   })
 })

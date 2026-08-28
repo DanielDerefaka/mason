@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 import { stripTruncationMarker, wasTruncated } from '@/lib/truncation'
+import { generateFetch } from '@/lib/try/generate-fetch'
 
 import { useAppDispatch } from '@/redux/hooks'
 import { setGeneratedHtml } from '@/redux/slice/shapes'
@@ -49,7 +50,7 @@ export const useContinueDesign = () => {
       const existing = stripTruncationMarker(html)
 
       try {
-        const response = await fetch('/api/generate/continue', {
+        const response = await generateFetch('/api/generate/continue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectId, html: existing }),

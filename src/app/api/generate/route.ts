@@ -1,10 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { streamText } from 'ai'
-import { fetchMutation } from 'convex/nextjs'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
-import { api } from '../../../../convex/_generated/api'
 import type { Id } from '../../../../convex/_generated/dataModel'
-import { anthropicProvider, UI_MODEL } from '@/lib/anthropic'
+import { UI_MODEL } from '@/lib/anthropic'
+import {
+  describeGenerationFailure,
+  failedBeforeStreaming,
+  modelForRequest,
+  modelForRequestText,
+} from '@/lib/byok'
+import { chargeForGeneration } from '@/lib/generation-charge'
 import {
   CreditsBalanceQuery,
   InspirationImagesQuery,
@@ -35,9 +40,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // BYOK: the request's own key, direct to Anthropic; not charged for, and
+    // that is a decision — the visitor pays Anthropic.
+    const { model, byok } = modelForRequest(request)
+
     const { ok, balance } = await CreditsBalanceQuery()
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
-    if (balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
+    if (!byok && balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
 
     const form = await request.formData()
     const image = form.get('image')
@@ -46,6 +55,9 @@ export async function POST(request: NextRequest) {
     // A frame left at its preset name carries no information about content —
     // and passed on, it becomes the subject of the design.
     const frameLabel = isDevicePresetName(rawFrameLabel) ? '' : rawFrameLabel
+    // What the person who drew the frame said it is for, if anything. Capped
+    // rather than refused: a sentence too long is still a sentence.
+    const instruction = ((form.get('instruction') as string | null) ?? '').trim().slice(0, 600)
 
     if (!(image instanceof File) || !image.type.startsWith('image/')) {
       return NextResponse.json({ message: 'A frame image is required' }, { status: 400 })
@@ -56,8 +68,8 @@ export async function POST(request: NextRequest) {
 
     const [styleGuide, inspirationUrls, brand] = await Promise.all([
       StyleGuideQuery(projectId),
-      InspirationImagesQuery(projectId),,
-      BrandQuery(projectId as Id<'projects'>)
+      InspirationImagesQuery(projectId),
+      BrandQuery(projectId),
     ])
     // Read the board only if the stored reading no longer matches it. The
     // credit for this generation covers it; it happens once per board.
@@ -65,28 +77,19 @@ export async function POST(request: NextRequest) {
       projectId,
       inspirationUrls,
       await ReferenceBriefQuery(projectId),
+      modelForRequestText(request).model,
     )
     const sketch = new Uint8Array(await image.arrayBuffer())
 
     // Charged up front: the response streams, so by the time it finishes there
     // is no longer a request to fail cleanly on.
     const token = await convexAuthNextjsToken()
-    await fetchMutation(api.credits.spend, {}, { token })
-
-    /** Puts the credit back when nothing usable came out of the model. */
-    const refundCredit = async () => {
-      try {
-        await fetchMutation(api.credits.refund, {}, { token })
-      } catch {
-        // A failed refund must not also break the response the user is
-        // already reading.
-      }
-    }
+    const { refundCredit } = await chargeForGeneration({ byok, token })
 
     const inspirationParts = await fetchImageParts(inspirationUrls)
 
     const result = streamText({
-      model: anthropicProvider(UI_MODEL),
+      model,
       providerOptions: { anthropic: { effort: 'low' } },
       // A full page of inline-styled markup is verbose — six cards of copy plus their styles ran
       // past 16k and the stream simply stopped, leaving a half-written
@@ -110,7 +113,10 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompts.generatedUi.user(frameLabel, inspirationUrls.length) },
+            {
+              type: 'text',
+              text: prompts.generatedUi.user(frameLabel, inspirationUrls.length, instruction),
+            },
             { type: 'file', mediaType: image.type, data: sketch },
             // Order matters: the prompt tells the model the first image is the
             // sketch and the rest are references to borrow style from.
@@ -119,6 +125,15 @@ export async function POST(request: NextRequest) {
         },
       ],
     })
+
+    // Answered before any header goes out: a refused key comes back from
+    // Anthropic as a 401, and once streaming has begun there is no status left
+    // to carry it. Nothing was produced, so nothing is owed.
+    const refused = await failedBeforeStreaming(result.fullStream)
+    if (refused) {
+      await refundCredit()
+      throw refused
+    }
 
     // The SDK's text stream is an async iterable; the browser wants bytes.
     const encoder = new TextEncoder()
@@ -236,10 +251,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[generate]', error)
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : 'Failed to generate the design' },
-      { status: 500 },
-    )
+    const { status, message } = describeGenerationFailure('[generate]', error, request, 'Failed to generate the design')
+    return NextResponse.json({ message }, { status })
   }
 }

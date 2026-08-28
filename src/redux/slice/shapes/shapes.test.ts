@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import reducer, {
@@ -16,6 +18,7 @@ import reducer, {
   reorderSelected,
   setSelection,
   setViewport,
+  shapesAdapter,
   shapesSlice,
   toggleSelected,
   undo,
@@ -341,5 +344,89 @@ describe('viewport', () => {
       setViewport({ scale: 500, translate: { x: 10, y: 10 } }),
     )
     expect(state.viewport.scale).toBe(MAX_SCALE)
+  })
+})
+
+describe('where the entity table actually lives', () => {
+  /**
+   * The regression this exists for: three places on /try read the slice as
+   * though it were the entity table. `state.shapes.entities` is an *adapter
+   * state* — `{ ids, entities }` — so `state.shapes.ids` is undefined and
+   * `state.shapes.entities[id]` is undefined, always. One of the three took
+   * the whole page down on mount, one left the instruction bar permanently
+   * disabled, and one made remix-from-Explore fail every time. The names
+   * collide, which is why it happened three times; this pins the shape so a
+   * fourth is a failing test rather than an error boundary.
+   */
+  it('is one level inside the slice, not the slice itself', () => {
+    const state = withShapes(shape('a'), shape('b'))
+    const asRecord = state as unknown as Record<string, unknown>
+
+    expect(asRecord.ids).toBeUndefined()
+    expect(state.entities.ids).toEqual(['a', 'b'])
+
+    const table = state.entities as unknown as Record<string, unknown>
+    expect(table.a).toBeUndefined()
+    expect(state.entities.entities.a?.id).toBe('a')
+  })
+
+  it('is what the adapter selectors want handed to them', () => {
+    const state = withShapes(shape('a'))
+    const selectors = shapesAdapter.getSelectors()
+
+    expect(selectors.selectAll(state.entities).map((each) => each.id)).toEqual(['a'])
+    expect(selectors.selectById(state.entities, 'a')?.id).toBe('a')
+    // Handed the slice instead, `selectAll` reads an `ids` that is not there.
+    expect(() =>
+      selectors.selectAll(state as unknown as ReturnType<typeof shapesAdapter.getInitialState>),
+    ).toThrow()
+  })
+})
+
+describe('nothing reaches past the adapter state', () => {
+  const sources = (dir: string): string[] =>
+    readdirSync(dir).flatMap((entry) => {
+      const path = join(dir, entry)
+      if (statSync(path).isDirectory()) return entry === 'node_modules' ? [] : sources(path)
+      return /\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry) ? [path] : []
+    })
+
+  /**
+   * Comments are stripped first. Both mistakes below are now described in
+   * prose in the files that used to make them, and a guard that fires on its
+   * own explanation is a guard that gets deleted.
+   */
+  const code = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+
+  const files = sources(join(process.cwd(), 'src')).map((path) => ({
+    path: path.slice(path.indexOf('src/')),
+    source: code(readFileSync(path, 'utf8')),
+  }))
+
+  it('has files to check at all', () => {
+    // Guards the guard: a moved directory would otherwise make the two
+    // checks below pass by scanning nothing.
+    expect(files.length).toBeGreaterThan(50)
+  })
+
+  it('never reads ids off the slice', () => {
+    // The regression this exists for: `state.shapes.ids` is undefined, and
+    // the `.length` after it threw during render — /try showed the error
+    // boundary on mount for a week and no test or smoke check saw it,
+    // because the crash is in the browser and the server had already
+    // answered 200 with the Suspense fallback.
+    const offenders = files.filter(({ source }) => /\.shapes\.ids\b/.test(source))
+    expect(offenders.map((each) => each.path)).toEqual([])
+  })
+
+  it('never hands an adapter selector the whole slice', () => {
+    // Same root cause, quieter symptom: `selectAll(state.shapes)` throws
+    // inside a try/catch and the feature just never works. Remix from
+    // Explore was dead this way from the day it was written.
+    const offenders = files.filter(({ source }) =>
+      /select(All|By[A-Za-z]*|Ids|Entities|Total)\(\s*[A-Za-z.()]*\.shapes\s*[,)]/.test(source),
+    )
+    expect(offenders.map((each) => each.path)).toEqual([])
   })
 })

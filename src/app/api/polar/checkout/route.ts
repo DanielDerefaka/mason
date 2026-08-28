@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/sign-in', request.url))
     }
 
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
+    // `||`: an env var cleared to an empty string is not an origin, and the
+    // success URL built from it would send the buyer to a broken link.
+    const origin = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
 
     const checkout = await polar.checkouts.create({
       products: [process.env.POLAR_PRODUCT_ID as string],

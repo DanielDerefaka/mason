@@ -57,6 +57,9 @@ Set these environment variables on the Vercel project:
 | `POLAR_SERVER` | `sandbox` while testing, `production` for real cards |
 | `POLAR_WEBHOOK_SECRET` | optional, billing only — **also** step 5 |
 | `BILLING_ENFORCED` | leave unset until you want the paywall on |
+| `NEXT_PUBLIC_APP_URL` | the site's URL — share cards need an absolute image URL |
+| `FREE_WEEK` | `true` to send `/` to `/try` and point every "Start free" at it; unset otherwise |
+| `GUEST_ADMISSION_SECRET` | `openssl rand -hex 32` — **also** step 5; guest sessions are unthrottled without it |
 
 `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOYMENT` are **not** set by hand —
 `convex deploy` writes them during the build from the deploy key.
@@ -71,6 +74,8 @@ the per-deployment `*-git-*.vercel.app` URL, which changes on every push.
     npx convex env set --prod SITE_URL https://your-domain.com
     npx convex env set --prod POLAR_WEBHOOK_SECRET <the same value as Vercel>
     npx convex env set --prod AUTH_RESEND_KEY <optional, for password reset>
+    npx convex env set --prod GUEST_ADMISSION_SECRET <the same value as Vercel>
+    npx convex env set --prod COMMUNITY_POOL_SIZE 20   # optional; 20 is the default
 
 `SITE_URL` is what auth callbacks redirect to. `POLAR_WEBHOOK_SECRET` genuinely
 lives in both places: the Next route verifies Polar's signature with it, and
@@ -78,6 +83,19 @@ Convex uses it to reject any write that did not come from that route. Miss the
 Convex copy and subscriptions fail in the worst available way — the signature
 verifies, the write is refused, Polar retries forever, and a paying customer is
 never activated. `/billing` warns when it is missing.
+
+`GUEST_ADMISSION_SECRET` is the same shape of thing for `/try`: the Next route
+signs an admission token with it and the Convex anonymous provider verifies
+that token with it. The two halves fail in opposite directions, and neither is
+the one you would guess. **Set on Vercel alone** — missing on Convex — nothing
+is verified at all: `convex/auth.ts` logs a warning and admits every caller, so
+the per-IP throttle is silently off and `/try` looks perfectly healthy while
+one machine can take the whole community pool. **Set on Convex alone** the
+route has nothing to sign with, hands back `admission: null`, and every guest
+sign-in is refused — loud, obvious, and the safer of the two. Set both, and set
+Convex first. Never paste the value into a terminal that echoes — `npx convex
+env set --prod GUEST_ADMISSION_SECRET "$(cat secret.txt)"` reads it from a
+file.
 
 Redeploy on Vercel so the new Convex environment is picked up.
 
@@ -88,7 +106,7 @@ The signing secret must match what both Vercel and Convex hold.
 
 ## Checking it
 
-    npm test                       # 161 unit tests, no server needed
+    npm test                       # 553 unit tests, no server needed
     SMOKE_BASE=https://your-domain.com npm run smoke
 
 The smoke run is the useful one against a live deployment: it checks that

@@ -13,6 +13,7 @@ export const HEADER_NAV: NavItem[] = [
   { label: 'How It Works', href: '/#approach', sectionId: 'approach' },
   { label: 'Download', href: '/download' },
   { label: 'Blog', href: '/blog' },
+  { label: 'Explore', href: '/explore' },
 ]
 
 /** Ordered home-page section ids the header observes to highlight the active link. */
