@@ -7,11 +7,15 @@ import { BLOG_POSTS } from "@/lib/marketing-blog";
 
 // The description is the card's subtitle as well as the search snippet, and
 // without one it fell back to the site's — so /blog, /explore and /download all
-// unfurled with identical text under three different titles.
+// unfurled with identical text under three different titles. It is also the
+// line under the heading: the page says what it is in the words the result
+// shows, and there is one copy of them.
+const DESCRIPTION =
+  "Notes on sketching, design systems and generating interfaces — how Mason is built and what it is for.";
+
 export const metadata: Metadata = {
   title: "Blog",
-  description:
-    "Notes on sketching, design systems and generating interfaces — how Mason is built and what it is for.",
+  description: DESCRIPTION,
 };
 
 /**
@@ -25,9 +29,15 @@ export default function BlogPage() {
     <>
       <section className="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[110px] lg:pt-[222px] lg:pb-[140px]">
         <div className="container-site">
+          {/* Named, not labelled. "Our Blogs" gave a machine nothing to attach
+              to the entity, and "Mason" alone is a name-collision query — the
+              heading has to carry the name. */}
           <h1 className="text-foreground font-display text-center text-[44px] leading-[46px] font-normal tracking-[-2px] md:text-[80px] md:leading-[80px] md:tracking-[-4px] lg:text-[118px] lg:leading-[118px] lg:tracking-[-6px]">
-            Our <span className="font-display-italic">Blogs</span>
+            The Mason <span className="font-display-italic">blog</span>
           </h1>
+          <p className="text-muted-foreground mx-auto mt-[24px] max-w-[620px] text-center font-sans text-[17px] leading-[28px] md:mt-[32px]">
+            {DESCRIPTION}
+          </p>
 
           <div className="mx-auto mt-[48px] max-w-[1180px] md:mt-[64px] lg:mt-[80px]">
             <ul className="grid grid-cols-1 gap-[20px] md:grid-cols-2 lg:grid-cols-3 lg:gap-[28px]">
@@ -40,7 +50,7 @@ export default function BlogPage() {
                     <div className="relative aspect-[424/238] w-full overflow-hidden rounded-[10px]">
                       <Image
                         src={post.cover}
-                        alt=""
+                        alt={post.coverAlt}
                         fill
                         sizes="(max-width: 750px) calc(100vw - 92px), (max-width: 1000px) calc(50vw - 62px), 375px"
                         className="object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
@@ -51,9 +61,12 @@ export default function BlogPage() {
                       <span className="text-muted-foreground font-sans text-[13px] leading-[20px]">
                         {post.category}
                       </span>
-                      <span className="text-muted-foreground font-sans text-[13px] leading-[20px]">
+                      <time
+                        dateTime={post.dateTime}
+                        className="text-muted-foreground font-sans text-[13px] leading-[20px]"
+                      >
                         {post.date}
-                      </span>
+                      </time>
                     </div>
 
                     <h2 className="text-foreground line-clamp-2 [display:-webkit-box] px-[12px] pt-[8px] font-sans text-[19px] leading-[25px] font-semibold">

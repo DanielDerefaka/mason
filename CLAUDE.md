@@ -18,9 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 24 live checks against a running server
+npm run smoke        # 28 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 824 unit tests, no server needed
+npm test             # 850 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -83,6 +83,16 @@ with no snippet. A `noindex` on a disallowed page is never seen. `/auth/*` sends
 `robots: { index: false }` from its layout and is deliberately *not* in `robots.ts`;
 `metadata.test.ts` pins both halves, because a disallow added back would quietly
 re-create the sitelink.
+
+**A share card under a route group is not served at `/opengraph-image`.** Next appends a
+hash of the parent path to any metadata route whose path has a `(group)` or `@slot` segment
+in it, so `(marketing)/blog/[slug]/opengraph-image.tsx` answers at
+`/blog/<slug>/opengraph-image-yqks0s` and the plain URL is a 404. The `og:image` tag Next
+writes is right on its own; anything that spells the URL by hand — the BlogPosting `image`
+did — must carry the suffix. It is djb2 of `"/(marketing)/blog/[slug]"`, so it moves only
+when the directory does; `blog.test.ts` recomputes it with Next's own `fillMetadataSegment`,
+and `smoke` fetches whatever card the page advertises rather than a path written into the
+script.
 
 **A call to action must not be conditional on `FREE_WEEK`.** `/try` is public with
 or without the week, so a link that points at `/auth/sign-up` "outside the week" is a
