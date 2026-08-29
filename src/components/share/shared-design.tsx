@@ -16,8 +16,14 @@ import { StyleGuideSchema } from '@/types/style-guide'
  *
  * The same render path as the private preview — sanitised markup with the
  * guide's tokens bound — but reached with a token instead of a session. The
- * only thing of ours on the page is a small mark in the corner, because the
+ * only thing of ours on the page is a small pill in the corner, because the
  * point of sending someone a link is that they see the design.
+ *
+ * The pill is also the way in. Someone looking at a shared design has just
+ * watched the thing work, which makes them the warmest visitor /try has —
+ * and every link on this page used to end on the marketing home, where the
+ * pitch starts again from the top. Nothing about the viewing changes: no
+ * session is minted to look, and none is spent.
  */
 export const SharedDesign = ({ token }: { token: string }) => {
   const shared = useQuery(api.shares.getSharedDesign, { token })
@@ -72,12 +78,17 @@ export const SharedDesign = ({ token }: { token: string }) => {
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
             It may have been revoked, or the design may have been deleted.
           </p>
-          <Link
-            href="/"
-            className="mt-7 inline-block text-sm text-sky-400 transition-opacity hover:opacity-80"
-          >
-            What is Mason?
-          </Link>
+          <div className="mt-7 flex items-center justify-center gap-5 text-sm">
+            <Link
+              href="/try"
+              className="rounded-full bg-foreground px-4 py-2 font-medium text-background transition-opacity hover:opacity-90"
+            >
+              Try Mason free
+            </Link>
+            <Link href="/" className="text-sky-400 transition-opacity hover:opacity-80">
+              What is Mason?
+            </Link>
+          </div>
         </div>
       </main>
     )
@@ -93,14 +104,25 @@ export const SharedDesign = ({ token }: { token: string }) => {
         dangerouslySetInnerHTML={{ __html: sanitiseHtml(shared.html) }}
       />
 
-      <Link
-        href="/"
-        title="Made with Mason"
-        className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 text-[11px] text-white/80 opacity-40 backdrop-blur transition-opacity hover:opacity-100"
-      >
-        <LogoMark className="size-3.5" />
-        Made with Mason
-      </Link>
+      {/* Legible at rest, where it used to sit at 40% until hovered: a way in
+          that has to be hovered to be read is not a way in. Still small, still
+          in the corner, still over the design rather than in it. */}
+      <div className="fixed bottom-4 left-4 z-50 flex items-center overflow-hidden rounded-full bg-black/75 text-[11px] text-white/80 backdrop-blur">
+        <Link
+          href="/"
+          title="Made with Mason"
+          className="flex items-center gap-2 py-2 pr-2.5 pl-3 transition-colors hover:text-white"
+        >
+          <LogoMark className="size-3.5" />
+          Made with Mason
+        </Link>
+        <Link
+          href="/try"
+          className="border-l border-white/15 py-2 pr-3 pl-2.5 font-medium text-white transition-colors hover:bg-white/10"
+        >
+          Try Mason free
+        </Link>
+      </div>
     </div>
   )
 }

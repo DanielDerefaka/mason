@@ -78,6 +78,18 @@ describe('favicon.ico', () => {
     for (const { bitDepth } of layers.values()) expect(bitDepth).toBe(32)
   })
 
+  /**
+   * The regression this exists for: the layers were written smallest first,
+   * and Next's production build reports an .ico at the size of its *first*
+   * directory entry — `getImageSize` in next-metadata-image-loader; turbopack
+   * in development reports the largest, which is why the dev server hid it —
+   * so the link tag said sizes="16x16" with a 48 in the file. The Map is in
+   * directory order.
+   */
+  it('lists the 48 first, which is the size Next advertises the file at', () => {
+    expect([...layers.keys()][0]).toBe(48)
+  })
+
   it.each([16, 32, 48])('is icon.svg at %i, not the starter triangle', async (size) => {
     const svg = await render(size)
     expect(distance(svg, layers.get(size)!.rgba)).toBeLessThan(SAME)

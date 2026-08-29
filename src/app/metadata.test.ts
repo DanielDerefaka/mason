@@ -34,11 +34,15 @@ const marketingPages = readdirSync(join(APP_DIR, '(marketing)'))
   .map((entry) => `/${entry}`)
   .sort()
 
-/** Whether a one-segment path — /about-us, /try — has a page behind it. */
+/**
+ * Whether a one-segment path — /about-us, /try, /llms.txt — has something
+ * behind it: a page, or the route handler of a file served at a dotted path.
+ */
 const pageExists = (path: string) =>
   path === '/' ||
   existsSync(join(APP_DIR, '(marketing)', path.slice(1), 'page.tsx')) ||
-  existsSync(join(APP_DIR, path.slice(1), 'page.tsx'))
+  existsSync(join(APP_DIR, path.slice(1), 'page.tsx')) ||
+  existsSync(join(APP_DIR, path.slice(1), 'route.ts'))
 
 /**
  * Source with its comments removed, for the assertions phrased as absences.
@@ -147,13 +151,35 @@ describe('the site tells a crawler who it is', () => {
     expect(image).toMatch(/Sketch → code/)
   })
 
+  /** The sentence itself, without the comment above it that explains it. */
+  const tryDescription = () =>
+    withoutComments(read('src/app/try/layout.tsx')).match(/description:\s*'([^']*)'/)?.[1] ?? ''
+
   it('gives the free canvas a description that will still be true next month', () => {
     const tryLayout = read('src/app/try/layout.tsx')
     expect(tryLayout).toMatch(/title: 'Try Mason free'/)
-    expect(tryLayout).toMatch(/No account needed/)
+    const description = tryDescription()
+    expect(description).toMatch(/No account needed/)
     // The old one promised "one free generation a day", which is a number the
-    // pool can change and a crawler will keep quoting long after it has.
-    expect(tryLayout).not.toMatch(/\bone free generation\b/)
+    // pool can change and a crawler will keep quoting long after it has. The
+    // free week is the same kind of claim: a search engine caches a
+    // description well past the Sunday the week ends on.
+    expect(description).not.toMatch(/\bone free generation\b/)
+    expect(description).not.toMatch(/\b(week|until|limited|September|Sep)\b/i)
+    // Long enough to lead with what Mason is, short enough not to be cut off
+    // mid-sentence in the result: Google shows about 155 characters.
+    expect(description.length).toBeLessThanOrEqual(155)
+  })
+
+  /**
+   * The regression this exists for: the sentence began at "Draw a frame" — a
+   * step, with nothing before it to say what the step was for — on the one
+   * result most people meet the product through.
+   */
+  it('leads the free canvas with what Mason is, not with a step', () => {
+    const description = tryDescription()
+    expect(description).toMatch(/^Mason\b/)
+    expect(description).toMatch(/sketch/i)
   })
 
   /**
@@ -238,6 +264,16 @@ describe('sitemap.xml', () => {
     for (const path of marketingPages) {
       expect(urls).toContain(`https://www.sketchmason.com${path}`)
     }
+  })
+
+  /**
+   * The one entry that is not a page. /llms.txt answered 200 for a week while
+   * the sitemap's ten URLs left it out — and a sitemap is the first thing a
+   * crawler written for models reads, so nothing that started there knew the
+   * file was there to read.
+   */
+  it('lists /llms.txt, the page written for a model', () => {
+    expect(urls).toContain('https://www.sketchmason.com/llms.txt')
   })
 
   /**

@@ -33,9 +33,17 @@ const PORT = Number(process.env.CDP_PORT ?? 9422)
 /**
  * The pages whose behaviour lives in the browser. Marketing pages are mostly
  * server-rendered and already covered; these are the ones with a client shell
- * that can throw after the server has said 200.
+ * that can throw after the server has said 200. The share link's token exists
+ * nowhere: the screen it ends on, and the way into /try from it, are drawn
+ * entirely in the browser, so the server's 200 says nothing about either.
  */
-const PAGES = ['/try', '/explore', '/', '/auth/sign-in']
+const PAGES = ['/try', '/explore', '/', '/auth/sign-in', '/s/not-a-live-token']
+
+/**
+ * Text a page must have drawn by the time it is judged — the half of a screen
+ * that only exists once the bundle has run and its query has answered.
+ */
+const EXPECTS = { '/s/not-a-live-token': 'Try Mason free' }
 
 /** How long a page gets to load, hydrate and settle before it is judged. */
 const SETTLE_MS = Number(process.env.SMOKE_SETTLE_MS ?? 9000)
@@ -189,6 +197,8 @@ for (const path of PAGES) {
   const text = body?.result?.value ?? ''
 
   if (text.includes(ERROR_BOUNDARY)) problems.push('the error boundary rendered')
+  const expected = EXPECTS[path]
+  if (expected && !text.includes(expected)) problems.push(`never drew "${expected}"`)
   if (text.trim().length === 0) problems.push('the page rendered nothing at all')
 
   if (problems.length === 0) {
