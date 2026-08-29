@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { ConvexError } from 'convex/values'
 import { describe, expect, it } from 'vitest'
 
-import { GUEST_IP_CAP, refusalFrom } from './guest-refusal'
+import { GUEST_IP_CAP, refusalFrom, refusalFromSignIn } from './guest-refusal'
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
 
@@ -41,6 +41,46 @@ describe('classifying a refused guest sign-in', () => {
     ['null', null],
   ])('treats %s as unknown, which keeps the "try again" wording', (_label, error) => {
     expect(refusalFrom(error)).toBe('unknown')
+  })
+})
+
+describe('how a refusal reaches the browser', () => {
+  /**
+   * The regression this exists for, and it shipped. The cap threw a
+   * ConvexError so that `data` would survive Convex's masking — and it does,
+   * inside Convex. It does not reach the browser: in the Next integration
+   * `signIn` posts to /api/auth, and that proxy catches the error and forwards
+   * `{ error: error.message }` with a 400. `data` is dropped, the message is
+   * the masked one, and the client rebuilds a plain Error from it. Classifying
+   * the throw could therefore only ever return 'unknown', which is exactly
+   * what a capped network saw in production.
+   *
+   * So the refusal travels as an absence: `authorize` returns null, the
+   * library reports a sign-in that produced no tokens, and that crosses the
+   * proxy as an ordinary 200.
+   */
+  it('reads a sign-in that produced no tokens as the cap', () => {
+    expect(refusalFromSignIn({ signingIn: false })).toBe('network-cap')
+  })
+
+  it('lets a real sign-in through', () => {
+    expect(refusalFromSignIn({ signingIn: true })).toBe(null)
+  })
+
+  it.each([[undefined], [{}]])('treats %s as refused rather than as success', (result) => {
+    expect(refusalFromSignIn(result)).toBe('network-cap')
+  })
+
+  it('is what the hook actually calls, not the classifier that cannot work there', () => {
+    const hook = withoutComments(read('src/components/try/use-guest-session.ts'))
+    expect(hook).toMatch(/refusalFromSignIn\(await signIn\(/)
+  })
+
+  it('is declined in the provider, so nothing is left to throw across the proxy', () => {
+    const auth = withoutComments(read('convex/auth.ts'))
+    expect(auth).toMatch(/if \(refusalFrom\(error\) === 'network-cap'\) return null/)
+    // Anything that is not the cap is a fault and must keep travelling.
+    expect(auth).toMatch(/throw error/)
   })
 })
 

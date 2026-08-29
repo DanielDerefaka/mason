@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 22 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 784 unit tests, no server needed
+npm test             # 790 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -84,7 +84,11 @@ failure, wrong for a deliberate refusal. `guest.admitIp` threw a plain `Error` a
 per-network cap, so /try told a capped visitor Mason was busy and offered a refresh that
 could not work before midnight UTC. Refusals that a person is meant to act on throw
 `ConvexError` with a code from `src/lib/try/guest-refusal.ts`; the wording lives on the
-screen, never in the error.
+screen, never in the error. **And that code still does not reach the browser** — in the Next
+integration `signIn` posts to /api/auth, and `convexAuthNextjsMiddleware`'s proxy forwards
+only `error.message`, so `data` is dropped and the message is the masked one. A refusal the
+browser must act on has to travel as an absence instead: `authorize` returns `null`, which
+crosses the proxy as an ordinary 200 and arrives as `{ signingIn: false }`.
 
 **There is no Prettier config in this repo.** Running `npx prettier --write` on a file
 therefore applies Prettier's defaults — double quotes and semicolons — and rewrites the

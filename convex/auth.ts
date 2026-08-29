@@ -13,6 +13,7 @@ import type { DataModel, Doc, Id } from './_generated/dataModel'
 import { Password } from '@convex-dev/auth/providers/Password'
 import { ResendOTPPasswordReset } from './email'
 import { verifyAdmission } from './lib/admission'
+import { refusalFrom } from '../src/lib/try/guest-refusal'
 import { guestRow } from './lib/pool'
 import { bump } from './lib/signals'
 import { dayKey } from '../src/lib/try/pool-day'
@@ -54,7 +55,18 @@ const Anonymous = ConvexCredentials<DataModel>({
       if (admission === null) throw new Error('Guest sign-in refused')
 
       ipHash = admission.ipHash
-      await ctx.runMutation(internal.guest.admitIp, { ipHash, day: dayKey() })
+      try {
+        await ctx.runMutation(internal.guest.admitIp, { ipHash, day: dayKey() })
+      } catch (error) {
+        // The cap is declined, not failed. Returning null makes this an
+        // ordinary sign-in that produced no tokens, which crosses the Next
+        // /api/auth proxy as a 200 and reaches the browser as
+        // `{ signingIn: false }`. Thrown instead, it arrives as a 400 whose
+        // message Convex has already masked and whose `data` the proxy drops —
+        // which is how /try came to show a capped office a generic error.
+        if (refusalFrom(error) === 'network-cap') return null
+        throw error
+      }
     } else if (!warnedNoSecret) {
       // Local development has no secret and no admit route to mint tokens
       // with; refusing would make /try unusable there. Said once per isolate

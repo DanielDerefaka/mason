@@ -4,7 +4,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 
-import { refusalFrom, type GuestRefusal } from '@/lib/try/guest-refusal'
+import { refusalFrom, refusalFromSignIn, type GuestRefusal } from '@/lib/try/guest-refusal'
 
 /**
  * Gives a signed-out visitor an anonymous session.
@@ -38,7 +38,11 @@ export const useGuestSession = () => {
         const { admission } = response.ok
           ? ((await response.json()) as { admission?: string | null })
           : { admission: null }
-        await signIn('anonymous', admission ? { admission } : {})
+        // A refusal arrives as a sign-in that produced no tokens rather than
+        // as a throw: the /api/auth proxy flattens a ConvexError into its
+        // masked message, so nothing thrown can carry a reason. See
+        // `src/lib/try/guest-refusal.ts`.
+        setRefusal(refusalFromSignIn(await signIn('anonymous', admission ? { admission } : {})))
       } catch (error) {
         setRefusal(refusalFrom(error))
       }
