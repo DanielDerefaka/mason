@@ -18,7 +18,7 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 22 live checks against a running server
+npm run smoke        # 24 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
 npm test             # 790 unit tests, no server needed
 npm run build        # always check the exit code, not the log
@@ -62,7 +62,10 @@ allow-list of real routes, and `isBypassRoute` in `src/lib/permissions.ts` decid
 them may be read without a session. Adding a page to the matcher alone makes the middleware
 run and then redirect it to `/auth/sign-in` — /faq did exactly that until a build caught it.
 `permissions.test.ts` now reads `src/app/(marketing)` from disk and requires every page in it
-to be bypassed.
+to be bypassed. It was briefly three lists: `scripts/smoke.mjs` kept its own hand-written
+page list, so /faq and /llms.txt shipped to production with no check on them. That script
+derives both from `src/app` now — the marketing group for pages, dotted directories for
+files — so a new page is covered by existing, and the count above moves on its own.
 
 **`FREE_WEEK` must never gate `/`.** It did: `(marketing)/page.tsx` called `redirect('/try')`
 whenever the flag was on, so setting it in production took the whole landing page off the
