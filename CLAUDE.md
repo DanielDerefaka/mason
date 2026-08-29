@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 24 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 794 unit tests, no server needed
+npm test             # 804 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -87,6 +87,15 @@ collide and three separate files got it wrong: one crashed `/try` on mount, one 
 instruction bar permanently disabled, one broke remix. Go through
 `shapesAdapter.getSelectors()` and hand it `state.shapes.entities`. `shapes.test.ts` scans
 `src/` for both mistakes.
+
+**A route that only displays something must not mint a guest session.** /try/editor and
+/try/preview both read a project out of their own URL, so they are useful only to the
+browser holding that session — and a browser without one owns no project either. They
+mounted `TryGuestGate` in its minting form anyway, so opening a preview link on a second
+screen signed that browser in as a new guest, spent one of the network's ten daily
+sessions, and rendered an empty page; at the cap it showed the refusal screen to someone
+looking at their own work. They pass `admit={false}` now and say where the work actually
+is. `guest-gate.test.ts` sweeps `src/app/try` so a new route there has to decide.
 
 **Convex masks a thrown `Error`, so a rule reads as a fault.** Anything that is not a
 `ConvexError` reaches the browser as `[Request ID: …] Server Error` — right for an internal

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { refusalFrom, refusalFromSignIn, type GuestRefusal } from '@/lib/try/guest-refusal'
 
 /**
- * Gives a signed-out visitor an anonymous session.
+ * Gives a signed-out visitor an anonymous session — when asked to.
  *
  * The admission ticket comes from /api/try/admit, which is where the daily
  * cap on new guests lives; the anonymous provider refuses a sign-in that
@@ -18,21 +18,29 @@ import { refusalFrom, refusalFromSignIn, type GuestRefusal } from '@/lib/try/gue
  * `ready` is simply "authenticated" — a real user who lands here is ready at
  * once and never sees the admit call.
  *
+ * `admit: false` uses a session and never creates one. /try/editor and
+ * /try/preview are that case: both read a project out of the URL, so they are
+ * useful only to the browser that already owns it, and a browser that does not
+ * have a session does not own a project either. Minting one there spent a slot
+ * of the network's daily allowance to render an empty room — and on a network
+ * already at the cap, it showed the refusal screen to somebody who had only
+ * opened their own preview on a second monitor.
+ *
  * A refusal comes back classified rather than as a bare boolean: hitting the
  * per-network cap and losing the request are the same failure to this hook and
  * opposite advice to the person reading the screen.
  */
-export const useGuestSession = () => {
+export const useGuestSession = ({ admit = true }: { admit?: boolean } = {}) => {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const { signIn } = useAuthActions()
   const attempted = useRef(false)
   const [refusal, setRefusal] = useState<GuestRefusal | null>(null)
 
   useEffect(() => {
-    if (isLoading || isAuthenticated || attempted.current) return
+    if (!admit || isLoading || isAuthenticated || attempted.current) return
     attempted.current = true
 
-    const admit = async () => {
+    const openSession = async () => {
       try {
         const response = await fetch('/api/try/admit', { method: 'POST' })
         const { admission } = response.ok
@@ -47,8 +55,13 @@ export const useGuestSession = () => {
         setRefusal(refusalFrom(error))
       }
     }
-    void admit()
-  }, [isLoading, isAuthenticated, signIn])
+    void openSession()
+  }, [admit, isLoading, isAuthenticated, signIn])
 
-  return { ready: isAuthenticated, refusal }
+  // Settled and signed out. Only reachable with `admit: false`, and it is not
+  // a failure — it is a page that belongs to a session this browser has not
+  // got, which is a different sentence from any refusal.
+  const sessionless = !admit && !isLoading && !isAuthenticated
+
+  return { ready: isAuthenticated, refusal, sessionless }
 }
