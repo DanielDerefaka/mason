@@ -49,7 +49,10 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
       { label: 'How it works', href: '/#approach' },
       { label: 'FAQs', href: '/#faqs' },
       { label: 'Download for Mac', href: '/download' },
-      { label: 'Start free', href: '/auth/sign-up' },
+      // The canvas, not the sign-up form. "Create account" in the next column
+      // is still there for anyone who wants one; this link is for the visitor
+      // who does not, and it used to send them to the same page.
+      { label: 'Try it free — no sign-up', href: '/try' },
     ],
   },
   {

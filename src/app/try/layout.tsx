@@ -8,10 +8,14 @@ export const metadata: Metadata = {
   title: 'Try Mason free',
   description:
     'Draw a frame, describe what goes in it, and generate working code. No account needed.',
-  // og:url is inherited from the root layout, where it is "/" — so without
-  // this a shared link to the canvas unfurls claiming to be the home page.
-  // The trial is the most-shared URL on the site; it should name itself.
-  openGraph: { url: '/try' },
+  // No `openGraph` block here on purpose, though there was one.
+  //
+  // It existed to override the root's og:url, which used to be the hardcoded
+  // "/" — so a shared canvas link unfurled claiming to be the home page. But a
+  // child's openGraph replaces the parent's whole object instead of merging
+  // into it, so setting one key here quietly dropped og:site_name and og:type
+  // from the most-shared page on the site. The root now resolves og:url from
+  // the pathname, which gets /try its own URL and keeps the rest.
 }
 
 /**

@@ -20,8 +20,17 @@ import { MobileNav } from "./MobileNav";
 export function SiteHeader({ freeWeek = false }: { freeWeek?: boolean }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const ctaHref = freeWeek ? "/try" : "/auth/sign-up";
-  const ctaLabel = freeWeek ? "Try free" : "Start free";
+  // The canvas, always — not only during the free week. Outside it this said
+  // "Start free" and went to /auth/sign-up, so the header contradicted the hero
+  // beside it: one offered the product, the other asked for an account first.
+  // /try is public whether or not the week is on.
+  //
+  // "Try it free" rather than the hero's "Try it free — no sign-up": this pill
+  // shares a single non-wrapping row with six nav links and Sign in, and the
+  // longer copy is what pushes that row into the logo at 1024px. The promise is
+  // made in full where there is room for it — the hero and the footer.
+  const ctaHref = "/try";
+  const ctaLabel = "Try it free";
 
   const [activeSection, setActiveSection] = useState<string>("hero");
   const [menuOpen, setMenuOpen] = useState(false);

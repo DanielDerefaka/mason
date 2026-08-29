@@ -26,7 +26,50 @@ describe('the site tells a crawler who it is', () => {
     // Without metadataBase an og:image resolves to a path, and a crawler that
     // is handed a path silently renders no image at all.
     expect(layout).toMatch(/metadataBase: new URL\(/)
-    expect(layout).toMatch(/https:\/\/sketchmason\.com/)
+  })
+
+  /**
+   * The regression this exists for: metadataBase was the apex, and the apex
+   * 308s to www. So every canonical and every og:url named a URL that
+   * redirects — a canonical that redirects is ignored, and the crawler indexes
+   * whatever it was pointed away from.
+   *
+   * The three files move together or not at all. If Vercel's primary domain is
+   * ever flipped back to the apex, this test is the thing that says so.
+   */
+  it('bases every resolved URL on the host that answers 200', () => {
+    expect(layout).toMatch(/metadataBase: new URL\("https:\/\/www\.sketchmason\.com"\)/)
+  })
+
+  it.each([
+    ['src/app/robots.ts', 'the sitemap reference'],
+    ['src/app/sitemap.ts', 'every entry'],
+  ])('names the same host in %s, for %s', (path) => {
+    const source = read(path)
+    expect(source).toMatch(/https:\/\/www\.sketchmason\.com/)
+    // The apex, unprefixed — the redirect it would otherwise point at. Not
+    // asserted against layout.tsx, which carries the Datafast `data-domain`:
+    // that is an analytics site key rather than a URL anything fetches, and
+    // rewriting it would silently split the dashboard's history in two.
+    expect(source).not.toMatch(/(?<!www\.)\bsketchmason\.com/)
+  })
+
+  /**
+   * "./" resolves against the current pathname rather than metadataBase —
+   * `resolveRelativeUrl` posix-resolves it, and both alternates.canonical and
+   * openGraph.url go through it. One line each, and every route gets its own.
+   * Hardcoding a string per page is a list someone has to remember, and the
+   * page nobody remembers is the one that ships claiming to be the home page.
+   */
+  it('resolves a canonical per route rather than per page author', () => {
+    expect(layout).toMatch(/alternates: \{\s*canonical: "\.\/",/)
+  })
+
+  it('resolves og:url the same way', () => {
+    expect(layout).toMatch(/url: "\.\/",/)
+    // The old hardcoded root url, which every descendant inherited: /explore,
+    // /blog and /download all unfurled as the home page because of this line.
+    expect(layout).not.toMatch(/url: "\/",/)
   })
 
   it('titles child pages through one template', () => {
@@ -68,6 +111,30 @@ describe('the site tells a crawler who it is', () => {
     // pool can change and a crawler will keep quoting long after it has.
     expect(tryLayout).not.toMatch(/\bone free generation\b/)
   })
+
+  /**
+   * The regression this exists for: /try declared `openGraph: { url: '/try' }`
+   * to override the root's hardcoded "/". A child's openGraph *replaces* the
+   * parent's object rather than merging into it, so one key set here dropped
+   * og:site_name and og:type from the most-shared page on the site — live, for
+   * a day. Inheriting is both simpler and the only thing that keeps them.
+   */
+  it('lets the canvas inherit the site card instead of restating one key of it', () => {
+    expect(read('src/app/try/layout.tsx')).not.toMatch(/openGraph: \{/)
+  })
+
+  /**
+   * Every public page needs a description of its own, because the fallback is
+   * the site's — and three pages sharing one sentence under three titles is
+   * what the search result and the share card both end up showing.
+   */
+  it.each([
+    'src/app/(marketing)/explore/page.tsx',
+    'src/app/(marketing)/blog/page.tsx',
+    'src/app/(marketing)/download/page.tsx',
+  ])('%s describes itself', (path) => {
+    expect(read(path)).toMatch(/description:/)
+  })
 })
 
 describe('robots.txt', () => {
@@ -78,7 +145,7 @@ describe('robots.txt', () => {
   })
 
   it('points at the sitemap', () => {
-    expect(rules.sitemap).toBe('https://sketchmason.com/sitemap.xml')
+    expect(rules.sitemap).toBe('https://www.sketchmason.com/sitemap.xml')
   })
 
   it.each(['/api/', '/auth/', '/dashboard/', '/billing', '/settings'])(
@@ -95,19 +162,19 @@ describe('sitemap.xml', () => {
   const urls = entries.map((entry) => entry.url)
 
   it('lists the home page and the free canvas', () => {
-    expect(urls).toContain('https://sketchmason.com/')
-    expect(urls).toContain('https://sketchmason.com/try')
+    expect(urls).toContain('https://www.sketchmason.com/')
+    expect(urls).toContain('https://www.sketchmason.com/try')
   })
 
   it('lists every marketing page that exists', () => {
     for (const path of ['/explore', '/download', '/blog', '/about-us']) {
-      expect(urls).toContain(`https://sketchmason.com${path}`)
+      expect(urls).toContain(`https://www.sketchmason.com${path}`)
     }
   })
 
   it('lists one entry per written post, from the same source /blog renders', () => {
     for (const post of POSTS) {
-      expect(urls).toContain(`https://sketchmason.com/blog/${post.slug}`)
+      expect(urls).toContain(`https://www.sketchmason.com/blog/${post.slug}`)
     }
   })
 
@@ -118,7 +185,7 @@ describe('sitemap.xml', () => {
   })
 
   it('gives every entry an absolute URL', () => {
-    for (const url of urls) expect(url.startsWith('https://sketchmason.com/')).toBe(true)
+    for (const url of urls) expect(url.startsWith('https://www.sketchmason.com/')).toBe(true)
   })
 })
 
@@ -138,6 +205,48 @@ describe('the home page offers the canvas before the sign-up form', () => {
     expect(hero).toMatch(/pill pill-primary/)
     expect(hero).toMatch(/pill pill-secondary/)
     expect(hero.indexOf('pill-primary')).toBeLessThan(hero.indexOf('pill-secondary'))
+  })
+})
+
+describe('the chrome offers the canvas on every page, not just the home page', () => {
+  /**
+   * The regression this exists for: the hero was pointed at /try, and the
+   * header and footer were left behind. So the page said "no sign-up" in the
+   * middle and "Start free → /auth/sign-up" at the top and bottom of the same
+   * screen, and on every page that is not the home page the only call to
+   * action was the sign-up form.
+   *
+   * Both were `freeWeek ? '/try' : '/auth/sign-up'`, which is the subtler half:
+   * they were right during the free week and wrong for the rest of the year,
+   * and the free week is the state nobody is looking at the site in.
+   */
+  it.each([
+    ['header', 'src/components/marketing/layout/SiteHeader.tsx'],
+    ['mobile nav', 'src/components/marketing/layout/MobileNav.tsx'],
+    ['footer', 'src/components/marketing/layout/SiteFooter.tsx'],
+  ])('the %s sends "try" at the canvas whatever the week is doing', (_name, path) => {
+    const source = read(path)
+    expect(source).toMatch(/"\/try"/)
+    expect(source).not.toMatch(/freeWeek \? "\/try" : "\/auth\/sign-up"/)
+  })
+
+  it('offers the canvas from the footer column too', () => {
+    expect(read('src/lib/marketing-nav.ts')).toMatch(
+      /\{ label: 'Try it free — no sign-up', href: '\/try' \}/,
+    )
+  })
+
+  /**
+   * Sign-in stays in the header outside the free week. The guard around it is
+   * deliberate and stays: while the week is on, `src/app/auth/layout.tsx`
+   * redirects every auth screen to /try, and a link that bounces is worse than
+   * no link. Removing the guard would put a dead link in the header on the one
+   * week of the year the most people see it.
+   */
+  it('keeps a way in for people who already have an account', () => {
+    const header = read('src/components/marketing/layout/SiteHeader.tsx')
+    expect(header).toMatch(/href="\/auth\/sign-in"/)
+    expect(header).toMatch(/!freeWeek &&/)
   })
 })
 

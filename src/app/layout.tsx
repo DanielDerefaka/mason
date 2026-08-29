@@ -48,18 +48,20 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  // Open Graph images must be absolute URLs, and a share card is the first
-  // place a relative one silently fails: the crawler sees a path and no host.
-  // `||`, not `??`: the variable is defined-but-empty on a deployment where
-  // someone cleared it, and `new URL("")` throws — which is every page of the
-  // site failing to render, from a metadata line.
-  // The canonical domain, hardcoded. This read NEXT_PUBLIC_APP_URL first, and
-  // that variable is whatever the current tunnel or preview happens to be — a
-  // local run advertised its ngrok host as og:url, and a stale value on the
-  // deployment would point every share card at a URL nobody else can open.
-  // Polar still reads it (api/polar/checkout), where following the running
-  // origin is the correct behaviour; a social card is the opposite case.
-  metadataBase: new URL("https://sketchmason.com"),
+  // The canonical host, hardcoded, and **www** on purpose: the apex 308s here,
+  // so an og:url or a canonical on the bare domain names a URL that redirects.
+  // A canonical that redirects is the one thing a canonical may not be — it
+  // tells a crawler "index this", and the crawler finds a 308 and indexes the
+  // other one anyway. Every share card was also costing a round trip.
+  //
+  // This read NEXT_PUBLIC_APP_URL before that: whatever tunnel or preview
+  // happens to be running, which locally meant og:url advertised an ngrok
+  // host. Polar still reads it (api/polar/checkout), where following the
+  // running origin is correct; a social card is the opposite case.
+  //
+  // If Vercel's primary domain is ever flipped to the apex, this line, robots.ts
+  // and sitemap.ts are the three places that have to move together.
+  metadataBase: new URL("https://www.sketchmason.com"),
   // `template` is why no page below sets its own "| Mason" suffix any more:
   // they did, and a template would have made every title read "Blog | Mason ·
   // Mason". The home page opts out with `absolute`, since its title already
@@ -70,13 +72,32 @@ export const metadata: Metadata = {
   },
   description:
     "Draw your UI, get working code. Mason turns rough sketches into clean Tailwind components you own.",
+  // "./" resolves against the *current* pathname, not against metadataBase —
+  // `resolveRelativeUrl` in next/dist/lib/metadata/resolvers/resolve-url.js
+  // posix-resolves it — so one line here gives every route its own canonical.
+  // The alternative is a hardcoded string per page, which is a list that has
+  // to be remembered, and the page nobody remembers is the one that ships
+  // pointing at the home page.
+  alternates: {
+    canonical: "./",
+  },
   // og:title and og:description are left to fall back to the two above, here
   // and on every child page: stating them twice is how the two drift apart,
   // and a page that sets a title then forgets its card is the common failure.
   openGraph: {
     siteName: "Mason",
     type: "website",
-    url: "/",
+    // Same "./" trick, and the reason /explore, /blog and /download stopped
+    // claiming to be the home page: this was "/", and openGraph.url is
+    // inherited by every descendant, so every share card on the site named
+    // the same URL.
+    //
+    // Which is also why no page below should declare `openGraph` merely to
+    // set a url. A child's openGraph *replaces* this object rather than
+    // merging into it — /try did exactly that and silently lost og:site_name
+    // and og:type — so a page that wants its own card must restate the lot.
+    // Inheriting is the safer default and now the correct one.
+    url: "./",
   },
   // The card image itself comes from `app/opengraph-image.tsx`, by file
   // convention, and is inherited by every route that does not define its own —
