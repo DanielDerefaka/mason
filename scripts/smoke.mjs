@@ -286,6 +286,41 @@ const main = async () => {
     )
   }
 
+  // The icons a crawler picks from. Google takes the .ico over the SVG and
+  // wants a layer of at least 48 in it; iOS and iMessage take the apple icon.
+  // The regression: the mark went into icon.svg, favicon.ico stayed
+  // create-next-app's triangle, and the brand results wore the triangle.
+  console.log('\nThe icons carry the mark at the sizes that get picked')
+  {
+    const response = await get('/favicon.ico', 'follow')
+    const bytes = new DataView(await response.arrayBuffer())
+    const layers = []
+    if (response.status === 200 && bytes.byteLength >= 6 && bytes.getUint16(2, true) === 1) {
+      const count = bytes.getUint16(4, true)
+      for (let index = 0; index < count && bytes.byteLength >= 6 + 16 * (index + 1); index++) {
+        layers.push(bytes.getUint8(6 + 16 * index) || 256)
+      }
+    }
+    const complete = [16, 32, 48].every((size) => layers.includes(size))
+    record(
+      '/favicon.ico carries 16, 32 and 48',
+      complete,
+      complete ? '' : response.status === 200 ? `layers: ${layers.join(', ') || 'none'}` : `status ${response.status}`,
+    )
+  }
+  {
+    const response = await get('/apple-icon.png', 'follow')
+    const bytes = new DataView(await response.arrayBuffer())
+    // A PNG's first chunk is IHDR, so width and height sit at fixed offsets.
+    const png = response.status === 200 && bytes.byteLength >= 24 && bytes.getUint32(0) === 0x89504e47
+    const size = png ? `${bytes.getUint32(16)}×${bytes.getUint32(20)}` : ''
+    record(
+      '/apple-icon.png is 180×180',
+      size === '180×180',
+      size === '180×180' ? '' : png ? `is ${size}` : `status ${response.status}`,
+    )
+  }
+
   const failed = results.filter((result) => !result.ok)
   console.log(
     `\n${results.length - failed.length}/${results.length} passed` +

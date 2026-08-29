@@ -18,9 +18,10 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 28 live checks against a running server
-npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 850 unit tests, no server needed
+npm run smoke        # 29 live checks against a running server
+npm run smoke:browser # 4 pages in a real headless Chrome, for what smoke cannot see
+npm test             # 855 unit tests, no server needed
+npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -135,6 +136,16 @@ integration `signIn` posts to /api/auth, and `convexAuthNextjsMiddleware`'s prox
 only `error.message`, so `data` is dropped and the message is the masked one. A refusal the
 browser must act on has to travel as an absence instead: `authorize` returns `null`, which
 crosses the proxy as an ordinary 200 and arrives as `{ signingIn: false }`.
+
+**`app/icon.svg` is not the icon Google shows.** Next serves it beside `app/favicon.ico`, and
+Google's favicon picker takes the .ico. That file was still create-next-app's — a white
+triangle in a black circle — for three weeks after the mark went into the SVG, so the brand
+results wore the starter's icon; nobody opens a .ico, so nothing noticed until a search did.
+Both raster icons are derived from the SVG now: `npm run icons` writes favicon.ico (16, 32
+and 48 — Google wants a 48) and apple-icon.png (180, square to the edge, because iOS masks it
+and paints black under transparency), and `icons.test.ts` renders the SVG and fails if either
+file drifts from it. Google re-crawls favicons on its own schedule, so the results lag a fix
+here by days. That is latency, not a failed fix.
 
 **There is no Prettier config in this repo.** Running `npx prettier --write` on a file
 therefore applies Prettier's defaults — double quotes and semicolons — and rewrites the
