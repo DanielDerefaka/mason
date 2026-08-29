@@ -126,6 +126,14 @@ export const TryGuestGate = ({
    * during the free week `src/app/auth/layout.tsx` sends every /auth screen
    * back to /try, so a "make an account" link here would walk a refused
    * visitor into a circle.
+   *
+   * What it does say is the one thing that is still true: a shared design
+   * opens anyway. `/s/<token>` is bypassed by the middleware and
+   * `getSharedDesign` is the only unauthenticated function in convex/shares.ts,
+   * so it needs no session and the cap cannot touch it. Without that line the
+   * screen reads as "Mason is shut", and somebody who followed a friend's link
+   * to look at a design believes they have been locked out of something that
+   * would in fact have opened.
    */
   if (refusal === 'network-cap') {
     return (
@@ -136,6 +144,10 @@ export const TryGuestGate = ({
           Guest sessions are counted per network, and this one — an office or a campus, most
           likely — has opened its share for the day. It starts again at midnight UTC, so come back
           tomorrow and the canvas is yours.
+        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          A design someone has shared with you is unaffected: a shared link needs no session, so it
+          opens now.
         </p>
       </div>
     )
