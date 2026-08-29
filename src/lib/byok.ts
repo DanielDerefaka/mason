@@ -109,7 +109,7 @@ export const describeRefusal = (status: number, body = ''): string => {
   // otherwise read "Anthropic refused the request (400)", which tells the
   // person holding the key nothing about the one thing they can do about it.
   if (NEEDS_WORKSPACE.test(body)) {
-    return 'That key belongs to your Anthropic account rather than a workspace — add your workspace ID next to it, or use a key made inside a workspace'
+    return 'That key belongs to your Anthropic account rather than a workspace. Add your workspace ID next to it, or use a key made inside a workspace'
   }
   if (status === 401) return 'Your Anthropic key was rejected'
   if (status === 403) return 'Your Anthropic key is not allowed to use this model'
@@ -117,8 +117,8 @@ export const describeRefusal = (status: number, body = ''): string => {
     return 'Your Anthropic account has no credit'
   }
   if (status === 404) return 'Your Anthropic account cannot use this model'
-  if (status === 429) return 'Your Anthropic account is rate limited — try again in a moment'
-  if (status === 529) return 'Anthropic is overloaded — try again in a moment'
+  if (status === 429) return 'Your Anthropic account is rate limited. Try again in a moment'
+  if (status === 529) return 'Anthropic is overloaded. Try again in a moment'
   return `Anthropic refused the request (${status})`
 }
 

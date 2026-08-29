@@ -17,7 +17,7 @@ type ValueEntry = {
 const VALUES: ValueEntry[] = [
   {
     title: "Structure First",
-    body: "A layout is a decision, not a guess. The sketch you draw is what decides the screen — the model fills it in, it does not invent it.",
+    body: "A layout is a decision, not a guess. The sketch you draw is what decides the screen. The model fills it in rather than inventing it.",
   },
   {
     title: "Systems, Not Screens",
@@ -114,14 +114,14 @@ export function AboutContent() {
                 too; marketing-about.test.ts holds the two together. It is set
                 here by hand only so the highlights can be applied. */}
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              <Hl>SketchMason</Hl> — Mason for short — turns rough sketches of rectangles and
+              <Hl>SketchMason</Hl>, or Mason for short, turns rough sketches of rectangles and
               boxes into <Hl>finished user interfaces</Hl>, design systems, and flows. A frame drawn
               on the canvas becomes a real screen, built from a design system read out of
               your own mood board.
             </p>
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
               It starts with a mood board and ends with something you can move, resize and
-              argue with. No prompt engineering, no blank page — you draw the shape you
+              argue with. No prompt engineering, no blank page. You draw the shape you
               already have in your head, and the parts that are <Hl>tedious rather than
               creative</Hl> get done for you.
             </p>
@@ -153,7 +153,7 @@ export function AboutContent() {
           <p className="text-muted-foreground mx-auto mt-[18px] max-w-[620px] text-center font-sans text-[17px] leading-[28px]">
             Most tools ask you to describe a screen in a sentence. We think you should
             draw it. A sketch carries layout, proportion and reading order in a way no
-            paragraph does — so we read the shape you made and let the words do the part
+            paragraph does, so we read the shape you made and let the words do the part
             they are good at, which is saying what a thing means.
           </p>
         </div>
@@ -239,7 +239,7 @@ export function AboutContent() {
         {/* 6 — Closing line */}
         <p className="text-muted-foreground mx-auto mt-[96px] max-w-[620px] text-center font-sans text-[17px] leading-[28px] md:mt-[140px]">
           Mason was built in the open, chapter by chapter, and the parts that
-          were hard are written up on the <Hl>blog</Hl> — why a labelled box beats a better
+          were hard are written up on the <Hl>blog</Hl>: why a labelled box beats a better
           prompt, why a palette is a set of constraints, and what it takes to stream a
           design into existence without it flickering.
         </p>

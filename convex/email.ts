@@ -78,7 +78,7 @@ export const ResendOTPPasswordReset = ResendProvider({
       'Reset your password',
       'Enter this code to choose a new password for your Mason account.',
       token,
-      'It expires in ten minutes. If you did not ask for this, your account is fine — ignore this email.',
+      'It expires in ten minutes. If you did not ask for this, your account is fine. Ignore this email.',
     )
   },
 })

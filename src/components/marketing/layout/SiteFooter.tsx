@@ -81,7 +81,7 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
               />
               <button
                 type="submit"
-                aria-label="Try it free — no sign-up"
+                aria-label="Try it free, no sign-up"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:-translate-y-0.5"
               >
                 <ArrowRightIcon className="h-4 w-4" />

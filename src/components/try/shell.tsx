@@ -250,7 +250,7 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
             instruction: frame?.instruction || undefined,
             sketchStorageId: sketchStorageId ?? undefined,
           })
-          toast.success("Published to Explore — you can hide it from the design's menu")
+          toast.success('Published to Explore', { description: "You can hide it from the design's menu" })
         } catch {
           // The design is on the canvas either way; Explore is a bonus.
         }
@@ -312,7 +312,7 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
             )
           }
           recordRemix({ id: item.id }).catch(() => {})
-          toast.success('Sketch copied to your canvas — press Generate on the frame')
+          toast.success('Sketch copied to your canvas', { description: 'Press Generate on the frame' })
         } catch {
           toast.error('Could not copy that sketch')
         } finally {

@@ -50,7 +50,7 @@ export const HERO = {
    * want one.
    */
   cta: {
-    primary: { label: 'Try it free — no sign-up', href: '/try' },
+    primary: { label: 'Try it free, no sign-up', href: '/try' },
     secondary: { label: 'Create an account' },
   },
   // There was a third link under the checklist — "Also on the desktop ·
@@ -70,7 +70,7 @@ export const INTRODUCTION = {
   eyebrow: 'Why sketches',
   /** Read as one paragraph; the manifesto brightens it word by word on scroll. */
   statement:
-    'Sketches, not prompts. Systems, not screenshots. SketchMason reads the shape you drew and builds the screen it implies, using a design system taken from your own mood board — so the fifth screen still looks like the first, and the flow around it looks like both.',
+    'Sketches, not prompts. Systems, not screenshots. SketchMason reads the shape you drew and builds the screen it implies, using a design system taken from your own mood board, so the fifth screen still looks like the first, and the flow around it looks like both.',
   primaryCta: { label: 'About us', href: '/about-us' },
   secondaryCta: { label: 'Read the blog', href: '/blog' },
 }
@@ -111,7 +111,7 @@ export const SERVICES: ServiceCard[] = [
   },
   {
     title: 'Inspiration references',
-    description: 'Up to six images per project steer palette, density and type — never copied in.',
+    description: 'Up to six images per project steer palette, density and type. They are never copied in.',
     icon: 'plane',
   },
   {
@@ -173,7 +173,7 @@ export const APPROACH: ApproachStep[] = [
     body: [
       { text: 'Rectangles, circles and a few labels. The sketch decides ' },
       { text: 'layout and reading order', bold: true },
-      { text: ' — you are describing structure, not drawing pixels.' },
+      { text: '. You are describing structure, not drawing pixels.' },
     ],
     visual: 'phones',
   },
@@ -211,7 +211,7 @@ export const APPROACH: ApproachStep[] = [
     title: 'Nothing to lose',
     headline: ['Every stroke kept,', 'every step reversible.'],
     body: [
-      { text: 'Every stroke autosaves and the whole history is yours — a drag is ' },
+      { text: 'Every stroke autosaves and the whole history is yours. A drag is ' },
       { text: 'one undo step', bold: true },
       { text: ', not fifty.' },
     ],
@@ -221,13 +221,13 @@ export const APPROACH: ApproachStep[] = [
 
 /** Rows that scroll inside the flow-generation table mock. */
 export const CMS_ROWS = [
-  { title: 'Pricing — plans and comparison', date: '58s' },
-  { title: 'Checkout — payment step', date: '61s' },
-  { title: 'Confirmation — order received', date: '47s' },
-  { title: 'Dashboard — account overview', date: '66s' },
-  { title: 'Settings — billing and team', date: '52s' },
-  { title: 'Empty state — no projects yet', date: '39s' },
-  { title: 'All handoffs — review queue', date: '71s' },
+  { title: 'Pricing · plans and comparison', date: '58s' },
+  { title: 'Checkout · payment step', date: '61s' },
+  { title: 'Confirmation · order received', date: '47s' },
+  { title: 'Dashboard · account overview', date: '66s' },
+  { title: 'Settings · billing and team', date: '52s' },
+  { title: 'Empty state · no projects yet', date: '39s' },
+  { title: 'All handoffs · review queue', date: '71s' },
 ]
 
 /* ------------------------------------------------------------------ *
@@ -242,9 +242,9 @@ export const CASE_IN_POINT = {
   headline: { lead: 'Six rectangles in.', emphasis: 'A landing page out.' },
   body: 'A header box, a hero box with two smaller boxes inside it, a row of three cards and a footer. That was the whole sketch. The page on the right is what came back, built from a design system read off two reference images.',
   points: [
-    { lead: 'Layout from the sketch', rest: ' — reading order and hierarchy exactly as drawn.' },
-    { lead: 'Palette from the board', rest: ' — colour and type taken from the references.' },
-    { lead: 'Ready to grow', rest: ' — every later screen shares the same shell.' },
+    { lead: 'Layout from the sketch', rest: ': reading order and hierarchy exactly as drawn.' },
+    { lead: 'Palette from the board', rest: ': colour and type taken from the references.' },
+    { lead: 'Ready to grow', rest: ': every later screen shares the same shell.' },
   ],
   cta: { label: 'Try it on your own sketch', href: '/auth/sign-up' },
   images: {
@@ -273,7 +273,7 @@ export const CASE_IN_POINT = {
 export const CREDITS = {
   eyebrow: 'Credits',
   headline: { lead: 'Pay for generations.', emphasis: 'Everything else is free.' },
-  quote: 'A credit is one generation — a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing and everything else on the canvas costs nothing.',
+  quote: 'A credit is one generation: a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing and everything else on the canvas costs nothing.',
   rows: [
     { label: 'Style guide from a mood board', value: '1 credit' },
     { label: 'Screen from a sketch', value: '1 credit' },
@@ -292,7 +292,7 @@ export const FAQS: FaqItem[] = [
   {
     question: '1. Do I need to be able to draw?',
     answer:
-      'No. Boxes are enough. Writing a word or two inside them helps a great deal though — a labelled rectangle is an instruction, an unlabelled one is a guess.',
+      'No. Boxes are enough. Writing a word or two inside them helps a great deal, though. A labelled rectangle is an instruction, an unlabelled one is a guess.',
   },
   {
     question: '2. What counts as a credit?',
@@ -307,7 +307,7 @@ export const FAQS: FaqItem[] = [
   {
     question: '4. Can I use my own reference images?',
     answer:
-      'Yes, up to six per project. They steer palette, density and type personality. They are never copied into the design itself — your sketch still decides the layout.',
+      'Yes, up to six per project. They steer palette, density and type personality. They are never copied into the design itself. Your sketch still decides the layout.',
   },
   {
     question: '5. What comes out at the end?',
@@ -325,5 +325,5 @@ export const CTA = {
   // which contradicted the header pill on the same page and the answer on /faq
   // that says no account is needed. The full promise is made here — unlike the
   // header's shortened "Try it free", this pill has a row to itself.
-  primaryCta: { label: 'Try it free — no sign-up', href: '/try' },
+  primaryCta: { label: 'Try it free, no sign-up', href: '/try' },
 }

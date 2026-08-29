@@ -17,4 +17,4 @@
  * page arrives as a client reference, not as a string.
  */
 export const ABOUT_DEFINITION =
-  'SketchMason — Mason for short — turns rough sketches of rectangles and boxes into finished user interfaces, design systems, and flows.'
+  'SketchMason, or Mason for short, turns rough sketches of rectangles and boxes into finished user interfaces, design systems, and flows.'

@@ -105,7 +105,7 @@ export const useShareOnX = ({
         } catch {
           // Clipboard refused too; the toast still names the link.
         }
-        toast('Pop-up blocked — the share link is on your clipboard', { description: url })
+        toast('Pop-up blocked, so the share link is on your clipboard', { description: url })
       }
       void attachPreview(token, latest.id)
       if (earnsBonus) {

@@ -81,7 +81,7 @@ export const EmailGateDialog = ({
         <DialogHeader className="border-b border-white/10 px-5 py-4">
           <DialogTitle className="text-base">Where should we send your work?</DialogTitle>
           <DialogDescription className="text-xs">
-            No account, no password — just an email so we can tell you when Mason opens
+            No account, no password. Just an email so we can tell you when Mason opens
             properly. We only ask this once.
           </DialogDescription>
         </DialogHeader>

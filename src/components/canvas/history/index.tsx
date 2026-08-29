@@ -127,7 +127,7 @@ export const VersionHistory = () => {
           ) : versions.length === 0 ? (
             <p className="text-muted-foreground p-4 text-xs leading-relaxed">
               No versions yet. Save one before a big change and you can always come
-              back to it — undo only lasts as long as this tab.
+              back to it. Undo only lasts as long as this tab.
             </p>
           ) : (
             versions.map((version) => (

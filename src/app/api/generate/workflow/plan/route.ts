@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const limit = await checkRateLimit()
     if (!limit.ok) {
       return NextResponse.json(
-        { message: `Too many requests — try again in ${limit.retryAfter}s` },
+        { message: `Too many requests. Try again in ${limit.retryAfter}s` },
         { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
       )
     }

@@ -61,7 +61,7 @@ describe('a guest cannot make sketches without end', () => {
   })
 
   it('says what to do about the refusal', () => {
-    expect(source).toMatch(/keep your work with an account/)
+    expect(source).toMatch(/Keep your work with an account/)
   })
 })
 

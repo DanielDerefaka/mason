@@ -122,7 +122,7 @@ describe('the site tells a crawler who it is', () => {
   })
 
   it('titles child pages through one template, with the public name as the suffix', () => {
-    expect(layout).toMatch(/default: "SketchMason — draw the shape, get the product"/)
+    expect(layout).toMatch(/default: "SketchMason: draw the shape, get the product"/)
     expect(layout).toMatch(/template: "%s \| SketchMason"/)
   })
 
@@ -318,7 +318,7 @@ describe('the home page offers the canvas before the sign-up form', () => {
    */
   it('puts /try in the hero as the primary action', () => {
     const content = read('src/lib/marketing-content.ts')
-    expect(content).toMatch(/primary: \{ label: 'Try it free — no sign-up', href: '\/try' \}/)
+    expect(content).toMatch(/primary: \{ label: 'Try it free, no sign-up', href: '\/try' \}/)
   })
 
   it('renders both pills, the canvas one first', () => {
@@ -353,7 +353,7 @@ describe('the chrome offers the canvas on every page, not just the home page', (
 
   it('offers the canvas from the footer column too', () => {
     expect(read('src/lib/marketing-nav.ts')).toMatch(
-      /\{ label: 'Try it free — no sign-up', href: '\/try' \}/,
+      /\{ label: 'Try it free, no sign-up', href: '\/try' \}/,
     )
   })
 
@@ -413,7 +413,7 @@ describe('/llms.txt', () => {
     expect(text.startsWith('# SketchMason')).toBe(true)
     // Both names in the first sentence: a model that reads this is the thing
     // most likely to be asked "what is Mason?" without the prefix.
-    expect(text).toMatch(/^SketchMason — Mason for short — is an AI design tool/m)
+    expect(text).toMatch(/^SketchMason, or Mason for short, is an AI design tool/m)
     expect(text).toMatch(/turns a hand-drawn\s+interface sketch into a finished, consistent UI design/)
   })
 
@@ -734,5 +734,35 @@ describe('the public surface stays in its category', () => {
       const source = withoutComments(readFileSync(path, 'utf8'))
       expect(source, path).not.toMatch(/Next\.js|project starter/i)
     }
+  })
+
+  /**
+   * The founder read the site on 2026-08-29 and saw the em dashes before the
+   * words: "it makes the site look AI written". There were 162 on the public
+   * pages that day, one of them in the pill every page ends on. A comma, a
+   * colon or a full stop says the same thing, so copy a visitor reads carries
+   * none. The sweep is the category guard's surface plus the blog posts, the
+   * /try screens and the strings behind them, comments stripped first so a
+   * note may still use one. A lone '—' is a value placeholder (an unset phone
+   * number, a count still loading), not prose, and `PENDING_CONFIRMATION` is
+   * never rendered; both are let through.
+   */
+  it('punctuates copy like a person: no em dash a visitor can read', () => {
+    const files = new Set([
+      ...surface,
+      ...walk(join(process.cwd(), 'src/content')),
+      ...walk(join(process.cwd(), 'src/components/try')),
+      ...walk(join(process.cwd(), 'src/lib/try')),
+      ...walk(join(APP_DIR, 'try')),
+      join(process.cwd(), 'src/lib/byok.ts'),
+    ])
+    const offenders = [...files].flatMap((path) =>
+      withoutComments(readFileSync(path, 'utf8'))
+        .split('\n')
+        .filter((line) => !line.includes('FOUNDER CONFIRM'))
+        .filter((line) => /—|\s–\s/.test(line.replace(/'—'/g, '')))
+        .map((line) => `${path.replace(`${process.cwd()}/`, '')}: ${line.trim()}`),
+    )
+    expect(offenders).toEqual([])
   })
 })

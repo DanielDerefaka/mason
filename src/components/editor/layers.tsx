@@ -171,8 +171,8 @@ export const Layers = ({
                 )}
                 title={
                   row.component
-                    ? `${row.label} — an instance of ${row.component}`
-                    : `${row.label} — double-click to rename`
+                    ? `${row.label} (an instance of ${row.component})`
+                    : `${row.label} (double-click to rename)`
                 }
               >
                 {/* A component reads differently from a group, and the tree is

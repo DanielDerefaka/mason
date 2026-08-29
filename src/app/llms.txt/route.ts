@@ -26,7 +26,7 @@ import { SITE_URL } from '@/lib/site'
  */
 const BODY = `# SketchMason
 
-SketchMason — Mason for short — is an AI design tool that turns a hand-drawn
+SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn
 interface sketch into a finished, consistent UI design. You draw a rough frame
 on a canvas, describe what belongs in it, and SketchMason generates the screen
 against a design system read from your own mood board. A design exports as a

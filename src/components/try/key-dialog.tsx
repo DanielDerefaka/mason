@@ -47,12 +47,12 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
   const save = async () => {
     const key = value.trim()
     if (!looksLikeAnthropicKey(key)) {
-      setError('That does not look like an Anthropic key — they start with sk-ant-')
+      setError('That does not look like an Anthropic key. They start with sk-ant-')
       return
     }
     const id = workspace.trim()
     if (id && !looksLikeWorkspaceId(id)) {
-      setError('That does not look like a workspace ID — copy it from the Console URL')
+      setError('That does not look like a workspace ID. Copy it from the Console URL')
       return
     }
     // No callback back to the shell: `setByokKey` announces the change, and
@@ -61,7 +61,7 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
     setValue('')
     setError(null)
     onOpenChange(false)
-    toast.success('Key added — your generations now use it')
+    toast.success('Key added', { description: 'Your generations now use it' })
     try {
       await markKeyAdded({})
     } catch {
@@ -91,7 +91,7 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
             {stored ? 'Your Anthropic key' : 'Add your Anthropic key'}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Used only for your own generations, sent straight to Anthropic, never stored — it
+            Used only for your own generations, sent straight to Anthropic and never stored. It
             lives in this tab and is gone when you close it.
           </DialogDescription>
         </DialogHeader>
@@ -140,7 +140,7 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
               bug in Mason. Saying where to find it is cheaper than the
               support conversation. */}
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Leave blank unless a generation comes back asking for a workspace ID — it is the
+            Leave blank unless a generation comes back asking for a workspace ID. It is the
             <span className="font-mono"> wrkspc_… </span>
             part of your Anthropic Console URL.
           </p>

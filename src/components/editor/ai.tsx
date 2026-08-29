@@ -84,7 +84,7 @@ export const AiPanel = ({
       <p className="text-muted-foreground text-[11px] leading-relaxed">
         {label === 'whole page' ? (
           <>
-            Nothing selected — click a part of the design, or type{' '}
+            Nothing selected. Click a part of the design, or type{' '}
             <span className="text-foreground">/</span> to pick a section.
           </>
         ) : (

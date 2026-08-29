@@ -101,7 +101,7 @@ export const TryGuestGate = ({
         <p className="text-base font-medium">This design is open in another browser</p>
         <p className="max-w-sm text-sm text-muted-foreground">
           Work made without an account stays in the browser it was drawn in, so this link only
-          opens there. To show it on another screen, share it from the canvas — a shared link
+          opens there. To show it on another screen, share it from the canvas. A shared link
           opens anywhere, with no account and nothing to sign in to.
         </p>
         <Button asChild size="sm" className="rounded-full px-4">
@@ -141,8 +141,8 @@ export const TryGuestGate = ({
         <LogoMark className="size-8 text-muted-foreground" />
         <p className="text-base font-medium">This network has used its guest sessions for today</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Guest sessions are counted per network, and this one — an office or a campus, most
-          likely — has opened its share for the day. It starts again at midnight UTC, so come back
+          Guest sessions are counted per network, and this one, most likely an office or a
+          campus, has used its share for the day. It starts again at midnight UTC, so come back
           tomorrow and the canvas is yours.
         </p>
         <p className="max-w-sm text-sm text-muted-foreground">
@@ -157,7 +157,7 @@ export const TryGuestGate = ({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <LogoMark className="size-8 text-muted-foreground" />
-        <p className="text-base font-medium">Mason is busy — try again in a minute</p>
+        <p className="text-base font-medium">Mason is busy right now</p>
         <p className="max-w-sm text-sm text-muted-foreground">
           Something went wrong opening a guest session. Nothing you do here needs an account, so a
           refresh in a moment is usually all it takes.

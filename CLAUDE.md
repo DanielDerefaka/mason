@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 32 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 868 unit tests, no server needed
+npm test             # 869 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -187,5 +187,11 @@ positioning sentence and the Organization block. The category is sketch-to-*desi
 HTML export: never "sketch to code", never "production-ready components";
 `metadata.test.ts` refuses both across the public surface. The Next.js project starter (`exportDesignProject`) is named on /faq and nowhere else — never in a title, a meta description, a share card or /llms.txt; the same test pins that. `hello@mason.design` stays until
 a sketchmason.com inbox exists.
+
+Copy a visitor can read carries no em dash. The founder's call, made on reading the site on
+2026-08-29: they read as machine-written. A comma, a colon or a full stop does the same job,
+a toast with two clauses is a title plus a `description`, and `metadata.test.ts` fails on one
+anywhere across the public surface, the blog posts, the /try screens and the strings behind
+them. Comments and model prompts may still use them.
 
 Never invent an API key. `.env.example` carries names only.

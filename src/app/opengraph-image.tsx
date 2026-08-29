@@ -14,7 +14,7 @@ import { ImageResponse } from 'next/og'
  * visitor measures the canvas against.
  */
 export const runtime = 'nodejs'
-export const alt = 'SketchMason — draw the shape, get the product'
+export const alt = 'SketchMason: draw the shape, get the product'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 

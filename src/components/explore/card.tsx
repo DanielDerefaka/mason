@@ -90,7 +90,7 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
     } catch {
       // No clipboard on an insecure origin or a denied permission; the text is
       // on the card, so say so rather than fail silently.
-      toast.error('Could not copy — select the text instead')
+      toast.error('Could not copy', { description: 'Select the text instead' })
     }
   }
 

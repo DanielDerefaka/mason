@@ -140,7 +140,7 @@ export const DesignPreview = () => {
       {overflowing && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
           <p className="pointer-events-auto rounded-full bg-amber-500/90 px-3.5 py-2 text-[11px] font-medium text-black shadow-lg">
-            This design is wider than {frame?.width}px — open it in the editor, select the
+            This design is wider than {frame?.width}px. Open it in the editor, select the
             outermost group and press <span className="font-semibold">Make responsive</span>.
           </p>
         </div>

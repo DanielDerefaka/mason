@@ -107,7 +107,7 @@ export const BrandPanel = ({ projectId }: { projectId: Id<'projects'> | null }) 
       </label>
 
       <p className="text-muted-foreground mt-1.5 text-[11px] leading-relaxed">
-        Off, the model invents a company. On, it uses yours — in the copy, the nav and
+        Off, the model invents a company. On, it uses yours in the copy, the nav and
         the footer.
       </p>
 
