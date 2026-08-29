@@ -7,6 +7,7 @@ import { HeroSection } from '@/components/marketing/home/HeroSection'
 import { ManifestoSection } from '@/components/marketing/home/ManifestoSection'
 import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
+import { SOCIAL_LINKS } from '@/lib/marketing-nav'
 import { SITE_URL } from '@/lib/site'
 
 /**
@@ -30,8 +31,8 @@ export const metadata = {
  * What the product costs is still being decided, and an offer here is not a
  * note in a file — it is a price Google is entitled to print beside the site
  * in a result. Structured data is a claim made to a machine that will repeat
- * it, so it says only what is settled: what this is, where it runs, and where
- * it lives.
+ * it, so it says only what is settled: what this is, where it runs, where it
+ * lives, and which accounts are its own.
  */
 const SOFTWARE_APPLICATION = {
   '@context': 'https://schema.org',
@@ -41,6 +42,13 @@ const SOFTWARE_APPLICATION = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
   description: DESCRIPTION,
+  // The accounts that are Mason's, so a machine reading this does not have
+  // to guess. Google's AI Overview for the brand query was crediting an
+  // Instagram @sketchmason — somebody at George Mason — to this site, because
+  // the site declared no social identity and the name was the only signal.
+  // Read from the footer's list rather than spelled out again: one place says
+  // which accounts exist, and /llms.txt reads the same one.
+  sameAs: SOCIAL_LINKS.map((link) => link.href),
 }
 
 /**
