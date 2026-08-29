@@ -174,13 +174,37 @@ describe('robots.txt', () => {
     expect(rules.sitemap).toBe('https://www.sketchmason.com/sitemap.xml')
   })
 
-  it.each(['/api/', '/auth/', '/dashboard/', '/billing', '/settings'])(
+  it.each(['/api/', '/dashboard/', '/billing', '/settings'])(
     'keeps a crawler out of %s, which has only a redirect to offer it',
     (path) => {
       const disallowed = (rules.rules as { disallow?: string[] }).disallow ?? []
       expect(disallowed).toContain(path)
     },
   )
+
+  /**
+   * The regression this exists for: /auth/ was disallowed, and the brand SERP
+   * grew a "Sign in" sitelink anyway. A disallow stops the crawl, not the
+   * indexing — Google took the URL from the header link and listed it with no
+   * snippet, and the `noindex` that would have removed it sat on a page the
+   * crawler was forbidden to read. The auth layout carries the tag; this
+   * keeps the door open so it is seen.
+   */
+  it('lets a crawler read /auth/, or the noindex there is never seen', () => {
+    const disallowed = (rules.rules as { disallow?: string[] }).disallow ?? []
+    expect(disallowed).not.toContain('/auth/')
+  })
+})
+
+describe('the auth screens stay out of the index', () => {
+  it('send noindex from the one layout all three share', () => {
+    expect(read('src/app/auth/layout.tsx')).toMatch(/robots: \{ index: false, follow: false \}/)
+  })
+
+  /** One tag, inherited — not three copies that can go out of step. */
+  it.each(['sign-in', 'sign-up', 'forgot-password'])('and /auth/%s does not override it', (screen) => {
+    expect(read(`src/app/auth/${screen}/layout.tsx`)).not.toMatch(/robots/)
+  })
 })
 
 describe('sitemap.xml', () => {

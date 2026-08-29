@@ -76,6 +76,14 @@ page list, so /faq and /llms.txt shipped to production with no check on them. Th
 derives both from `src/app` now — the marketing group for pages, dotted directories for
 files — so a new page is covered by existing, and the count above moves on its own.
 
+**A robots.txt disallow does not keep a page out of the index — it hides the tag that
+would.** `/auth/` was disallowed, and the brand SERP grew a "Sign in" sitelink anyway:
+Google indexed the URL from the header link without ever reading the page, and listed it
+with no snippet. A `noindex` on a disallowed page is never seen. `/auth/*` sends
+`robots: { index: false }` from its layout and is deliberately *not* in `robots.ts`;
+`metadata.test.ts` pins both halves, because a disallow added back would quietly
+re-create the sitelink.
+
 **A call to action must not be conditional on `FREE_WEEK`.** `/try` is public with
 or without the week, so a link that points at `/auth/sign-up` "outside the week" is a
 sign-up wall on a site whose header and /faq both say no account is needed. `CtaSection`
