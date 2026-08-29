@@ -15,6 +15,13 @@
  *      500, not 200. These routes cost money per call, so "does the guard fire
  *      before the model does" is the single most valuable thing to assert, and
  *      it costs nothing to assert because no model is ever reached.
+ *   4. Every file the site serves at a dotted path — /llms.txt — answers with
+ *      text rather than markup. A route handler that starts returning the app
+ *      shell still answers 200, so the body is what has to be checked.
+ *
+ * The first and fourth lists are derived from `src/app` rather than written
+ * down, because a list is the thing that gets forgotten: /faq and /llms.txt
+ * both reached production with no check on them at all.
  *
  * Deliberately no browser and no dependencies, so it is free to run as often
  * as you like. Vitest covers the pure layer, this covers wiring, and
@@ -24,20 +31,59 @@
  *   npm run smoke        # in another
  */
 
+import { readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+
 const BASE = process.env.SMOKE_BASE ?? 'http://127.0.0.1:3000'
+
+/**
+ * The marketing pages, read from the route group rather than listed here.
+ *
+ * A new public page needs three lists, not two: the middleware matcher, the
+ * bypass list in src/lib/permissions.ts, and this. /faq was added to the first
+ * two — permissions.test.ts even derives its half from this same directory so
+ * the pair cannot drift — and shipped to production uncovered by any smoke
+ * check, because this one was still a list someone had to remember. Deriving
+ * it is the only version of this that stays true.
+ *
+ * Read from the local checkout even when SMOKE_BASE points at a deployment,
+ * which is deliberate: what is being asserted is that everything this revision
+ * thinks it serves is actually being served over there. A page that exists
+ * here and 404s there is exactly the failure worth hearing about.
+ */
+const routeSegments = (dir, keep) => {
+  const path = join(process.cwd(), dir)
+  return readdirSync(path)
+    .filter((entry) => statSync(join(path, entry)).isDirectory() && keep(entry))
+    .sort()
+}
+
+// Dynamic segments have no literal form to fetch; `[slug]` under /blog is
+// covered by /blog itself rendering its index.
+const MARKETING_PAGES = routeSegments(
+  'src/app/(marketing)',
+  (entry) => !entry.startsWith('[') && !entry.startsWith('('),
+).map((segment) => `/${segment}`)
+
+/**
+ * Files the site serves at a dotted path — today just /llms.txt, whose route
+ * handler lives in `src/app/llms.txt/`. Derived by the same rule
+ * `src/lib/routes.test.ts` uses to keep them *out* of the middleware matcher,
+ * so the two halves of that decision are read from one fact.
+ */
+const SERVED_FILES = routeSegments('src/app', (entry) => entry.includes('.')).map(
+  (segment) => `/${segment}`,
+)
 
 const PUBLIC_PAGES = [
   '/',
-  '/about-us',
-  '/blog',
-  '/download',
+  ...MARKETING_PAGES,
   '/auth/sign-in',
   '/auth/sign-up',
   '/auth/forgot-password',
-  // The free canvas and the gallery: bypass routes, so they must answer 200
-  // to a visitor with no cookie at all.
+  // The free canvas: a bypass route, so it must answer 200 to a visitor with
+  // no cookie at all. /explore is the same and comes from the group above.
   '/try',
-  '/explore',
 ]
 
 /** Anonymous visitors belong at sign-in, not inside. */
@@ -164,6 +210,25 @@ const main = async () => {
     webhook.status >= 400,
     webhook.status >= 400 ? '' : `accepted an unsigned payload (${webhook.status})`,
   )
+
+  console.log('\nServed files answer as files, not as the app shell')
+  for (const path of SERVED_FILES) {
+    const response = await get(path, 'follow')
+    const body = await response.text()
+    const type = response.headers.get('content-type') ?? ''
+
+    if (response.status !== 200) {
+      record(path, false, `status ${response.status}`)
+      continue
+    }
+    // The failure worth catching: the handler stops matching and Next serves
+    // the HTML shell instead, which is still a cheerful 200.
+    if (type.includes('text/html') || /<!doctype html|<body/i.test(body)) {
+      record(path, false, 'served markup instead of text')
+      continue
+    }
+    record(path, body.trim().length > 0, body.trim().length > 0 ? '' : 'empty body')
+  }
 
   const failed = results.filter((result) => !result.ok)
   console.log(
