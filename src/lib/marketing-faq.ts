@@ -74,13 +74,16 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     question: 'What can I export?',
-    // Two, not three. `exportDesignProject` in lib/export.ts is real and is
-    // wired into the canvas and the editor, and the answer used to name it —
-    // "a Next.js project you can install and run". It is left out on purpose:
-    // the product is sketch-to-design with an HTML export, and a FAQ that
-    // advertises a code export is read, and indexed, as a code tool.
+    // Three, said design-first: the design is the subject and the exports are
+    // what it becomes. The third is `exportDesignProject` in lib/export.ts,
+    // wired into the canvas and the editor, and it is called a "starter"
+    // because that is what it is — a place to begin, not a finished codebase.
+    // It was dropped from this answer for one release under the category
+    // guard and restored by the founder's decision, with a rule attached: the
+    // code export may be named here and only here — never in a title, a meta
+    // description, a share card or /llms.txt. `metadata.test.ts` pins that.
     answer:
-      'Two things: the design as a standalone HTML file, or a written brief describing it. The export is taken from the design as it stands on screen, so edits made after generating are included.',
+      'The design exports as a standalone HTML file, a hand-off brief describing it, or a Next.js project starter. Every export is taken from the design as it stands on screen, so edits made after generating are included.',
   },
 ]
 
