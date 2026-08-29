@@ -4,6 +4,8 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 
+import { refusalFrom, type GuestRefusal } from '@/lib/try/guest-refusal'
+
 /**
  * Gives a signed-out visitor an anonymous session.
  *
@@ -15,12 +17,16 @@ import { useEffect, useRef, useState } from 'react'
  *
  * `ready` is simply "authenticated" — a real user who lands here is ready at
  * once and never sees the admit call.
+ *
+ * A refusal comes back classified rather than as a bare boolean: hitting the
+ * per-network cap and losing the request are the same failure to this hook and
+ * opposite advice to the person reading the screen.
  */
 export const useGuestSession = () => {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const { signIn } = useAuthActions()
   const attempted = useRef(false)
-  const [failed, setFailed] = useState(false)
+  const [refusal, setRefusal] = useState<GuestRefusal | null>(null)
 
   useEffect(() => {
     if (isLoading || isAuthenticated || attempted.current) return
@@ -33,12 +39,12 @@ export const useGuestSession = () => {
           ? ((await response.json()) as { admission?: string | null })
           : { admission: null }
         await signIn('anonymous', admission ? { admission } : {})
-      } catch {
-        setFailed(true)
+      } catch (error) {
+        setRefusal(refusalFrom(error))
       }
     }
     void admit()
   }, [isLoading, isAuthenticated, signIn])
 
-  return { ready: isAuthenticated, failed }
+  return { ready: isAuthenticated, refusal }
 }
