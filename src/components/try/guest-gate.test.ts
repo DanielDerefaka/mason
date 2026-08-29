@@ -101,3 +101,37 @@ describe('what a second screen is told', () => {
     expect(copy).not.toMatch(/error|wrong|failed|try again|busy/i)
   })
 })
+
+/**
+ * What a refused visitor is told still works.
+ *
+ * The screen was accurate and complete about the canvas, and silent about
+ * everything else — so it read as "Mason is shut". It is not: `/s/<token>` is
+ * bypassed by the middleware and `getSharedDesign` is the only unauthenticated
+ * function in convex/shares.ts, so a shared design opens with no session and
+ * the cap cannot reach it. Somebody who followed a friend's link to *look* at
+ * a design was being told they were locked out of something that would have
+ * opened.
+ */
+describe('the cap screen', () => {
+  const gate = read(GATE)
+  const screen = gate.slice(gate.indexOf("if (refusal === 'network-cap')"), gate.indexOf("if (refusal === 'unknown')"))
+  const copy = screen.replace(/\w+="[^"]*"/g, '').replace(/<[^>]*>/g, ' ')
+
+  it('says a shared design still opens', () => {
+    expect(copy.toLowerCase()).toContain('shared link needs no session')
+  })
+
+  /**
+   * Still no number. `GUEST_SESSIONS_PER_IP_PER_DAY` is configuration — and
+   * now literally an environment variable — so a sentence naming it is wrong
+   * the moment someone tunes it mid-week.
+   */
+  it('still quotes no figure', () => {
+    expect(copy).not.toMatch(/\d/)
+  })
+
+  it('still offers no account, which during the week would be a loop', () => {
+    expect(screen).not.toMatch(/\/auth/)
+  })
+})
