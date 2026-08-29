@@ -241,7 +241,7 @@ export default defineSchema({
    * email rather than an account. This is that list — the launch list.
    *
    * Its own table rather than a field on `guests` because it outlives the
-   * guest: `purgeStale` forgets an anonymous user after thirty days, and the
+   * guest: `purgeStale` forgets an anonymous user after fourteen days, and the
    * address must not go with them. `userId` is optional and is cleared on
    * purge for exactly that reason, so a row here can name nobody.
    *

@@ -419,7 +419,7 @@ describe('/faq answers only what the code can be checked against', () => {
 
   it('asks enough to be worth a page and few enough to be read', () => {
     expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(6)
-    expect(FAQ_ENTRIES.length).toBeLessThanOrEqual(8)
+    expect(FAQ_ENTRIES.length).toBeLessThanOrEqual(12)
   })
 
   it('ends every question with a question mark and every answer with a full stop', () => {
@@ -445,9 +445,45 @@ describe('/faq answers only what the code can be checked against', () => {
     expect(withoutComments(page)).not.toMatch(/FOUNDER CONFIRM|PENDING_CONFIRMATION/)
   })
 
-  /** The same rule as /llms.txt: no figure the pool or a price list can move. */
-  it('quotes no number a change elsewhere would make wrong', () => {
-    for (const entry of FAQ_ENTRIES) expect(entry.answer).not.toMatch(/\d/)
+  /**
+   * Policy may be quoted; configuration may not. "One generation a day" and
+   * "fourteen days" are decisions, and they change by someone deciding. The
+   * shared pool's size is `COMMUNITY_POOL_SIZE` and the plan price lives in
+   * Polar — both move without anyone touching this file, and a crawler would
+   * go on quoting the old value for months.
+   */
+  it('quotes no price, and no figure a deployment can move on its own', () => {
+    for (const entry of FAQ_ENTRIES) {
+      expect(entry.answer).not.toMatch(/[$£€]|\bper month\b|\ba month\b|\busd\b/i)
+      // The pool size, in either form. It is twenty today and is an env var.
+      expect(entry.answer).not.toMatch(/\btwenty\b|\b\d+\b/i)
+    }
+  })
+
+  /**
+   * The address collected at download goes on the launch list and the
+   * newsletter, so the answer that says "no account needed" has to say that
+   * too. A page that describes the ask and omits the use is the version of
+   * this page that is worth not having.
+   */
+  it('says what the download asks for and what it is used for', () => {
+    const account = FAQ_ENTRIES.find((entry) => entry.question.includes('account to try it'))
+    expect(account?.answer).toMatch(/email address/)
+    expect(account?.answer).toMatch(/newsletter/)
+  })
+
+  /**
+   * The page and the backend are one claim made in two places.
+   *
+   * /faq promises fourteen days of retention, and `STALE_AFTER_MS` is what
+   * actually deletes the work — so the page must not be able to ship a promise
+   * the cron does not keep. It could: the constant was thirty when the answer
+   * was written, and only a person reading both files would have noticed.
+   */
+  it('promises the retention the purge cron actually applies', () => {
+    const retention = FAQ_ENTRIES.find((entry) => entry.question.includes('How long'))
+    expect(retention?.answer).toMatch(/Fourteen days/)
+    expect(read('convex/guest.ts')).toMatch(/const STALE_AFTER_MS = 14 \* 24 \* 60 \* 60 \* 1000/)
   })
 
   it('is listed in the sitemap, or nothing will find it', () => {

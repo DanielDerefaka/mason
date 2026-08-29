@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 22 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 768 unit tests, no server needed
+npm test             # 770 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
