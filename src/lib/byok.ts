@@ -26,6 +26,40 @@ const KEY_SHAPE = /^sk-ant-[A-Za-z0-9_-]{20,}$/
 export const BYOK_HEADER = 'x-api-key'
 
 /**
+ * The workspace a visitor's key acts in, when their key needs one.
+ *
+ * Anthropic's identity-linked keys belong to a person rather than a workspace
+ * and refuse every request that does not name one: 400 `invalid_request_error`,
+ * "anthropic-workspace-id is required when authenticating with an
+ * identity-linked API key". Nothing about the key's *shape* says which kind it
+ * is, so this cannot be inferred — it is asked for, and only used when given.
+ *
+ * Sent under our own `x-` name rather than Anthropic's, so a request that
+ * merely passes through here can never smuggle a header straight into the
+ * upstream call.
+ */
+export const BYOK_WORKSPACE_HEADER = 'x-anthropic-workspace-id'
+
+/** Ids are opaque (`wrkspc_…`); this only refuses what could not be one. */
+const WORKSPACE_SHAPE = /^[A-Za-z0-9_-]{6,100}$/
+
+export const readByokWorkspace = (request: Request): string | null => {
+  const raw = request.headers.get(BYOK_WORKSPACE_HEADER)
+  if (!raw) return null
+  const id = raw.trim()
+  return WORKSPACE_SHAPE.test(id) ? id : null
+}
+
+/**
+ * Anthropic's own words for the one refusal a visitor can fix themselves.
+ *
+ * Matched on the message rather than the status because a 400 from Anthropic
+ * covers everything from an empty balance to a malformed request, and only
+ * this one has an answer the person who pasted the key can act on.
+ */
+const NEEDS_WORKSPACE = /anthropic-workspace-id is required/i
+
+/**
  * The visitor's key, or null when there is not one worth trying.
  *
  * Refusing the server's own key is belt and braces: if it ever leaked into a
@@ -48,10 +82,12 @@ const modelFor = (request: Request, name: string): RequestModel => {
   const key = readByokKey(request)
   if (!key) return { model: anthropicProvider(name), byok: false }
 
+  const workspace = readByokWorkspace(request)
   const provider = createAnthropic({
     apiKey: key,
     baseURL: 'https://api.anthropic.com/v1',
     fetch: globalThis.fetch,
+    ...(workspace ? { headers: { 'anthropic-workspace-id': workspace } } : {}),
   })
   return { model: provider(name), byok: true }
 }
@@ -69,6 +105,12 @@ export const modelForRequestText = (request: Request) => modelFor(request, MODEL
  * request carried the key. Only the status and a sentence of ours go back.
  */
 export const describeRefusal = (status: number, body = ''): string => {
+  // Checked before the status cases: this arrives as a plain 400 and would
+  // otherwise read "Anthropic refused the request (400)", which tells the
+  // person holding the key nothing about the one thing they can do about it.
+  if (NEEDS_WORKSPACE.test(body)) {
+    return 'That key belongs to your Anthropic account rather than a workspace — add your workspace ID next to it, or use a key made inside a workspace'
+  }
   if (status === 401) return 'Your Anthropic key was rejected'
   if (status === 403) return 'Your Anthropic key is not allowed to use this model'
   if (status === 402 || (status === 400 && /credit balance/i.test(body))) {

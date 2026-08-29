@@ -10,6 +10,17 @@
 const STORAGE_KEY = 'mason-byok'
 
 /**
+ * The workspace the key acts in, for the keys that need one.
+ *
+ * Anthropic's identity-linked keys refuse every request that does not name a
+ * workspace, and nothing in the key itself says whether it is one of those —
+ * so this is optional, stored beside the key, and sent only when present.
+ * Kept in the same session storage for the same reason: it is not a secret,
+ * but it is meaningless without the key it belongs to.
+ */
+const WORKSPACE_STORAGE_KEY = 'mason-byok-workspace'
+
+/**
  * The same shape the server insists on (`src/lib/byok.ts`), so a key that
  * would be refused there is refused at the paste box instead of after a
  * generation has been attempted.
@@ -60,9 +71,33 @@ export const getByokKey = (): string | null => {
   }
 }
 
-export const setByokKey = (key: string): void => {
+export const getByokWorkspace = (): string | null => {
   try {
-    storage()?.setItem(STORAGE_KEY, key.trim())
+    return storage()?.getItem(WORKSPACE_STORAGE_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+/** The same shape `src/lib/byok.ts` accepts, so a typo is caught at the box. */
+export const looksLikeWorkspaceId = (value: string): boolean =>
+  /^[A-Za-z0-9_-]{6,100}$/.test(value.trim())
+
+/**
+ * Stored together, and cleared together.
+ *
+ * A workspace id left behind by a previous key would be sent alongside the
+ * next one, and a key that belongs to a different account is refused for a
+ * reason nobody could guess from the message. So there is one writer for both
+ * and an empty workspace removes the stored one rather than storing "".
+ */
+export const setByokKey = (key: string, workspace?: string): void => {
+  try {
+    const store = storage()
+    store?.setItem(STORAGE_KEY, key.trim())
+    const id = workspace?.trim() ?? ''
+    if (id) store?.setItem(WORKSPACE_STORAGE_KEY, id)
+    else store?.removeItem(WORKSPACE_STORAGE_KEY)
   } catch {
     // Nothing to do: the key simply is not remembered for the next request.
   }
@@ -74,6 +109,7 @@ export const setByokKey = (key: string): void => {
 export const clearByokKey = (): void => {
   try {
     storage()?.removeItem(STORAGE_KEY)
+    storage()?.removeItem(WORKSPACE_STORAGE_KEY)
   } catch {
     // Same as above — a storage that cannot be written cannot hold a key.
   }

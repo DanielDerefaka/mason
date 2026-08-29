@@ -82,12 +82,16 @@ export function SiteHeader({ freeWeek = false }: { freeWeek?: boolean }) {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/auth/sign-in"
-              className="text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Sign in
-            </Link>
+            {/* No sign-in during the free week: the auth screens redirect to
+                /try, and a link that bounces is worse than no link. */}
+            {!freeWeek && (
+              <Link
+                href="/auth/sign-in"
+                className="text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign in
+              </Link>
+            )}
             {/* `!` overrides beat `.marketing .pill`, which outranks a plain utility. */}
             <Link href={ctaHref} className="pill pill-primary !px-5 !py-2 !text-[0.84rem]">
               {ctaLabel}

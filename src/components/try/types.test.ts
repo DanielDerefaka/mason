@@ -19,6 +19,7 @@ const guest: GuestMe = {
   shareClaimed: false,
   canClaimShare: false,
   keyAdded: false,
+  emailGiven: false,
 }
 
 const account: GuestMe = { ...guest, isGuest: false, bonus: 0, poolAvailable: false }

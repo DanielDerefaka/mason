@@ -1,4 +1,4 @@
-import { clearByokKey, getByokKey } from '@/lib/try/byok-client'
+import { clearByokKey, getByokKey, getByokWorkspace } from '@/lib/try/byok-client'
 
 /**
  * Names of the window events the /try shell listens for. The dashboard has no
@@ -32,6 +32,10 @@ export const generateFetch = (input: RequestInfo | URL, init?: RequestInit): Pro
 
   const headers = new Headers(init?.headers)
   headers.set('x-api-key', key)
+  // Only meaningful alongside a key, and only present for the keys that need
+  // it — an identity-linked key is refused outright without one.
+  const workspace = getByokWorkspace()
+  if (workspace) headers.set('x-anthropic-workspace-id', workspace)
   return fetch(input, { ...init, headers })
 }
 

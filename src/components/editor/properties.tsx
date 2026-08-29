@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { useGuest } from '@/components/try/guest-context'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
@@ -1263,13 +1264,19 @@ const Export = ({
 }: {
   element: HTMLElement
   onExport: (kind: 'html' | 'brief' | 'project') => void
-}) => (
+}) => {
+  // The generated codebase is what an account is for; a guest gets the design
+  // and the brief. False outside /try, so the dashboard keeps all three.
+  const { isGuest } = useGuest()
+  return (
   <Group label="Export" defaultOpen={false}>
     <div className="flex flex-col gap-1">
-      <Wide onClick={() => onExport('project')}>
-        <FolderDown className="size-3.5" />
-        Download as a Next.js project
-      </Wide>
+      {!isGuest && (
+        <Wide onClick={() => onExport('project')}>
+          <FolderDown className="size-3.5" />
+          Download as a Next.js project
+        </Wide>
+      )}
       <Wide onClick={() => onExport('html')}>
         <Download className="size-3.5" />
         Download the design as HTML
@@ -1284,7 +1291,8 @@ const Export = ({
       </Wide>
     </div>
   </Group>
-)
+  )
+}
 
 /* ------------------------------------------------------------------ *
  * Parts

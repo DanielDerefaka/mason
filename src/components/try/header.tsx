@@ -10,8 +10,10 @@ import { useAppDispatch } from '@/redux/hooks'
 import { setFrameDialogOpen } from '@/redux/slice/shapes'
 
 import { api } from '../../../convex/_generated/api'
+import type { Id } from '../../../convex/_generated/dataModel'
 import { PoolBanner } from './pool-banner'
 import { ShareOnXButton } from './share-on-x-button'
+import { SketchMenu } from './sketch-menu'
 import { asGuest, isAccount, type GuestMe } from './types'
 import type { ShareOnX } from './use-share-on-x'
 
@@ -20,6 +22,9 @@ type Props = {
   keyStored: boolean
   onAddKey: () => void
   share: ShareOnX
+  projectId: Id<'projects'> | null
+  onOpenSketch: (id: Id<'projects'>) => void
+  onNewSketch: () => void
 }
 
 const plural = (n: number) => `${n} credit${n === 1 ? '' : 's'}`
@@ -53,7 +58,15 @@ const CreditsPill = ({ me }: { me: GuestMe | null | undefined }) => {
   )
 }
 
-export const TryHeader = ({ me, keyStored, onAddKey, share }: Props) => {
+export const TryHeader = ({
+  me,
+  keyStored,
+  onAddKey,
+  share,
+  projectId,
+  onOpenSketch,
+  onNewSketch,
+}: Props) => {
   const dispatch = useAppDispatch()
   const isRealUser = isAccount(me)
 
@@ -70,6 +83,7 @@ export const TryHeader = ({ me, keyStored, onAddKey, share }: Props) => {
 
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
         <CreditsPill me={me} />
+        <SketchMenu projectId={projectId} onOpen={onOpenSketch} onNew={onNewSketch} />
         <Button
           size="sm"
           variant="secondary"

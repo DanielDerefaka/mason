@@ -6,11 +6,18 @@ export type GuestContextValue = {
   /** True for an anonymous /try session. */
   isGuest: boolean
   /**
-   * Asks for an account before something that needs one — the Next.js export.
-   * Resolves true when the visitor already has one or just made one, false
-   * when they closed the dialog instead.
+   * Asks for whatever a download costs, and resolves true once it is paid.
+   *
+   * That is an email address, once, and never an account: the trial says no
+   * account is needed and must not then demand one at the only moment the
+   * work is worth something. Resolves true the moment there is nothing left
+   * to ask — which is every export after the first — and false when the
+   * visitor closed the dialog instead.
+   *
+   * Called by every download a guest can reach: the design and the build
+   * brief. The Next.js project is not one of them; it is not offered on /try.
    */
-  requireAccount: () => Promise<boolean>
+  requireExport: () => Promise<boolean>
 }
 
 /**
@@ -21,7 +28,7 @@ export type GuestContextValue = {
  */
 const DEFAULT_GUEST: GuestContextValue = {
   isGuest: false,
-  requireAccount: async () => true,
+  requireExport: async () => true,
 }
 
 const GuestContext = createContext<GuestContextValue>(DEFAULT_GUEST)
@@ -33,18 +40,18 @@ const GuestContext = createContext<GuestContextValue>(DEFAULT_GUEST)
 export const GuestProvider = ({
   value,
   isGuest,
-  requireAccount,
+  requireExport,
   children,
 }: {
   value?: Partial<GuestContextValue>
   isGuest?: boolean
-  requireAccount?: GuestContextValue['requireAccount']
+  requireExport?: GuestContextValue['requireExport']
   children: ReactNode
 }) => {
   const resolvedIsGuest = isGuest ?? value?.isGuest ?? DEFAULT_GUEST.isGuest
-  const resolvedRequire = requireAccount ?? value?.requireAccount ?? DEFAULT_GUEST.requireAccount
+  const resolvedRequire = requireExport ?? value?.requireExport ?? DEFAULT_GUEST.requireExport
   const merged = useMemo<GuestContextValue>(
-    () => ({ isGuest: resolvedIsGuest, requireAccount: resolvedRequire }),
+    () => ({ isGuest: resolvedIsGuest, requireExport: resolvedRequire }),
     [resolvedIsGuest, resolvedRequire],
   )
   return <GuestContext.Provider value={merged}>{children}</GuestContext.Provider>

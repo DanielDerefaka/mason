@@ -30,14 +30,20 @@ const {
   modelForRequest,
   modelForRequestText,
   readByokKey,
+  readByokWorkspace,
 } = await import('./byok')
 
 const GOOD_KEY = 'sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
-const request = (key?: string) =>
+const WORKSPACE = 'wrkspc_01ABCDEFGHIJKLMNOP'
+
+const request = (key?: string, workspace?: string) =>
   new Request('http://localhost/api/generate', {
     method: 'POST',
-    headers: key === undefined ? {} : { 'x-api-key': key },
+    headers: {
+      ...(key === undefined ? {} : { 'x-api-key': key }),
+      ...(workspace === undefined ? {} : { 'x-anthropic-workspace-id': workspace }),
+    },
   })
 
 afterEach(() => {
@@ -76,6 +82,36 @@ describe('reading the key', () => {
   })
 })
 
+/**
+ * Anthropic's identity-linked keys belong to a person rather than a workspace
+ * and refuse every request that does not name one — a plain 400 whose message
+ * is the only thing that distinguishes it from an empty balance. Nothing in
+ * the key's shape says which kind it is, so it is asked for and passed on.
+ */
+describe('reading the workspace', () => {
+  it('accepts an id that could be one', () => {
+    expect(readByokWorkspace(request(GOOD_KEY, WORKSPACE))).toBe(WORKSPACE)
+  })
+
+  it('trims what a paste brings with it', () => {
+    expect(readByokWorkspace(request(GOOD_KEY, `  ${WORKSPACE} `))).toBe(WORKSPACE)
+  })
+
+  it.each([
+    ['nothing', ''],
+    ['whitespace', '   '],
+    ['something too short to be an id', 'abc'],
+    ['a header smuggling a second one', `${WORKSPACE}\u0009x`],
+    ['a header with a space in it', 'wrkspc 01ABCDEF'],
+  ])('refuses %s', (_label, id) => {
+    expect(readByokWorkspace(request(GOOD_KEY, id))).toBeNull()
+  })
+
+  it('is absent when the visitor did not send one', () => {
+    expect(readByokWorkspace(request(GOOD_KEY))).toBeNull()
+  })
+})
+
 describe('choosing a model', () => {
   it('uses the house provider when no key was sent', () => {
     expect(modelForRequest(request())).toEqual({
@@ -100,6 +136,20 @@ describe('choosing a model', () => {
     })
   })
 
+  it('passes the workspace on under the name Anthropic wants', () => {
+    modelForRequest(request(GOOD_KEY, WORKSPACE))
+    expect(created[0]).toMatchObject({
+      headers: { 'anthropic-workspace-id': WORKSPACE },
+    })
+  })
+
+  it('sends no workspace header at all when there is nothing to send', () => {
+    // An empty or invented value is worse than none: a key that does not need
+    // a workspace is refused outright when handed the wrong one.
+    modelForRequest(request(GOOD_KEY))
+    expect(created[0]).not.toHaveProperty('headers')
+  })
+
   it('keeps the extraction model for the routes that use it', () => {
     expect(modelForRequestText(request(GOOD_KEY)).model).toEqual({
       provider: 'byok',
@@ -120,6 +170,23 @@ describe('explaining a refusal', () => {
     [529, '', 'Anthropic is overloaded — try again in a moment'],
   ])('turns a %s into a sentence', (status, body, message) => {
     expect(describeRefusal(status, body)).toBe(message)
+  })
+
+  /**
+   * The regression this exists for: pasting an identity-linked key produced
+   * "Anthropic refused the request (400)", which names neither the problem
+   * nor the one thing the person holding the key can do about it.
+   */
+  it('names the workspace an identity-linked key is missing', () => {
+    const body =
+      '{"type":"error","error":{"type":"invalid_request_error","message":"anthropic-workspace-id is required when authenticating with an identity-linked API key; send the id of the workspace this request acts in."}}'
+    expect(describeRefusal(400, body)).toMatch(/workspace ID/)
+  })
+
+  it('does not read every 400 as a missing workspace', () => {
+    expect(describeRefusal(400, '{"error":{"message":"messages: at least one required"}}')).toBe(
+      'Anthropic refused the request (400)',
+    )
   })
 })
 

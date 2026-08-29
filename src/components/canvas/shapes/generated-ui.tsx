@@ -51,17 +51,36 @@ export const GeneratedUI = ({
 }) => {
   const dispatch = useAppDispatch()
   const { styleGuide } = useStyles()
-  const { requireAccount } = useGuest()
+  const { requireExport, isGuest } = useGuest()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // The project export is the one that asks a guest for an account; HTML and
-  // the brief stay free. Outside /try there is no provider and this is a
-  // resolved promise, so the dashboard's button behaves as it always has.
-  const exportProject = async () => {
-    if (!onExportProject) return
-    if (!(await requireAccount())) return
-    onExportProject()
+  /**
+   * Every download goes through the gate, not just the project one.
+   *
+   * It used to be the Next.js export alone, because the gate demanded an
+   * account and the other two were not worth one. The gate now asks a guest
+   * for an email, once, so the natural line is "anything you take away" —
+   * and a visitor who has already given it is never asked again whichever
+   * button they press. Outside /try there is no provider and this is a
+   * resolved promise, so the dashboard's buttons behave as they always have.
+   */
+  const gated = (run?: () => void) => async () => {
+    if (!run) return
+    if (!(await requireExport())) return
+    run()
   }
+
+  /**
+   * The whole Next.js codebase is not part of the trial.
+   *
+   * A guest takes away the design and the brief — enough to prove Mason
+   * works, and enough to be worth an email address. The generated project is
+   * the thing an account is for, so on /try the button is not shown at all
+   * rather than shown and refused: an offer withdrawn at the click is worse
+   * than one never made. `isGuest` is false everywhere outside /try, so the
+   * dashboard is untouched.
+   */
+  const canExportProject = onExportProject && !isGuest
 
   // The design references var(--font-family); this is what actually fetches it.
   useGoogleFont(
@@ -182,7 +201,7 @@ export const GeneratedUI = ({
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={onExport}
+              onClick={() => void gated(onExport)()}
               className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
             >
               <Download className="size-3" />
@@ -193,7 +212,7 @@ export const GeneratedUI = ({
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={onExportPrompt}
+              onClick={() => void gated(onExportPrompt)()}
               title="Download a build brief: palette, type scale, structure and rules"
               className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
             >
@@ -201,11 +220,11 @@ export const GeneratedUI = ({
               Prompt
             </button>
           )}
-          {onExportProject && (
+          {canExportProject && (
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void exportProject()}
+              onClick={() => void gated(onExportProject)()}
               title="Download a Next.js project: tokens, a component per section, Tailwind"
               className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
             >

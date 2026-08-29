@@ -9,14 +9,31 @@ import Anthropic from '@anthropic-ai/sdk'
  */
 const clientUserAgent = process.env.ANTHROPIC_CLIENT_UA
 
-const headers = clientUserAgent ? { 'User-Agent': clientUserAgent } : undefined
+/**
+ * Anthropic's newer identity-linked keys belong to a person rather than to a
+ * workspace, and refuse every request that does not name the workspace it acts
+ * in: 400 `invalid_request_error`, "anthropic-workspace-id is required when
+ * authenticating with an identity-linked API key". A key made in the Console
+ * under a workspace needs none of this and the header is simply absent.
+ *
+ * Unset is therefore the normal case, and setting it wrongly is worse than not
+ * setting it — so it is only sent when the environment actually carries one.
+ */
+export const WORKSPACE_ID = process.env.ANTHROPIC_WORKSPACE_ID?.trim() || undefined
+
+const headers = {
+  ...(clientUserAgent ? { 'User-Agent': clientUserAgent } : {}),
+  ...(WORKSPACE_ID ? { 'anthropic-workspace-id': WORKSPACE_ID } : {}),
+}
+
+const defaultHeaders = Object.keys(headers).length > 0 ? headers : undefined
 
 /**
  * The SDK reads ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL from the environment,
  * so pointing the app at a different gateway is a config change, not a code
  * change. Unset base URL means api.anthropic.com.
  */
-export const anthropic = new Anthropic({ defaultHeaders: headers })
+export const anthropic = new Anthropic({ defaultHeaders })
 
 export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5'
 
@@ -76,6 +93,10 @@ const repairToolUseIds = (payload: unknown) => {
 const gatewayFetch: typeof fetch = async (input, init) => {
   const merged = new Headers(init?.headers)
   if (clientUserAgent) merged.set('User-Agent', clientUserAgent)
+  // Same place, same reason: the header has to survive whatever the SDK does
+  // to the options object, and this is the last hand the request passes
+  // through. An identity-linked house key 400s on every call without it.
+  if (WORKSPACE_ID) merged.set('anthropic-workspace-id', WORKSPACE_ID)
 
   const response = await fetch(input, { ...init, headers: merged })
 

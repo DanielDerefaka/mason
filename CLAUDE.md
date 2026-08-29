@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 22 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 592 unit tests, no server needed
+npm test             # 668 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -50,6 +50,12 @@ every real browser: the server renders a Suspense fallback and the client shell 
 hydration. `npm run smoke:browser` drives a real headless Chrome and fails on a console
 error, an uncaught exception or the error boundary appearing. Run it before believing a
 page is fine.
+
+**`smoke:browser` failing `/try` with `400 /api/auth` is usually the guest cap, not a
+bug.** `GUEST_SESSIONS_PER_IP_PER_DAY` is 10 and every run burns one, so the eleventh run
+of the day is refused by `guest.admitIp` exactly as designed. `localhost` and `127.0.0.1`
+hash to different IPs, so `SMOKE_BASE=http://127.0.0.1:3000 npm run smoke:browser` gets a
+fresh allowance. `npx convex data guest_ips` shows the counts.
 
 **`state.shapes.entities` is the entity adapter's state, not the table of shapes.** The
 table is one level further in, at `state.shapes.entities.entities`, so `state.shapes.ids`

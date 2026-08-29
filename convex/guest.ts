@@ -4,6 +4,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { dayKey } from '../src/lib/try/pool-day'
+import { looksLikeEmail, normaliseEmail } from '../src/lib/try/email'
 import { ensureGuestRow, guestRow, poolAvailableFor, poolDayRow } from './lib/pool'
 import { bump } from './lib/signals'
 
@@ -54,6 +55,8 @@ const NOT_A_GUEST = {
   shareClaimed: false,
   canClaimShare: false,
   keyAdded: false,
+  // An account has already told us who it is; the export gate never opens.
+  emailGiven: true,
 }
 
 export const me = query({
@@ -72,6 +75,7 @@ export const me = query({
       bonus: 0,
       sharedAt: undefined,
       keyAddedAt: undefined,
+      emailAt: undefined,
     }
     const used = (await poolDayRow(ctx.db, dayKey(now)))?.used ?? 0
     const shareClaimed = guest.sharedAt !== undefined
@@ -85,6 +89,7 @@ export const me = query({
       shareClaimed,
       canClaimShare: guest.poolUses >= 1 && !shareClaimed,
       keyAdded: guest.keyAddedAt !== undefined,
+      emailGiven: guest.emailAt !== undefined,
     }
   },
 })
@@ -140,6 +145,65 @@ export const markKeyAdded = mutation({
     await ctx.db.patch(guest._id, { keyAddedAt: now })
     await bump(ctx.db, 'key_pasted', now)
     return null
+  },
+})
+
+/**
+ * The address a visitor gives to take a download away.
+ *
+ * The free week's one ask. It replaces the account the export gate used to
+ * demand: a trial that says "no account needed" and then demands one at the
+ * only moment the work is worth something is a trial that lies, so the gate
+ * takes an email and gets out of the way — once, for ever, per session.
+ *
+ * Idempotent in both directions. A guest who is asked twice (two tabs, a
+ * race) writes one row; an address already on the list has its `hits`
+ * counted rather than a second row inserted. Neither ever throws, because a
+ * download must not fail on the bookkeeping behind it.
+ */
+export const recordEmail = mutation({
+  args: { email: v.string(), source: v.optional(v.string()) },
+  handler: async (ctx, { email, source }) => {
+    const userId = await requireUser(ctx)
+    const now = Date.now()
+
+    const address = normaliseEmail(email)
+    // Validated here as well as at the box: the mutation is callable from the
+    // browser, and the table is the launch list.
+    if (!looksLikeEmail(address)) throw new Error('That does not look like an email address')
+
+    const existing = await ctx.db
+      .query('emails')
+      .withIndex('by_email', (q) => q.eq('email', address))
+      .unique()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        updatedAt: now,
+        hits: existing.hits + 1,
+        // A row left ownerless by a purge is re-attached to whoever is here
+        // now; one that already names somebody is not reassigned.
+        userId: existing.userId ?? userId,
+      })
+    } else {
+      await ctx.db.insert('emails', {
+        email: address,
+        userId,
+        source: source ?? 'export',
+        createdAt: now,
+        updatedAt: now,
+        hits: 1,
+      })
+    }
+
+    const user = await ctx.db.get(userId)
+    if (user?.isAnonymous) {
+      const guest = await ensureGuestRow(ctx.db, userId, now)
+      if (guest.emailAt === undefined) await ctx.db.patch(guest._id, { emailAt: now })
+    }
+
+    await bump(ctx.db, 'email_given', now)
+    return { ok: true }
   },
 })
 
@@ -293,6 +357,15 @@ const purgeGuest = async (ctx: MutationCtx, guest: Doc<'guests'>) => {
 
     await ctx.db.delete(project._id)
   }
+
+  // The address stays; the link to the user does not. Deleting the row would
+  // make the nightly purge quietly eat the launch list thirty days after
+  // each visit, which is the one thing this table exists to prevent.
+  const emails = await ctx.db
+    .query('emails')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect()
+  for (const row of emails) await ctx.db.patch(row._id, { userId: undefined })
 
   for (const table of ['credits', 'project_counters'] as const) {
     const rows = await ctx.db

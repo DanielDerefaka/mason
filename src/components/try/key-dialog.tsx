@@ -13,7 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { clearByokKey, looksLikeAnthropicKey, setByokKey } from '@/lib/try/byok-client'
+import {
+  clearByokKey,
+  getByokWorkspace,
+  looksLikeAnthropicKey,
+  looksLikeWorkspaceId,
+  setByokKey,
+} from '@/lib/try/byok-client'
 
 import { api } from '../../../convex/_generated/api'
 
@@ -31,6 +37,10 @@ type Props = {
  */
 export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
   const [value, setValue] = useState('')
+  // Seeded from storage so replacing a key does not silently drop the
+  // workspace that key needed; the key box starts empty because it is a
+  // secret and this is not.
+  const [workspace, setWorkspace] = useState(() => getByokWorkspace() ?? '')
   const [error, setError] = useState<string | null>(null)
   const markKeyAdded = useMutation(api.guest.markKeyAdded)
 
@@ -40,9 +50,14 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
       setError('That does not look like an Anthropic key — they start with sk-ant-')
       return
     }
+    const id = workspace.trim()
+    if (id && !looksLikeWorkspaceId(id)) {
+      setError('That does not look like a workspace ID — copy it from the Console URL')
+      return
+    }
     // No callback back to the shell: `setByokKey` announces the change, and
     // the shell listens for it — the same path a key cleared by a 401 takes.
-    setByokKey(key)
+    setByokKey(key, id)
     setValue('')
     setError(null)
     onOpenChange(false)
@@ -56,6 +71,7 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
 
   const remove = () => {
     clearByokKey()
+    setWorkspace('')
     onOpenChange(false)
     toast('Key removed')
   }
@@ -103,6 +119,31 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
             aria-invalid={error ? true : undefined}
             className="h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3 font-mono text-sm outline-none placeholder:font-sans placeholder:text-muted-foreground/70 focus:border-white/25 aria-[invalid]:border-red-400/60"
           />
+          <label className="sr-only" htmlFor="try-byok-workspace">
+            Anthropic workspace ID
+          </label>
+          <input
+            id="try-byok-workspace"
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={workspace}
+            onChange={(event) => {
+              setWorkspace(event.target.value)
+              if (error) setError(null)
+            }}
+            placeholder="Workspace ID (only if Anthropic asks for one)"
+            className="h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3 font-mono text-sm outline-none placeholder:font-sans placeholder:text-muted-foreground/70 focus:border-white/25"
+          />
+          {/* Keys made under your account rather than inside a workspace are
+              refused outright without this, with a message that reads like a
+              bug in Mason. Saying where to find it is cheaper than the
+              support conversation. */}
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Leave blank unless a generation comes back asking for a workspace ID — it is the
+            <span className="font-mono"> wrkspc_… </span>
+            part of your Anthropic Console URL.
+          </p>
           {error && <p className="text-xs text-red-300">{error}</p>}
           <div className="flex items-center justify-between gap-2 pt-1">
             {stored ? (

@@ -176,6 +176,14 @@ export default defineSchema({
     refundTicket: v.optional(v.string()),
     /** Set when the anonymous user converts; the row is kept for the signal counts. */
     convertedAt: v.optional(v.number()),
+    /**
+     * When this guest gave an address at the export gate.
+     *
+     * The gate asks once and never again, and "once" has to survive a reload
+     * — so it is remembered on the row rather than in the tab. The address
+     * itself lives in `emails`; this is only the fact that it was given.
+     */
+    emailAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     /**
@@ -223,6 +231,35 @@ export default defineSchema({
   })
     .index('by_design', ['designId'])
     .index('by_visible_created', ['visible', 'createdAt'])
+    .index('by_user', ['userId']),
+
+  /**
+   * Addresses people gave in exchange for a download.
+   *
+   * The free week hands out generations and asks for nothing; the one place
+   * it asks for something is the export gate, and what it asks for is an
+   * email rather than an account. This is that list — the launch list.
+   *
+   * Its own table rather than a field on `guests` because it outlives the
+   * guest: `purgeStale` forgets an anonymous user after thirty days, and the
+   * address must not go with them. `userId` is optional and is cleared on
+   * purge for exactly that reason, so a row here can name nobody.
+   *
+   * `email` is stored lower-cased and trimmed so `by_email` really is one row
+   * per person; the same address arriving from a second session updates that
+   * row instead of adding to the pile.
+   */
+  emails: defineTable({
+    email: v.string(),
+    userId: v.optional(v.id('users')),
+    /** Where it was given — 'export' today; a waitlist form later. */
+    source: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    /** How many times this address has come back. */
+    hits: v.number(),
+  })
+    .index('by_email', ['email'])
     .index('by_user', ['userId']),
 
   /** Daily counters per signal kind; see `lib/signals.ts` for the kinds. */

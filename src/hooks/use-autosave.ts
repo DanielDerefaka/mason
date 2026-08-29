@@ -29,16 +29,30 @@ export const useAutosave = () => {
   const [status, setStatus] = useState<SaveStatus>('idle')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string | null>(null)
-  const hydratedRef = useRef(false)
+  /**
+   * Which project the canvas currently holds — not merely whether it holds
+   * one.
+   *
+   * This was a boolean, which was true for as long as /try had a single
+   * project it never left. The moment a guest can switch sketches it becomes
+   * a way to lose one: the hook would decline to hydrate the sketch just
+   * opened, and the save effect below would then write the *previous*
+   * canvas into it under its new id. Keyed on the id, a switch rehydrates
+   * and no write leaves before it has.
+   */
+  const hydratedFor = useRef<string | null>(null)
   const lastViewportRef = useRef<string | null>(null)
   const shapesRef = useRef(shapes)
   shapesRef.current = shapes
 
-  // Load the stored sketch once, and record it as the baseline so hydration
-  // does not immediately look like an unsaved change.
+  // Load the stored sketch once per project, and record it as the baseline so
+  // hydration does not immediately look like an unsaved change.
   useEffect(() => {
-    if (hydratedRef.current || project === undefined || project === null) return
-    hydratedRef.current = true
+    if (!projectId || hydratedFor.current === projectId) return
+    if (project === undefined || project === null || project._id !== projectId) return
+    // Any debounced write still pending belongs to the sketch being left.
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    hydratedFor.current = projectId
 
     const stored = (project.sketchesData ?? {}) as { shapes?: Shape[]; viewport?: Viewport }
     const loaded = Array.isArray(stored.shapes) ? stored.shapes : []
@@ -51,10 +65,13 @@ export const useAutosave = () => {
     lastSavedRef.current = JSON.stringify(loaded)
     lastViewportRef.current = JSON.stringify(stored.viewport ?? null)
     setStatus('saved')
-  }, [project, dispatch])
+  }, [project, projectId, dispatch])
 
   useEffect(() => {
-    if (!projectId || !hydratedRef.current) return
+    // Compared against the id rather than read as a flag: a save must never
+    // run while the canvas still holds the sketch we have just navigated away
+    // from, or it lands in the wrong project.
+    if (!projectId || hydratedFor.current !== projectId) return
 
     const serialisedShapes = JSON.stringify(shapes)
     const serialisedViewport = JSON.stringify(viewport)
@@ -93,5 +110,5 @@ export const useAutosave = () => {
     }
   }, [shapes, viewport, projectId, save])
 
-  return { status, hydrated: hydratedRef.current }
+  return { status, hydrated: hydratedFor.current === projectId }
 }

@@ -9,6 +9,7 @@ import {
   TwitterIcon,
 } from "@/components/marketing/icons";
 import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/marketing-nav";
+import { freeWeekHref } from "@/lib/try/free-week";
 
 const SOCIAL_ICONS = {
   Instagram: InstagramIcon,
@@ -24,7 +25,10 @@ const SOCIAL_ICONS = {
  */
 export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
   const startHref = freeWeek ? "/try" : "/auth/sign-up";
-  const linkHref = (href: string) => (freeWeek && href === "/auth/sign-up" ? "/try" : href);
+  // Every auth link, not just sign-up: /auth/* redirects to /try during the
+  // week, and "Sign in" sitting in the footer of a no-account trial was the
+  // exact contradiction this closes.
+  const linkHref = (href: string) => freeWeekHref(href, freeWeek);
 
   return (
     <footer className="relative border-t border-hairline bg-surface px-6 py-10 md:px-8 md:py-12">

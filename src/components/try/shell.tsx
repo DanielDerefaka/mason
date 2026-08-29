@@ -3,7 +3,7 @@
 import { useConvex, useMutation, useQuery } from 'convex/react'
 import { Loader2 } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -121,9 +121,46 @@ const useTryProject = () => {
     })
   }, [urlProject, validated, convex, createProject, router, pathname, searchParams])
 
+  /**
+   * Moves the canvas to a project already known to be ours.
+   *
+   * `validated` is set here rather than left to the effect above, because the
+   * effect only trusts an id after `getProject` has answered — and between
+   * the click and that answer the canvas would blank. The id came from our
+   * own list or from the mutation that just made it, so it needs no round
+   * trip to be trusted.
+   */
+  const open = useCallback(
+    (id: Id<'projects'>) => {
+      if (id === validated) return
+      writeStored(id)
+      setValidated(id)
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('project', id)
+      // A remix meant for the old canvas must not follow us to the new one.
+      params.delete('remix')
+      awaitingUrl.current = id
+      router.replace(`${pathname}?${params.toString()}`)
+    },
+    [validated, searchParams, router, pathname],
+  )
+
+  const startNew = useCallback(async () => {
+    try {
+      open(await createProject({ name: 'My sketch' }))
+    } catch (error) {
+      // The cap is the expected refusal and says what to do about it; Convex
+      // redacts anything else in production, so that is the only message
+      // worth showing.
+      toast.error(error instanceof Error ? error.message : 'Could not start a new sketch')
+    }
+  }, [createProject, open])
+
   return {
     projectId: urlProject && urlProject === validated ? validated : null,
     failed,
+    open,
+    startNew,
   }
 }
 
@@ -137,7 +174,7 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
 
   const me = useQuery(api.guest.me)
   const pool = useQuery(api.pool.status)
-  const { projectId, failed: projectFailed } = useTryProject()
+  const { projectId, failed: projectFailed, open: openSketch, startNew } = useTryProject()
   const project = useQuery(api.project.getProject, projectId ? { projectId } : 'skip')
   const share = useShareOnX({ projectId, me })
 
@@ -288,7 +325,15 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
 
   return (
     <>
-      <TryHeader me={me} keyStored={keyStored} onAddKey={() => setKeyOpen(true)} share={share} />
+      <TryHeader
+        me={me}
+        keyStored={keyStored}
+        onAddKey={() => setKeyOpen(true)}
+        share={share}
+        projectId={projectId}
+        onOpenSketch={openSketch}
+        onNewSketch={() => void startNew()}
+      />
       <InstructionBar />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {projectId ? (
@@ -322,6 +367,7 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
  * The /try canvas page: guest session, header, instruction bar and the
  * canvas beneath. Whatever renders the canvas must sit inside the gate,
  * because the gate is the GuestProvider the export gate asks.
+ *
  */
 export const TryShell = ({ children }: { children: ReactNode }) => (
   <TryGuestGate>

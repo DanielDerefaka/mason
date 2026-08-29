@@ -78,9 +78,13 @@ export function MobileNav({
         </nav>
 
         <div className="mt-auto flex flex-col gap-3 p-6">
-          <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
-            Sign in
-          </Link>
+          {/* Hidden during the free week for the same reason as the desktop
+              header's: /auth/* redirects to /try while the week is on. */}
+          {!freeWeek && (
+            <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
+              Sign in
+            </Link>
+          )}
           <Link
             href={freeWeek ? "/try" : "/auth/sign-up"}
             onClick={onClose}

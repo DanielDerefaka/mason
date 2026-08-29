@@ -22,6 +22,23 @@ export const getProjects = query({
   },
 })
 
+/**
+ * How many sketches one anonymous session may keep on /try.
+ *
+ * A guest gets a new project whenever they want one — a second day of the
+ * free week should not mean painting over the first day's canvas — but
+ * `createProject` is reachable by anyone who can open a guest session, and
+ * without a bound that is an unauthenticated row-insert loop. Counted over
+ * live rows rather than the numbering counter, so a guest who tidies up gets
+ * the slot back; the bound that matters is how many rows exist at once.
+ *
+ * Ten is more than a sketch a day for the whole week, and a bill nobody
+ * notices. The generation allowance is untouched by any of this: it is keyed
+ * to the guest and the day, not to the project, so a new canvas buys no new
+ * credits.
+ */
+export const GUEST_PROJECT_LIMIT = 10
+
 export const createProject = mutation({
   args: {
     name: v.optional(v.string()),
@@ -30,6 +47,20 @@ export const createProject = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
     if (userId === null) throw new Error('Not authenticated')
+
+    const user = await ctx.db.get(userId)
+    if (user?.isAnonymous) {
+      const mine = await ctx.db
+        .query('projects')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .collect()
+      const live = mine.filter((project) => !project.archivedAt)
+      if (live.length >= GUEST_PROJECT_LIMIT) {
+        throw new Error(
+          `A guest session can hold ${GUEST_PROJECT_LIMIT} sketches — keep your work with an account for more`,
+        )
+      }
+    }
 
     // A per-user counter rather than a count of rows, so deleting a project
     // never causes a later one to reuse its number.
