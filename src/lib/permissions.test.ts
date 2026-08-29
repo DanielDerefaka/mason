@@ -1,3 +1,5 @@
+import { readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { pathToRegexp } from 'path-to-regexp'
 import { describe, expect, it } from 'vitest'
 
@@ -51,4 +53,37 @@ describe('the auth screens', () => {
       expect(bypass(at(path))).toBe(true)
     },
   )
+})
+
+/**
+ * Every page in the marketing route group, read from the filesystem.
+ *
+ * The regression this exists for: /faq was added to the middleware matcher —
+ * which `src/lib/routes.test.ts` requires of every real route — and not to the
+ * bypass list. Those two lists are the halves of one decision and they were
+ * edited separately, so the page built cleanly, answered 307 to the sign-in
+ * form, and would have gone to production as a public FAQ nobody signed out
+ * could read.
+ *
+ * Derived rather than listed, because a list is the thing that was forgotten.
+ */
+const marketingPages = (() => {
+  const dir = join(process.cwd(), 'src/app/(marketing)')
+  return readdirSync(dir).filter(
+    (entry) => statSync(join(dir, entry)).isDirectory() && !entry.startsWith('['),
+  )
+})()
+
+describe('the marketing site', () => {
+  it('found the route group to check', () => {
+    expect(marketingPages.length).toBeGreaterThan(2)
+  })
+
+  it.each(marketingPages)('/%s is readable without a session', (segment) => {
+    expect(bypass(at(`/${segment}`))).toBe(true)
+  })
+
+  it('and so is the landing page it hangs off', () => {
+    expect(bypass(at('/'))).toBe(true)
+  })
 })

@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 22 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 737 unit tests, no server needed
+npm test             # 768 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -56,6 +56,19 @@ bug.** `GUEST_SESSIONS_PER_IP_PER_DAY` is 10 and every run burns one, so the ele
 of the day is refused by `guest.admitIp` exactly as designed. `localhost` and `127.0.0.1`
 hash to different IPs, so `SMOKE_BASE=http://127.0.0.1:3000 npm run smoke:browser` gets a
 fresh allowance. `npx convex data guest_ips` shows the counts.
+
+**A new public page needs two lists, not one.** `src/middleware.ts`'s matcher is an
+allow-list of real routes, and `isBypassRoute` in `src/lib/permissions.ts` decides which of
+them may be read without a session. Adding a page to the matcher alone makes the middleware
+run and then redirect it to `/auth/sign-in` — /faq did exactly that until a build caught it.
+`permissions.test.ts` now reads `src/app/(marketing)` from disk and requires every page in it
+to be bypassed.
+
+**`FREE_WEEK` must never gate `/`.** It did: `(marketing)/page.tsx` called `redirect('/try')`
+whenever the flag was on, so setting it in production took the whole landing page off the
+internet — `/` answered 307 and every campaign link resolved to the canvas instead of the
+pitch. The header, footer and hero all offer /try on their own now. The flag still redirects
+`/auth/*`, which is the half that is meant to.
 
 **`state.shapes.entities` is the entity adapter's state, not the table of shapes.** The
 table is one level further in, at `state.shapes.entities.entities`, so `state.shapes.ids`

@@ -1,11 +1,9 @@
 import type { MetadataRoute } from 'next'
 
 import { POSTS } from '@/content/posts'
+import { SITE_URL } from '@/lib/site'
 
-// www, matching metadataBase and robots.ts. On the apex every one of these
-// entries 308s, which Search Console reports as "Page with redirect" and
-// indexes the www copy of instead — ten URLs submitted, ten not indexed.
-const SITE = 'https://www.sketchmason.com'
+const SITE = SITE_URL
 
 /**
  * /sitemap.xml, which 404'd until now.
@@ -28,6 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/download`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE}/blog`, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE}/about-us`, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${SITE}/faq`, changeFrequency: 'monthly', priority: 0.5 },
   ]
 
   const posts: MetadataRoute.Sitemap = POSTS.map((post) => ({

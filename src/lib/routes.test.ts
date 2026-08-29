@@ -54,6 +54,11 @@ const topLevelSegments = (() => {
       }
       // `[slug]` and `[...spec]` have no literal form to test.
       if (entry.startsWith('[') || entry.startsWith('_')) continue
+      // A dotted segment is a file the site serves, not a page it routes:
+      // `llms.txt/route.ts` answers at /llms.txt. Those must stay *out* of the
+      // matcher — the middleware would redirect a crawler fetching them — so
+      // they are asserted against below rather than required here.
+      if (entry.includes('.')) continue
       found.add(entry)
     }
   }
@@ -119,7 +124,10 @@ describe('and nothing else', () => {
     expect(matches('/opengraph-image')).toBe(false)
   })
 
-  it.each(['/robots.txt', '/sitemap.xml', '/favicon.ico'])('%s is served, not gated', (path) => {
-    expect(matches(path)).toBe(false)
-  })
+  it.each(['/robots.txt', '/sitemap.xml', '/favicon.ico', '/llms.txt'])(
+    '%s is served, not gated',
+    (path) => {
+      expect(matches(path)).toBe(false)
+    },
+  )
 })

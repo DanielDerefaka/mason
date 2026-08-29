@@ -67,6 +67,7 @@ export const config = {
     '/blog',
     '/blog/:path*',
     '/about-us',
+    '/faq',
     '/download',
     '/explore',
     '/s/:path*',
