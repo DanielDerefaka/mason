@@ -114,8 +114,8 @@ export function AboutContent() {
                 too; marketing-about.test.ts holds the two together. It is set
                 here by hand only so the highlights can be applied. */}
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              <Hl>Mason</Hl> (sketchmason.com) turns rough sketches — rectangles and boxes —
-              into <Hl>finished user interfaces</Hl>, design systems, and flows. A frame drawn
+              <Hl>SketchMason</Hl> — Mason for short — turns rough sketches of rectangles and
+              boxes into <Hl>finished user interfaces</Hl>, design systems, and flows. A frame drawn
               on the canvas becomes a real screen, built from a design system read out of
               your own mood board.
             </p>

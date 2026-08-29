@@ -18,9 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 31 live checks against a running server
+npm run smoke        # 32 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 863 unit tests, no server needed
+npm test             # 867 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -178,5 +178,14 @@ prints values — pipe it through `grep -E '^[A-Z_]+=' | cut -d= -f1`.
 
 Comments explain *why*, not what. Tests are named as the behaviour they protect, and the
 comment above a regression test says what shipped broken. British spelling in prose.
+
+The public name is SketchMason; the product calls itself Mason. Marketing pages, metadata,
+share cards, structured data and /llms.txt say SketchMason — with `alternateName: 'Mason'`
+on both JSON-LD blocks, which is what tells a machine the two are one entity — and the
+canvas, the editor and everything behind a session say Mason. `src/lib/brand.ts` holds the
+positioning sentence and the Organization block. The category is sketch-to-*design* with an
+HTML export: never "sketch to code", never "production-ready components";
+`metadata.test.ts` refuses both across the public surface. `hello@mason.design` stays until
+a sketchmason.com inbox exists.
 
 Never invent an API key. `.env.example` carries names only.

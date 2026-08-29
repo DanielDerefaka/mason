@@ -259,6 +259,25 @@ const main = async () => {
     )
   }
 
+  // The rename is a set of strings, and strings are what a merge that touches
+  // the layout can quietly lose. One fetch checks the title a result shows,
+  // the site name a share card shows, and the machine-readable statement that
+  // "Mason" and "SketchMason" are one entity — on both structured-data blocks.
+  console.log('\nThe home page carries the brand, in words and in structured data')
+  {
+    const html = await (await get('/', 'follow')).text()
+    const titled = html.includes('<title>SketchMason — draw the shape, get the product</title>')
+    const named = /property="og:site_name" content="SketchMason"/.test(html)
+    const entity = (html.match(/"alternateName":"Mason"/g) ?? []).length === 2
+    record(
+      '/ is SketchMason to a person, a share card and a machine',
+      titled && named && entity,
+      [!titled && 'title', !named && 'og:site_name', !entity && 'alternateName on both blocks']
+        .filter(Boolean)
+        .join(', '),
+    )
+  }
+
   console.log('\nShare cards render, and a post is a page to a crawler')
   const card = async (path) => {
     const response = await get(path, 'follow')

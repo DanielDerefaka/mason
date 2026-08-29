@@ -146,7 +146,7 @@ describe('the index is named, not labelled', () => {
    */
   it('heads the page with the name in it', () => {
     const heading = index.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/\s+/g, ' ').trim()
-    expect(heading).toBe('The Mason <span className="font-display-italic">blog</span>')
+    expect(heading).toBe('The SketchMason <span className="font-display-italic">blog</span>')
   })
 
   it('opens with the same sentence its description gives', () => {

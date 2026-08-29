@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 
 import { CtaSection } from "@/components/marketing/home/CtaSection";
 import { JsonLd } from "@/components/marketing/JsonLd";
+import { ORGANIZATION } from "@/lib/brand";
 import { BLOG_POSTS, getPostBySlug } from "@/lib/marketing-blog";
 import { SITE_URL } from "@/lib/site";
 import type { BlogPost } from "@/types/marketing-content";
@@ -54,7 +55,9 @@ const POST_CARD = "opengraph-image-yqks0s";
  * logo either — the only mark on disk is white on transparent, invisible on
  * the white ground Google draws a logo onto. The image is the post's own card,
  * composed beside this file in `opengraph-image.tsx`, the same one the share
- * tags point at.
+ * tags point at. Author and publisher are the Organization the homepage
+ * declares — SketchMason, alternateName Mason — so a post is attributed to
+ * the entity the site says it is, not to a second one spelled by hand.
  */
 const blogPosting = (post: BlogPost) => {
   const url = `${SITE_URL}/blog/${post.slug}`;
@@ -68,8 +71,8 @@ const blogPosting = (post: BlogPost) => {
     image: `${url}/${POST_CARD}`,
     url,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    author: { "@type": "Organization", name: "Mason", url: SITE_URL },
-    publisher: { "@type": "Organization", name: "Mason", url: SITE_URL },
+    author: ORGANIZATION,
+    publisher: ORGANIZATION,
   };
 };
 

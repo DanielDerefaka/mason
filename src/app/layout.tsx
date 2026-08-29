@@ -7,6 +7,7 @@ import { ConvexClientProvider } from "@/convex/provider";
 import { ReduxProvider } from "@/redux/provider";
 import { ThemeProvider } from "@/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
+import { POSITIONING } from "@/lib/brand";
 import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
@@ -64,16 +65,23 @@ export const metadata: Metadata = {
   // llms.txt and the homepage's structured data all read too — five places
   // that have to agree, and did not when they were five string literals.
   metadataBase: new URL(SITE_URL),
-  // `template` is why no page below sets its own "| Mason" suffix any more:
-  // they did, and a template would have made every title read "Blog | Mason ·
-  // Mason". The home page opts out with `absolute`, since its title already
-  // opens with the word.
+  // `template` is why no page below sets its own "| SketchMason" suffix by
+  // hand: they did, back when the name was "Mason", and a template would have
+  // made every title read "Blog | Mason · Mason". The home page opts out with
+  // `absolute`, since its title already opens with the name.
+  //
+  // SketchMason is the public name; the product calls itself Mason. The rule,
+  // and the structured data that tells a machine the two are one thing, live
+  // in `@/lib/brand`.
   title: {
-    default: "Mason — sketch to code",
-    template: "%s · Mason",
+    default: "SketchMason — draw the shape, get the product",
+    template: "%s | SketchMason",
   },
-  description:
-    "Draw your UI, get working code. Mason turns rough sketches into clean Tailwind components you own.",
+  // The fallback for any page without a sentence of its own, and the one the
+  // homepage repeats. It used to promise "working code" and "clean Tailwind
+  // components you own", which is a different product: what comes out is a
+  // design, exported as HTML or as a brief.
+  description: POSITIONING,
   // "./" resolves against the *current* pathname, not against metadataBase —
   // `resolveRelativeUrl` in next/dist/lib/metadata/resolvers/resolve-url.js
   // posix-resolves it — so one line here gives every route its own canonical.
@@ -87,7 +95,7 @@ export const metadata: Metadata = {
   // and on every child page: stating them twice is how the two drift apart,
   // and a page that sets a title then forgets its card is the common failure.
   openGraph: {
-    siteName: "Mason",
+    siteName: "SketchMason",
     type: "website",
     // Same "./" trick, and the reason /explore, /blog and /download stopped
     // claiming to be the home page: this was "/", and openGraph.url is

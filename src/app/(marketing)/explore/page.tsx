@@ -6,7 +6,7 @@ import { CtaSection } from '@/components/marketing/home/CtaSection'
 export const metadata: Metadata = {
   title: 'Explore',
   description:
-    'Designs people sketched and Mason built. Remix one, or draw your own.',
+    'Designs people sketched and SketchMason built. Remix one, or draw your own.',
 }
 
 /**

@@ -9,11 +9,12 @@ import { ImageResponse } from 'next/og'
  * export step between editing it and shipping it.
  *
  * Deliberately says nothing the product does not do — no counts, no claims
- * about speed. A card that oversells is the first thing a visitor measures the
- * canvas against.
+ * about speed, and no "code": the subtitle was "Sketch → code", which names a
+ * category the product is not in. A card that oversells is the first thing a
+ * visitor measures the canvas against.
  */
 export const runtime = 'nodejs'
-export const alt = 'Mason — turn a sketch into working code'
+export const alt = 'SketchMason — draw the shape, get the product'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -46,11 +47,11 @@ export default function OpengraphImage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ fontSize: 128, fontWeight: 600, letterSpacing: -5, lineHeight: 1 }}>
-            Mason
+          <div style={{ fontSize: 112, fontWeight: 600, letterSpacing: -4, lineHeight: 1 }}>
+            SketchMason
           </div>
           <div style={{ fontSize: 46, color: 'rgba(255,255,255,0.66)', letterSpacing: -1 }}>
-            Sketch → code
+            Draw the shape, get the product
           </div>
         </div>
 

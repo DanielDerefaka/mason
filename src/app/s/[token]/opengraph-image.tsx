@@ -12,7 +12,7 @@ import { api } from '../../../../convex/_generated/api'
  * or draw nothing, the card names the design and says where it came from.
  */
 export const runtime = 'nodejs'
-export const alt = 'Made with Mason'
+export const alt = 'Made with SketchMason'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -48,7 +48,7 @@ export default async function ShareImage({ params }: { params: Promise<{ token: 
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <Mark size={56} />
-          <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: -0.5 }}>Mason</div>
+          <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: -0.5 }}>SketchMason</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -64,7 +64,7 @@ export default async function ShareImage({ params }: { params: Promise<{ token: 
             {label}
           </div>
           <div style={{ fontSize: 30, color: 'rgba(255,255,255,0.6)' }}>
-            Sketched by hand. Made with Mason.
+            Sketched by hand. Made with SketchMason.
           </div>
         </div>
       </div>

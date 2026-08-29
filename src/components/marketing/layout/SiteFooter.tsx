@@ -52,10 +52,10 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
       <div className="container-home !px-0">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)] md:gap-8">
           <div>
-            <Link href="/" aria-label="Mason home" className="inline-flex items-center gap-2.5">
+            <Link href="/" aria-label="SketchMason home" className="inline-flex items-center gap-2.5">
               <LogoMark className="h-7 w-7 text-foreground" />
               <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
-                Mason
+                SketchMason
               </span>
             </Link>
             <p className="mt-4 max-w-[280px] text-[0.85rem] leading-relaxed text-muted-foreground">

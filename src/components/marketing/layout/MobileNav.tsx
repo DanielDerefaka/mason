@@ -51,7 +51,7 @@ export function MobileNav({
           <span className="flex items-center gap-2.5">
             <LogoMark className="h-7 w-7 text-foreground" />
             <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
-              Mason
+              SketchMason
             </span>
           </span>
           <button
