@@ -29,6 +29,13 @@ const render = (value: unknown) => {
 const links = (host: HTMLElement) =>
   [...host.querySelectorAll('a')].map((a) => [a.getAttribute('href'), a.textContent?.trim()])
 
+/**
+ * `ref` and not `utm_*`, and on both screens: a utm on an internal hop
+ * re-labels the session's source in analytics, a bare ref does not. The
+ * value is what the dashboard is checked for, so it is pinned exactly.
+ */
+const TRY = '/try?ref=share'
+
 const DESIGN = {
   label: 'Landing',
   html: '<section><h1>A landing page</h1></section>',
@@ -49,7 +56,7 @@ describe('a shared design offers the viewer a way into /try', () => {
     expect(links(host)).toEqual(
       expect.arrayContaining([
         ['/', 'Made with Mason'],
-        ['/try', 'Try Mason free'],
+        [TRY, 'Try Mason free'],
       ]),
     )
   })
@@ -58,7 +65,7 @@ describe('a shared design offers the viewer a way into /try', () => {
     const host = render(null)
     expect(host.textContent).toContain('This link is no longer live')
     expect(links(host)).toEqual([
-      ['/try', 'Try Mason free'],
+      [TRY, 'Try Mason free'],
       ['/', 'What is Mason?'],
     ])
   })

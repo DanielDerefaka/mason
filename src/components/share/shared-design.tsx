@@ -12,6 +12,17 @@ import { api } from '../../../convex/_generated/api'
 import { StyleGuideSchema } from '@/types/style-guide'
 
 /**
+ * Where both ways in point. `ref` rather than `utm_source`, on purpose: these
+ * are internal hops, and a utm parameter on an internal link re-labels the
+ * session — a visitor who arrived from X would be filed under the share page
+ * from the next click on, in the one week the source report is read. A bare
+ * ref rides along without touching the source. Whether Datafast shows it as a
+ * row of its own is checked against the dashboard; if it ignores the
+ * parameter, the fallback is a Convex signal.
+ */
+const TRY_HREF = '/try?ref=share'
+
+/**
  * A design, to someone with no account.
  *
  * The same render path as the private preview — sanitised markup with the
@@ -80,7 +91,7 @@ export const SharedDesign = ({ token }: { token: string }) => {
           </p>
           <div className="mt-7 flex items-center justify-center gap-5 text-sm">
             <Link
-              href="/try"
+              href={TRY_HREF}
               className="rounded-full bg-foreground px-4 py-2 font-medium text-background transition-opacity hover:opacity-90"
             >
               Try Mason free
@@ -117,7 +128,7 @@ export const SharedDesign = ({ token }: { token: string }) => {
           Made with Mason
         </Link>
         <Link
-          href="/try"
+          href={TRY_HREF}
           className="border-l border-white/15 py-2 pr-3 pl-2.5 font-medium text-white transition-colors hover:bg-white/10"
         >
           Try Mason free
