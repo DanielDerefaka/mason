@@ -1,6 +1,6 @@
 import { Canvas } from '@/components/canvas'
 
-export const metadata = { title: 'Canvas | Mason' }
+export const metadata = { title: 'Canvas' }
 
 export default function CanvasPage() {
   return (

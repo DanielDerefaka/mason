@@ -5,7 +5,7 @@ import { CtaSection } from '@/components/marketing/home/CtaSection'
 import { DESKTOP } from '@/lib/marketing-download'
 
 export const metadata: Metadata = {
-  title: 'Download | Mason',
+  title: 'Download',
   description:
     'Mason for Mac — the whole app in its own window. Sketches in, interfaces out.',
 }

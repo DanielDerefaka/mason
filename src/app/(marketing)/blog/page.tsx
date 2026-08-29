@@ -6,7 +6,7 @@ import { CtaSection } from "@/components/marketing/home/CtaSection";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
 
 export const metadata: Metadata = {
-  title: "Blog | Mason",
+  title: "Blog",
 };
 
 /**

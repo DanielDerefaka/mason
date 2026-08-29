@@ -22,9 +22,9 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = getPostBySlug(slug);
 
-  if (!post) return { title: "Post | Mason" };
+  if (!post) return { title: "Post" };
 
-  return { title: `${post.title} | Mason` };
+  return { title: `${post.title}` };
 }
 
 /**

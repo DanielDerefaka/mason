@@ -1,4 +1,4 @@
-export const metadata = { title: 'Create your account | Mason' }
+export const metadata = { title: 'Create your account' }
 
 /** Exists only to give the client page below it a title. */
 export default function SignUpLayout({ children }: { children: React.ReactNode }) {

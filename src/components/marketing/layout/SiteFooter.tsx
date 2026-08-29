@@ -11,10 +11,15 @@ import {
 import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/marketing-nav";
 import { freeWeekHref } from "@/lib/try/free-week";
 
+/**
+ * Keyed by label, and the lookup returns null for anything unlisted — which is
+ * what lets `SOCIAL_LINKS` be the only place a social account is added or
+ * removed. The three unused entries are kept for the day their accounts exist.
+ */
 const SOCIAL_ICONS = {
+  X: TwitterIcon,
   Instagram: InstagramIcon,
   Facebook: FacebookIcon,
-  Twitter: TwitterIcon,
   LinkedIn: LinkedInIcon,
 } as const;
 

@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { DesignEditor } from '@/components/editor'
 import { TryGuestGate } from '@/components/try/guest-gate'
 
-export const metadata: Metadata = { title: 'Editor | Mason' }
+export const metadata: Metadata = { title: 'Editor' }
 
 /**
  * The same full-screen editor the dashboard uses, behind the guest gate so

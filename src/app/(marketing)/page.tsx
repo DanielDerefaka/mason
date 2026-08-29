@@ -11,7 +11,9 @@ import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 import { isFreeWeek } from '@/lib/try/free-week'
 
 export const metadata = {
-  title: 'Mason — draw the shape, get the product',
+  // `absolute` opts out of the root's "%s · Mason" template: this title already
+  // opens with the word, and the suffix would say it twice.
+  title: { absolute: 'Mason — draw the shape, get the product' },
   description:
     'Rough out a screen with rectangles. Get a design system from your mood board, a finished interface from your sketch, and the whole flow around it.',
 }

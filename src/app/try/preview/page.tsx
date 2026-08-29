@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { DesignPreview } from '@/components/editor/preview'
 import { TryGuestGate } from '@/components/try/guest-gate'
 
-export const metadata: Metadata = { title: 'Preview | Mason' }
+export const metadata: Metadata = { title: 'Preview' }
 
 export default function TryPreviewPage() {
   return (
