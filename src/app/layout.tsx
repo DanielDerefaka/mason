@@ -7,6 +7,7 @@ import { ConvexClientProvider } from "@/convex/provider";
 import { ReduxProvider } from "@/redux/provider";
 import { ThemeProvider } from "@/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,9 +60,10 @@ export const metadata: Metadata = {
   // host. Polar still reads it (api/polar/checkout), where following the
   // running origin is correct; a social card is the opposite case.
   //
-  // If Vercel's primary domain is ever flipped to the apex, this line, robots.ts
-  // and sitemap.ts are the three places that have to move together.
-  metadataBase: new URL("https://www.sketchmason.com"),
+  // The host itself lives in `@/lib/site`, which robots.ts, sitemap.ts,
+  // llms.txt and the homepage's structured data all read too — five places
+  // that have to agree, and did not when they were five string literals.
+  metadataBase: new URL(SITE_URL),
   // `template` is why no page below sets its own "| Mason" suffix any more:
   // they did, and a template would have made every title read "Blog | Mason ·
   // Mason". The home page opts out with `absolute`, since its title already

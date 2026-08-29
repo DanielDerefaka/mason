@@ -23,6 +23,12 @@ export const isBypassRoute = [
   '/api/image/(.*)',
   '/blog(.*)',
   '/about-us(.*)',
+  // The questions page, read by people with no account and by the crawlers
+  // that quote it. Adding a marketing page to the middleware matcher without
+  // adding it here is the trap: the matcher makes the middleware run, and
+  // anything not bypassed is a redirect to the sign-in page. /faq shipped
+  // exactly that for the length of one build.
+  '/faq(.*)',
   // The desktop download. Public reading like the blog, and bypass for the
   // same reason: being signed in should not hide the installer.
   '/download(.*)',

@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import robots from './robots'
 import sitemap from './sitemap'
+import { GET as llmsTxt } from './llms.txt/route'
 import { POSTS } from '@/content/posts'
+import { FAQ_ENTRIES, PENDING_CONFIRMATION } from '@/lib/marketing-faq'
 
 /**
  * What a crawler and a link preview see.
@@ -18,6 +20,19 @@ import { POSTS } from '@/content/posts'
  * and sitemap routes are plain functions — is executed.
  */
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
+
+/**
+ * Source with its comments removed, for the assertions phrased as absences.
+ *
+ * Comments here are long and say why a thing is *not* done — "no openGraph
+ * block", "no offers", "no [FOUNDER CONFIRM] placeholder" — so a test grepping
+ * the raw file for the forbidden word finds it in the note explaining its own
+ * absence and fails on the code being correctly written. `//` is stripped only
+ * at the start of a line, or every https:// in the file would take the rest of
+ * its line with it.
+ */
+const withoutComments = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the site tells a crawler who it is', () => {
   const layout = read('src/app/layout.tsx')
@@ -38,20 +53,30 @@ describe('the site tells a crawler who it is', () => {
    * ever flipped back to the apex, this test is the thing that says so.
    */
   it('bases every resolved URL on the host that answers 200', () => {
-    expect(layout).toMatch(/metadataBase: new URL\("https:\/\/www\.sketchmason\.com"\)/)
+    // The apex 308s to www, so the bare domain here would make every canonical
+    // and every og:url name a redirect.
+    expect(read('src/lib/site.ts')).toMatch(/SITE_URL = 'https:\/\/www\.sketchmason\.com'/)
+    expect(layout).toMatch(/metadataBase: new URL\(SITE_URL\)/)
   })
 
+  /**
+   * One constant, not five literals. The host appears in metadataBase, in
+   * robots.txt, in every sitemap entry, in /llms.txt and inside the homepage's
+   * structured data — and the failure mode of duplicating it is that four of
+   * them are updated and the fifth quietly keeps pointing at a redirect.
+   */
   it.each([
-    ['src/app/robots.ts', 'the sitemap reference'],
-    ['src/app/sitemap.ts', 'every entry'],
-  ])('names the same host in %s, for %s', (path) => {
+    'src/app/robots.ts',
+    'src/app/sitemap.ts',
+    'src/app/llms.txt/route.ts',
+    'src/app/(marketing)/page.tsx',
+  ])('%s reads the host from @/lib/site rather than spelling it out', (path) => {
     const source = read(path)
-    expect(source).toMatch(/https:\/\/www\.sketchmason\.com/)
-    // The apex, unprefixed — the redirect it would otherwise point at. Not
-    // asserted against layout.tsx, which carries the Datafast `data-domain`:
-    // that is an analytics site key rather than a URL anything fetches, and
-    // rewriting it would silently split the dashboard's history in two.
-    expect(source).not.toMatch(/(?<!www\.)\bsketchmason\.com/)
+    expect(source).toMatch(/import \{ SITE_URL \} from '@\/lib\/site'/)
+    // Not asserted against layout.tsx, which carries the Datafast
+    // `data-domain`: that is an analytics site key rather than a URL anything
+    // fetches, and rewriting it would split the dashboard's history in two.
+    expect(source).not.toMatch(/sketchmason\.com/)
   })
 
   /**
@@ -274,4 +299,172 @@ describe('the footer links to accounts that exist', () => {
       expect(literal).not.toMatch(new RegExp(host.replace('.', '\\.')))
     },
   )
+})
+
+describe('/llms.txt', () => {
+  // The route is a plain function with no request context, so it can be called
+  // rather than read — and what is asserted is the body a crawler receives.
+  const body = () => llmsTxt().text()
+
+  it('answers as plain text a model can read without parsing HTML', () => {
+    const response = llmsTxt()
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8')
+  })
+
+  it('says what Mason is before it says where anything is', async () => {
+    const text = await body()
+    expect(text.startsWith('# Mason')).toBe(true)
+    expect(text).toMatch(/turns a hand-drawn interface sketch into working code/)
+  })
+
+  it('links every public page, on the host that answers 200', async () => {
+    const text = await body()
+    for (const path of ['/', '/try', '/explore', '/blog', '/download', '/faq']) {
+      expect(text).toContain(`https://www.sketchmason.com${path})`)
+    }
+  })
+
+  /**
+   * The reason this file carries no figures at all: a model that reads it
+   * quotes it, and keeps quoting it long after a pool size or a price has
+   * moved. A wrong number in an answer nobody can see being given is worse
+   * than no number. The same rule is why the SoftwareApplication block below
+   * has no `offers`.
+   */
+  it('quotes no number anyone can later change', async () => {
+    const text = await body()
+    expect(text).not.toMatch(/\d/)
+    expect(text).not.toMatch(/free tier|per month|credits|\bplan\b/i)
+  })
+})
+
+describe('what the home page tells a machine it is', () => {
+  const home = read('src/app/(marketing)/page.tsx')
+
+  it('declares itself an application, on the canonical host', () => {
+    expect(home).toMatch(/'@type': 'SoftwareApplication'/)
+    expect(home).toMatch(/name: 'Mason'/)
+    expect(home).toMatch(/applicationCategory: 'DeveloperApplication'/)
+    expect(home).toMatch(/operatingSystem: 'Web'/)
+    expect(home).toMatch(/url: SITE_URL/)
+  })
+
+  /**
+   * Structured data is a claim to a machine that will repeat it, and an
+   * `offers` block is the one claim Google is entitled to print as a price
+   * beside the site in a result. What Mason costs is not settled, so the block
+   * says only what is: what this is, where it runs, where it lives.
+   */
+  it('claims no price, because there is not one to claim yet', () => {
+    expect(withoutComments(home)).not.toMatch(/offers|priceCurrency|\bprice\b|aggregateRating/i)
+  })
+
+  it('gives the block the same sentence the meta description gives', () => {
+    // One constant used twice. Structured data contradicting the description
+    // on the same page is worse than having neither.
+    expect(home).toMatch(/description: DESCRIPTION,/g)
+    expect(home.match(/description: DESCRIPTION,/g)).toHaveLength(2)
+  })
+
+  /**
+   * The regression this exists for: the home page called `redirect('/try')`
+   * whenever FREE_WEEK was set, so the landing page vanished from production
+   * the moment the flag went on — every campaign link resolved to the canvas
+   * instead of the pitch, and / answered 307. The header, footer and hero all
+   * offer /try on their own; the visitor is offered the canvas, not moved to
+   * it.
+   */
+  it('serves the landing page whatever the free-week flag is doing', () => {
+    expect(home).not.toMatch(/redirect\(/)
+    expect(home).not.toMatch(/isFreeWeek/)
+  })
+
+  /** The auth gate is the half that stays: /auth/* still bends to /try. */
+  it('leaves the free-week gate on the auth screens alone', () => {
+    expect(read('src/app/auth/layout.tsx')).toMatch(/isFreeWeek\(\)/)
+  })
+})
+
+describe('/faq answers only what the code can be checked against', () => {
+  const page = read('src/app/(marketing)/faq/page.tsx')
+
+  it('titles and describes itself, and resolves its own canonical', () => {
+    expect(page).toMatch(/title: 'FAQ'/)
+    expect(page).toMatch(/description:/)
+    expect(page).toMatch(/alternates: \{ canonical: '\.\/' \}/)
+  })
+
+  /** The shallow-merge landmine: a child openGraph replaces, never merges. */
+  it('declares no openGraph block of its own', () => {
+    expect(withoutComments(page)).not.toMatch(/openGraph/)
+  })
+
+  it('marks itself up as an FAQPage', () => {
+    expect(page).toMatch(/'@type': 'FAQPage'/)
+    expect(page).toMatch(/'@type': 'Question'/)
+    expect(page).toMatch(/acceptedAnswer/)
+  })
+
+  /**
+   * The markup is mapped from the array the page renders, so the two cannot
+   * drift. Two hand-kept lists fail silently and in one direction: the page
+   * shows the current answer while the structured data feeds an old one to
+   * every machine reading the page.
+   */
+  it('builds that markup from the same array it renders', () => {
+    expect(page).toMatch(/FAQ_ENTRIES\.map/)
+    expect(page.match(/FAQ_ENTRIES\.map/g)).toHaveLength(2)
+  })
+
+  it('asks enough to be worth a page and few enough to be read', () => {
+    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(6)
+    expect(FAQ_ENTRIES.length).toBeLessThanOrEqual(8)
+  })
+
+  it('ends every question with a question mark and every answer with a full stop', () => {
+    for (const entry of FAQ_ENTRIES) {
+      expect(entry.question.endsWith('?')).toBe(true)
+      expect(entry.answer.trim().endsWith('.')).toBe(true)
+    }
+  })
+
+  /**
+   * A hedge on a public page is still a claim. Where the code did not settle
+   * an answer — what it costs, how long a guest canvas lives, what the
+   * download email is used for, how much a guest may generate — the question
+   * is left off the page entirely and parked in PENDING_CONFIRMATION, rather
+   * than published with a placeholder in it. Google would index the
+   * placeholder.
+   */
+  it('publishes no unconfirmed answer, and no placeholder standing in for one', () => {
+    expect(PENDING_CONFIRMATION.length).toBeGreaterThan(0)
+    for (const entry of FAQ_ENTRIES) {
+      expect(entry.answer).not.toMatch(/FOUNDER CONFIRM|TODO|TBD/)
+    }
+    expect(withoutComments(page)).not.toMatch(/FOUNDER CONFIRM|PENDING_CONFIRMATION/)
+  })
+
+  /** The same rule as /llms.txt: no figure the pool or a price list can move. */
+  it('quotes no number a change elsewhere would make wrong', () => {
+    for (const entry of FAQ_ENTRIES) expect(entry.answer).not.toMatch(/\d/)
+  })
+
+  it('is listed in the sitemap, or nothing will find it', () => {
+    expect(sitemap().map((entry) => entry.url)).toContain('https://www.sketchmason.com/faq')
+  })
+})
+
+describe('structured data cannot break out of its own script tag', () => {
+  /**
+   * `JSON.stringify` quotes everything except the one sequence that matters
+   * inside a <script>: a literal "</script>" would close the element early and
+   * spill the rest of the page into the document as markup. Escaping "<" to
+   * its unicode form parses back identically and cannot terminate the tag.
+   */
+  it('escapes every "<" it emits', () => {
+    expect(read('src/components/marketing/JsonLd.tsx')).toMatch(
+      /JSON\.stringify\(data\)\.replace\(\/<\/g, '\\\\u003c'\)/,
+    )
+  })
 })
