@@ -472,6 +472,20 @@ describe('/faq answers only what the code can be checked against', () => {
     expect(account?.answer).toMatch(/newsletter/)
   })
 
+  /**
+   * The page and the backend are one claim made in two places.
+   *
+   * /faq promises fourteen days of retention, and `STALE_AFTER_MS` is what
+   * actually deletes the work — so the page must not be able to ship a promise
+   * the cron does not keep. It could: the constant was thirty when the answer
+   * was written, and only a person reading both files would have noticed.
+   */
+  it('promises the retention the purge cron actually applies', () => {
+    const retention = FAQ_ENTRIES.find((entry) => entry.question.includes('How long'))
+    expect(retention?.answer).toMatch(/Fourteen days/)
+    expect(read('convex/guest.ts')).toMatch(/const STALE_AFTER_MS = 14 \* 24 \* 60 \* 60 \* 1000/)
+  })
+
   it('is listed in the sitemap, or nothing will find it', () => {
     expect(sitemap().map((entry) => entry.url)).toContain('https://www.sketchmason.com/faq')
   })

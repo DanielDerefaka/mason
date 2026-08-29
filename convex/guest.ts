@@ -30,8 +30,18 @@ export const SHARE_BONUS = 2
  */
 const CLAIM_TTL_MS = 15 * 60 * 1000
 
-/** A guest who never converted is forgotten after this. */
-const STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
+/**
+ * A guest who never converted is forgotten after this.
+ *
+ * Fourteen days, and /faq says so in as many words — which is the reason it is
+ * fourteen rather than the thirty it was. The page and the constant are one
+ * claim made in two places, and the page is the half a stranger reads.
+ *
+ * The auth cookie outlives this deliberately (thirty days, `middleware.ts`):
+ * it is the same cookie a real account is held by, and shortening it would
+ * sign account holders out to shorten a guest's retention.
+ */
+const STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000
 
 const PURGE_BATCH = 50
 
@@ -359,7 +369,7 @@ const purgeGuest = async (ctx: MutationCtx, guest: Doc<'guests'>) => {
   }
 
   // The address stays; the link to the user does not. Deleting the row would
-  // make the nightly purge quietly eat the launch list thirty days after
+  // make the nightly purge quietly eat the launch list a fortnight after
   // each visit, which is the one thing this table exists to prevent.
   const emails = await ctx.db
     .query('emails')
