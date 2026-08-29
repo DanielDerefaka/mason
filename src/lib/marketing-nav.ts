@@ -77,11 +77,18 @@ export interface SocialLink {
   href: string
 }
 
+/**
+ * Only accounts that exist.
+ *
+ * This was four icons pointing at instagram.com, facebook.com, twitter.com and
+ * linkedin.com — the platforms' own front doors, with no handle on the end of
+ * any of them. A row of buttons that dump a visitor on a logged-out Facebook
+ * home page reads as a site nobody finished, and it costs more trust than four
+ * icons buy. One real account beats four decorative ones; add the others back
+ * as they are actually opened.
+ */
 export const SOCIAL_LINKS: SocialLink[] = [
-  { label: 'Instagram', href: 'https://www.instagram.com/' },
-  { label: 'Facebook', href: 'https://www.facebook.com/' },
-  { label: 'Twitter', href: 'https://twitter.com/' },
-  { label: 'LinkedIn', href: 'https://www.linkedin.com/' },
+  { label: 'X', href: 'https://x.com/danieldxdere' },
 ]
 
 export const CONTACT = {

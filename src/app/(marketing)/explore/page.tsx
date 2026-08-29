@@ -4,7 +4,7 @@ import { ExploreGallery } from '@/components/explore/gallery'
 import { CtaSection } from '@/components/marketing/home/CtaSection'
 
 export const metadata: Metadata = {
-  title: 'Explore | Mason',
+  title: 'Explore',
   description:
     'Designs people sketched and Mason built. Remix one, or draw your own.',
 }

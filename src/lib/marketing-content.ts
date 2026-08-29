@@ -40,6 +40,19 @@ export const HERO = {
     { lead: 'Grow it into a flow', rest: ', screen by screen' },
     { lead: 'Autosaved, every stroke', rest: ', with the history yours' },
   ],
+  /**
+   * The two calls to action, and which is which.
+   *
+   * The canvas leads. The homepage had no link to /try at all — every "start"
+   * on the page went to the sign-up form, so the one thing a visitor can do
+   * without an account was the one thing the site never offered them. Making
+   * an account is still here, second, for the people who already know they
+   * want one.
+   */
+  cta: {
+    primary: { label: 'Try it free — no sign-up', href: '/try' },
+    secondary: { label: 'Create an account' },
+  },
   /** The one link under the checklist: grey kicker, white label. */
   aside: { kicker: 'Also on the desktop', label: 'Download for Mac', href: '/download' },
   image: {

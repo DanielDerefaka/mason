@@ -4,7 +4,7 @@ import { AboutContent } from "@/components/marketing/AboutContent";
 import { CtaSection } from "@/components/marketing/home/CtaSection";
 
 export const metadata: Metadata = {
-  title: "About Us | Mason",
+  title: "About Us",
 };
 
 /**

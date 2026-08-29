@@ -53,9 +53,37 @@ export const metadata: Metadata = {
   // `||`, not `??`: the variable is defined-but-empty on a deployment where
   // someone cleared it, and `new URL("")` throws — which is every page of the
   // site failing to render, from a metadata line.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://sketchmason.com"),
-  title: "Mason",
-  description: "Turn sketches into production-ready designs.",
+  // The canonical domain, hardcoded. This read NEXT_PUBLIC_APP_URL first, and
+  // that variable is whatever the current tunnel or preview happens to be — a
+  // local run advertised its ngrok host as og:url, and a stale value on the
+  // deployment would point every share card at a URL nobody else can open.
+  // Polar still reads it (api/polar/checkout), where following the running
+  // origin is the correct behaviour; a social card is the opposite case.
+  metadataBase: new URL("https://sketchmason.com"),
+  // `template` is why no page below sets its own "| Mason" suffix any more:
+  // they did, and a template would have made every title read "Blog | Mason ·
+  // Mason". The home page opts out with `absolute`, since its title already
+  // opens with the word.
+  title: {
+    default: "Mason — sketch to code",
+    template: "%s · Mason",
+  },
+  description:
+    "Draw your UI, get working code. Mason turns rough sketches into clean Tailwind components you own.",
+  // og:title and og:description are left to fall back to the two above, here
+  // and on every child page: stating them twice is how the two drift apart,
+  // and a page that sets a title then forgets its card is the common failure.
+  openGraph: {
+    siteName: "Mason",
+    type: "website",
+    url: "/",
+  },
+  // The card image itself comes from `app/opengraph-image.tsx`, by file
+  // convention, and is inherited by every route that does not define its own —
+  // /s/[token] does, because a shared design deserves its own picture.
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({

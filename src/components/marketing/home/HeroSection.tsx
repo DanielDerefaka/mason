@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Monitor } from "lucide-react";
 
 import { HERO } from "@/lib/marketing-content";
+import { ctaHref } from "@/lib/try/free-week";
 
 /**
  * HeroSection
@@ -23,6 +24,12 @@ import { HERO } from "@/lib/marketing-content";
  * first paint of the site, so it should ship as HTML.
  */
 export function HeroSection() {
+  // During the free week /auth/* redirects to the canvas, so the secondary
+  // pill would be a link that bounces. It reads the switch directly because
+  // this is a server component; `/` redirects to /try that week anyway, which
+  // makes this belt and braces rather than a path anyone walks.
+  const signUpHref = ctaHref();
+
   return (
     <section
       id="hero"
@@ -58,7 +65,26 @@ export function HeroSection() {
             ))}
           </ul>
 
-          <div className="shrink-0 sm:pb-0.5">
+          {/* The two pills share the row the desktop link already occupied,
+              rather than taking a block of their own. That is what keeps the
+              note above true: a third row here is what pushed the capture
+              below the fold last time. */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-4 sm:pb-0.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={HERO.cta.primary.href}
+                className="pill pill-primary !px-6 !py-2.5 !text-[0.9rem]"
+              >
+                {HERO.cta.primary.label}
+              </Link>
+              <Link
+                href={signUpHref}
+                className="pill pill-secondary !px-6 !py-2.5 !text-[0.9rem]"
+              >
+                {HERO.cta.secondary.label}
+              </Link>
+            </div>
+
             <Link
               href={HERO.aside.href}
               className="group inline-flex items-center gap-2 whitespace-nowrap text-[0.84rem] font-medium tracking-tight text-muted-foreground transition-colors duration-200 hover:text-foreground"
