@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 32 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 869 unit tests, no server needed
+npm test             # 872 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -39,6 +39,21 @@ from under the dev server and every route starts 500ing.
 
 **Do not grep the build log for "Failed"** — it matches unrelated font warnings. Check the
 exit code.
+
+**A branch build must never run `npx convex deploy` with the production key.** Convex refuses
+a `prod:` key under `VERCEL_ENV=preview`, on purpose: a branch build holding it would push
+unmerged functions into the live backend the moment a PR opened. `vercel.json` ran that
+deploy for every build, so every preview deployment the project ever made died at that
+check in under ten seconds and every PR wore a red mark, while production built green on
+every merge — which is why it read as the branch's fault for weeks. `scripts/vercel-build.mjs`
+deploys Convex only when `VERCEL_ENV` is `production`; a branch build runs plain
+`npm run build` against the dev backend named by the Preview-scoped `NEXT_PUBLIC_CONVEX_URL`
+on Vercel, the value `convex deploy --cmd` would otherwise have injected. So
+`CONVEX_DEPLOY_KEY` lives in Vercel's Production scope only, a preview's `/try` refuses
+guests because `GUEST_ADMISSION_SECRET` is not in the Preview scope, and
+`vercel-build.test.ts` pins the split. On keys: a deployment's own settings page mints only
+`prod:` and `dev:` keys; a `preview:` key is on the *project* settings page, and this project
+chose not to use one. `npx vercel inspect <dpl> --logs` reads a failed build's log.
 
 **A gateway in front of Anthropic silently drops parameters.** `output_config` and
 `thinking`/`effort` are both dropped by agentrouter.org, which is why generation used to
