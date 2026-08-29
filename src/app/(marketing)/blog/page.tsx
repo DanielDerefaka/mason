@@ -5,8 +5,13 @@ import Link from "next/link";
 import { CtaSection } from "@/components/marketing/home/CtaSection";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
 
+// The description is the card's subtitle as well as the search snippet, and
+// without one it fell back to the site's — so /blog, /explore and /download all
+// unfurled with identical text under three different titles.
 export const metadata: Metadata = {
   title: "Blog",
+  description:
+    "Notes on sketching, design systems and generating interfaces — how Mason is built and what it is for.",
 };
 
 /**

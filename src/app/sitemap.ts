@@ -2,7 +2,10 @@ import type { MetadataRoute } from 'next'
 
 import { POSTS } from '@/content/posts'
 
-const SITE = 'https://sketchmason.com'
+// www, matching metadataBase and robots.ts. On the apex every one of these
+// entries 308s, which Search Console reports as "Page with redirect" and
+// indexes the www copy of instead — ten URLs submitted, ten not indexed.
+const SITE = 'https://www.sketchmason.com'
 
 /**
  * /sitemap.xml, which 404'd until now.

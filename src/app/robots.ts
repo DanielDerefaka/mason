@@ -17,6 +17,8 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/auth/', '/dashboard/', '/billing', '/settings'],
     },
-    sitemap: 'https://sketchmason.com/sitemap.xml',
+    // www, matching metadataBase: the apex 308s here, and a sitemap reference
+    // that redirects is one more hop between a crawler and the URL list.
+    sitemap: 'https://www.sketchmason.com/sitemap.xml',
   }
 }

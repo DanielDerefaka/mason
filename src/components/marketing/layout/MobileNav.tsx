@@ -85,12 +85,10 @@ export function MobileNav({
               Sign in
             </Link>
           )}
-          <Link
-            href={freeWeek ? "/try" : "/auth/sign-up"}
-            onClick={onClose}
-            className="pill pill-primary w-full"
-          >
-            {freeWeek ? "Try free" : "Start free"}
+          {/* The canvas whether or not the week is on, matching the header and
+              the hero. Full copy here: the pill is w-full, so there is room. */}
+          <Link href="/try" onClick={onClose} className="pill pill-primary w-full">
+            Try it free — no sign-up
           </Link>
         </div>
       </div>

@@ -24,12 +24,18 @@ const SOCIAL_ICONS = {
 } as const;
 
 /**
- * `freeWeek` comes from the server layout. During the week every "start"
- * destination in the footer — the email form and the sign-up links — points
- * at the free canvas instead of the sign-up page.
+ * `freeWeek` comes from the server layout. During the week the remaining auth
+ * links in the columns bend to the canvas too, since /auth/* redirects there.
  */
 export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
-  const startHref = freeWeek ? "/try" : "/auth/sign-up";
+  // The email form goes to the canvas whether or not the week is on. It used
+  // to post to /auth/sign-up outside the week, which is the same contradiction
+  // the header had: a footer promising "free" that opens a registration form.
+  //
+  // The address is not lost in the move — the form is a plain GET, and the
+  // canvas reads `?email=` in email-gate-dialog.tsx exactly as the sign-up page
+  // did, so whatever was typed here is already filled in on arrival.
+  const startHref = "/try";
   // Every auth link, not just sign-up: /auth/* redirects to /try during the
   // week, and "Sign in" sitting in the footer of a no-account trial was the
   // exact contradiction this closes.
@@ -56,7 +62,7 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
               Finished interfaces from the roughest sketch you can draw.
             </p>
 
-            {/* Plain GET: the sign-up page prefills from `?email=`, so no client JS is needed. */}
+            {/* Plain GET: /try prefills from `?email=`, so no client JS is needed. */}
             <form
               className="mt-6 flex max-w-[320px] items-center gap-2"
               action={startHref}
@@ -75,13 +81,15 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
               />
               <button
                 type="submit"
-                aria-label="Start free"
+                aria-label="Try it free — no sign-up"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:-translate-y-0.5"
               >
                 <ArrowRightIcon className="h-4 w-4" />
               </button>
             </form>
-            <p className="mt-2 text-[0.75rem] text-faint">Start free — no card needed.</p>
+            <p className="mt-2 text-[0.75rem] text-faint">
+              No sign-up, no card. Just draw something.
+            </p>
           </div>
 
           {FOOTER_COLUMNS.map((col) => (
