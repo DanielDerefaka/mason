@@ -18,9 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 24 live checks against a running server
-npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 824 unit tests, no server needed
+npm run smoke        # 23 live checks against a running server
+npm run smoke:browser # 4 pages in a real headless Chrome, for what smoke cannot see
+npm test             # 823 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```

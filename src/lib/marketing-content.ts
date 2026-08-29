@@ -53,8 +53,9 @@ export const HERO = {
     primary: { label: 'Try it free — no sign-up', href: '/try' },
     secondary: { label: 'Create an account' },
   },
-  /** The one link under the checklist: grey kicker, white label. */
-  aside: { kicker: 'Also on the desktop', label: 'Download for Mac', href: '/download' },
+  // There was a third link under the checklist — "Also on the desktop ·
+  // Download for Mac" — pulled with /download while the Mac build is not
+  // notarised. It comes back with the page: see the commit that removed both.
   image: {
     src: '/images/hero-canvas.webp',
     alt: 'The Mason canvas: an inspiration board holding a reference image, an empty frame, and beside them a full landing page generated from them.',

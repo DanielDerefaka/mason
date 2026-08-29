@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Monitor } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { HERO } from "@/lib/marketing-content";
 import { ctaHref } from "@/lib/try/free-week";
@@ -10,9 +10,9 @@ import { ctaHref } from "@/lib/try/free-week";
  *
  * Measured from the reference: a 1320px measure (wider than the 1120px the
  * rest of the page uses), one line of headline, six checklist lines in two
- * columns of three, one small link — and no buttons. The header carries
- * "Start free"; putting two more pills here made the copy block tall enough
- * to push the product below the fold, and the product is the argument.
+ * columns of three, one row of links — and no more than that. Putting a
+ * further row of pills here made the copy block tall enough to push the
+ * product below the fold, and the product is the argument.
  *
  * The capture below the headline is a real screenshot of the app, not a CSS
  * drawing of it: the inspiration board with a reference in it, an empty
@@ -67,10 +67,10 @@ export function HeroSection() {
             ))}
           </ul>
 
-          {/* The two pills share the row the desktop link already occupied,
-              rather than taking a block of their own. That is what keeps the
-              note above true: a third row here is what pushed the capture
-              below the fold last time. */}
+          {/* The two pills share one row rather than taking a block of their
+              own — the row a "Download for Mac" link sat in until /download
+              was pulled. That is what keeps the note above true: a third row
+              here is what pushed the capture below the fold last time. */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-4 sm:pb-0.5">
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -86,16 +86,6 @@ export function HeroSection() {
                 {HERO.cta.secondary.label}
               </Link>
             </div>
-
-            <Link
-              href={HERO.aside.href}
-              className="group inline-flex items-center gap-2 whitespace-nowrap text-[0.84rem] font-medium tracking-tight text-muted-foreground transition-colors duration-200 hover:text-foreground"
-            >
-              <Monitor className="h-4 w-4 text-faint" strokeWidth={2} />
-              <span className="text-faint">{HERO.aside.kicker}</span>
-              <span className="text-foreground">{HERO.aside.label}</span>
-              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Link>
           </div>
         </div>
 

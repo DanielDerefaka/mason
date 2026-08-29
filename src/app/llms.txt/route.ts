@@ -29,7 +29,6 @@ interface and the code behind it.
 - [Try it](${SITE_URL}/try): draw and generate in the browser, no account
 - [Explore](${SITE_URL}/explore): designs people made with it
 - [Blog](${SITE_URL}/blog): notes on how it is built
-- [Download](${SITE_URL}/download): the Mac app
 - [FAQ](${SITE_URL}/faq): common questions
 `
 

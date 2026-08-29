@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -20,6 +20,24 @@ import { FAQ_ENTRIES, PENDING_CONFIRMATION } from '@/lib/marketing-faq'
  * and sitemap routes are plain functions — is executed.
  */
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
+
+/**
+ * The marketing pages that exist, read from disk rather than from a list
+ * someone remembers to edit. The sitemap and /llms.txt both name pages by
+ * hand, so this is what holds them to the route tree: a page removed from
+ * `src/app` has to leave both.
+ */
+const APP_DIR = join(process.cwd(), 'src/app')
+const marketingPages = readdirSync(join(APP_DIR, '(marketing)'))
+  .filter((entry) => existsSync(join(APP_DIR, '(marketing)', entry, 'page.tsx')))
+  .map((entry) => `/${entry}`)
+  .sort()
+
+/** Whether a one-segment path — /about-us, /try — has a page behind it. */
+const pageExists = (path: string) =>
+  path === '/' ||
+  existsSync(join(APP_DIR, '(marketing)', path.slice(1), 'page.tsx')) ||
+  existsSync(join(APP_DIR, path.slice(1), 'page.tsx'))
 
 /**
  * Source with its comments removed, for the assertions phrased as absences.
@@ -156,7 +174,6 @@ describe('the site tells a crawler who it is', () => {
   it.each([
     'src/app/(marketing)/explore/page.tsx',
     'src/app/(marketing)/blog/page.tsx',
-    'src/app/(marketing)/download/page.tsx',
   ])('%s describes itself', (path) => {
     expect(read(path)).toMatch(/description:/)
   })
@@ -192,9 +209,22 @@ describe('sitemap.xml', () => {
   })
 
   it('lists every marketing page that exists', () => {
-    for (const path of ['/explore', '/download', '/blog', '/about-us']) {
+    expect(marketingPages.length).toBeGreaterThan(3)
+    for (const path of marketingPages) {
       expect(urls).toContain(`https://www.sketchmason.com${path}`)
     }
+  })
+
+  /**
+   * The other direction. The sitemap is written by hand, so a page deleted
+   * from `src/app` stays in it until someone remembers — and an entry that
+   * answers 404 is what Search Console flags the whole file for. When
+   * /download was pulled, the hand-written list above was the only thing that
+   * noticed, and it noticed in the wrong direction: it demanded the page back.
+   */
+  it('lists no page that has been removed', () => {
+    const pages = urls.map((url) => new URL(url).pathname).filter((path) => path.split('/').length === 2)
+    for (const path of pages) expect(pageExists(path), `${path} is listed but has no page`).toBe(true)
   })
 
   it('lists one entry per written post, from the same source /blog renders', () => {
@@ -320,8 +350,18 @@ describe('/llms.txt', () => {
 
   it('links every public page, on the host that answers 200', async () => {
     const text = await body()
-    for (const path of ['/', '/try', '/explore', '/blog', '/download', '/faq']) {
+    for (const path of ['/', '/try', '/explore', '/blog', '/faq']) {
       expect(text).toContain(`https://www.sketchmason.com${path})`)
+    }
+  })
+
+  /** A model that reads a link to a page that no longer exists will offer it. */
+  it('links no page that has been removed', async () => {
+    const text = await body()
+    const paths = [...text.matchAll(/\]\(https:\/\/www\.sketchmason\.com(\/[^)]*)\)/g)].map((m) => m[1])
+    expect(paths.length).toBeGreaterThan(3)
+    for (const path of paths) {
+      if (path.split('/').length === 2) expect(pageExists(path), `${path} is linked but has no page`).toBe(true)
     }
   })
 

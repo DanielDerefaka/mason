@@ -23,7 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // The trial is the one page the site most wants found.
     { url: `${SITE}/try`, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE}/explore`, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${SITE}/download`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE}/blog`, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE}/about-us`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${SITE}/faq`, changeFrequency: 'monthly', priority: 0.5 },
