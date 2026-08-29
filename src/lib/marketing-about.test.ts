@@ -26,17 +26,19 @@ const openingParagraph = (() => {
     .trim()
 })()
 
-describe('/about-us opens by saying what Mason is', () => {
+describe('/about-us opens by saying what SketchMason is', () => {
   /**
    * The regression this exists for. The brand SERP for "Mason" is a
    * name-collision — jars, a bricklayer, a 2016 Dribbble template — and
    * /about-us is the page Google quotes when the homepage does not win it. Its
    * first sentence was "turns the roughest thing you can draw into a finished
    * interface": a pitch, not a definition. Quoted on its own it named neither
-   * the domain nor what the thing is.
+   * the domain nor what the thing is. It carried the domain in brackets while
+   * the name was "Mason"; it gives both names now — the public one, and the
+   * short one the product still uses — and the name is the domain.
    */
-  it('names the product, the domain, what goes in and what comes out', () => {
-    expect(ABOUT_DEFINITION).toMatch(/^Mason \(sketchmason\.com\) turns rough sketches/)
+  it('names the product under both its names, what goes in and what comes out', () => {
+    expect(ABOUT_DEFINITION).toMatch(/^SketchMason — Mason for short — turns rough sketches/)
     expect(ABOUT_DEFINITION).toMatch(/user interfaces, design systems, and flows\.$/)
   })
 

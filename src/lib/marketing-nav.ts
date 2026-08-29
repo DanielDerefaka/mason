@@ -99,4 +99,4 @@ export const CONTACT = {
   location: 'Built remotely',
 }
 
-export const COPYRIGHT = `© ${new Date().getFullYear()} Mason. All rights reserved.`
+export const COPYRIGHT = `© ${new Date().getFullYear()} SketchMason. All rights reserved.`

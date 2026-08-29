@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
-// Leads with what Mason is. The old sentence began at "Draw a frame" — a
-// step, with nothing before it to say what the step was for — on the one
-// result most people meet the product through.
+// Leads with what SketchMason is. The old sentence began at "Draw a frame" —
+// a step, with nothing before it to say what the step was for — on the one
+// result most people meet the product through. It used to end "and get real
+// code back"; the export is HTML, and "code" names a different category.
 //
 // Neither the allowance nor the week is described here, on purpose. Both are
 // numbers and dates that change, and a description is cached by crawlers and
@@ -12,7 +13,7 @@ import type { ReactNode } from 'react'
 export const metadata: Metadata = {
   title: 'Try Mason free',
   description:
-    'Mason turns a rough sketch into a working interface: draw a frame, describe what goes in it, and get real code back. No account needed.',
+    'SketchMason turns a rough sketch into a finished interface: draw a frame, describe what goes in it, and export the design as HTML. No account needed.',
   // No `openGraph` block here on purpose, though there was one.
   //
   // It existed to override the root's og:url, which used to be the hardcoded

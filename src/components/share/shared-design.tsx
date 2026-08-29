@@ -94,10 +94,10 @@ export const SharedDesign = ({ token }: { token: string }) => {
               href={TRY_HREF}
               className="rounded-full bg-foreground px-4 py-2 font-medium text-background transition-opacity hover:opacity-90"
             >
-              Try Mason free
+              Try SketchMason free
             </Link>
             <Link href="/" className="text-sky-400 transition-opacity hover:opacity-80">
-              What is Mason?
+              What is SketchMason?
             </Link>
           </div>
         </div>
@@ -121,17 +121,17 @@ export const SharedDesign = ({ token }: { token: string }) => {
       <div className="fixed bottom-4 left-4 z-50 flex items-center overflow-hidden rounded-full bg-black/75 text-[11px] text-white/80 backdrop-blur">
         <Link
           href="/"
-          title="Made with Mason"
+          title="Made with SketchMason"
           className="flex items-center gap-2 py-2 pr-2.5 pl-3 transition-colors hover:text-white"
         >
           <LogoMark className="size-3.5" />
-          Made with Mason
+          Made with SketchMason
         </Link>
         <Link
           href={TRY_HREF}
           className="border-l border-white/15 py-2 pr-3 pl-2.5 font-medium text-white transition-colors hover:bg-white/10"
         >
-          Try Mason free
+          Try SketchMason free
         </Link>
       </div>
     </div>

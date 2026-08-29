@@ -23,14 +23,14 @@ export interface FaqEntry {
 
 export const FAQ_ENTRIES: FaqEntry[] = [
   {
-    question: 'What is Mason?',
+    question: 'What is SketchMason?',
     answer:
-      'Mason turns a hand-drawn interface sketch into working code. You draw a rough frame on a canvas, describe what belongs inside it, and Mason generates the interface and the code behind it.',
+      'SketchMason — Mason for short — is an AI design tool that turns a hand-drawn interface sketch into a finished UI design. You draw a rough frame on a canvas, describe what belongs inside it, and SketchMason generates the screen, built on a design system so the next screen matches it.',
   },
   {
-    question: 'How does the sketch become code?',
+    question: 'How does the sketch become a design?',
     answer:
-      'You block out a screen with rectangles on an infinite canvas and label them. A labelled rectangle is an instruction, so the labels are what the layout is generated from. Mason builds the screen against a design system, and the code for it comes out with the design.',
+      'You block out a screen with rectangles on an infinite canvas and label them. A labelled rectangle is an instruction, so the labels are what the layout is generated from. SketchMason builds the screen against a design system, and the finished design can be exported as HTML.',
   },
   {
     question: 'Do I need to draw well?',
@@ -45,12 +45,12 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     question: 'Where does the design system come from?',
     answer:
-      'A mood board. Mason reads the images for palette and typographic feel, then produces design tokens bound to roles, with contrast checked on the pairings that decide legibility. Every screen generated afterwards is built from the same system, so they match.',
+      'A mood board. SketchMason reads the images for palette and typographic feel, then produces design tokens bound to roles, with contrast checked on the pairings that decide legibility. Every screen generated afterwards is built from the same system, so they match.',
   },
   {
     question: 'Can I use my own Anthropic API key?',
     answer:
-      'Yes. A key you paste into the canvas is held in the browser tab only, sent with the generation request, and gone when the tab closes. Mason never stores it.',
+      'Yes. A key you paste into the canvas is held in the browser tab only, sent with the generation request, and gone when the tab closes. SketchMason never stores it.',
   },
   {
     question: 'Does it design for mobile?',
@@ -74,8 +74,13 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     question: 'What can I export?',
+    // Two, not three. `exportDesignProject` in lib/export.ts is real and is
+    // wired into the canvas and the editor, and the answer used to name it —
+    // "a Next.js project you can install and run". It is left out on purpose:
+    // the product is sketch-to-design with an HTML export, and a FAQ that
+    // advertises a code export is read, and indexed, as a code tool.
     answer:
-      'Three things: the design as a standalone HTML file, a written brief describing it, or a Next.js project you can install and run. The export is taken from the design as it stands on screen, so edits made after generating are included.',
+      'Two things: the design as a standalone HTML file, or a written brief describing it. The export is taken from the design as it stands on screen, so edits made after generating are included.',
   },
 ]
 

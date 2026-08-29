@@ -55,8 +55,8 @@ describe('a shared design offers the viewer a way into /try', () => {
     expect(host.textContent).toContain('A landing page')
     expect(links(host)).toEqual(
       expect.arrayContaining([
-        ['/', 'Made with Mason'],
-        [TRY, 'Try Mason free'],
+        ['/', 'Made with SketchMason'],
+        [TRY, 'Try SketchMason free'],
       ]),
     )
   })
@@ -65,8 +65,8 @@ describe('a shared design offers the viewer a way into /try', () => {
     const host = render(null)
     expect(host.textContent).toContain('This link is no longer live')
     expect(links(host)).toEqual([
-      [TRY, 'Try Mason free'],
-      ['/', 'What is Mason?'],
+      [TRY, 'Try SketchMason free'],
+      ['/', 'What is SketchMason?'],
     ])
   })
 

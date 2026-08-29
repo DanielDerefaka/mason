@@ -11,7 +11,7 @@ import { BLOG_POSTS } from "@/lib/marketing-blog";
 // line under the heading: the page says what it is in the words the result
 // shows, and there is one copy of them.
 const DESCRIPTION =
-  "Notes on sketching, design systems and generating interfaces — how Mason is built and what it is for.";
+  "Notes on sketching, design systems and generating interfaces — how SketchMason is built and what it is for.";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -33,7 +33,7 @@ export default function BlogPage() {
               to the entity, and "Mason" alone is a name-collision query — the
               heading has to carry the name. */}
           <h1 className="text-foreground font-display text-center text-[44px] leading-[46px] font-normal tracking-[-2px] md:text-[80px] md:leading-[80px] md:tracking-[-4px] lg:text-[118px] lg:leading-[118px] lg:tracking-[-6px]">
-            The Mason <span className="font-display-italic">blog</span>
+            The SketchMason <span className="font-display-italic">blog</span>
           </h1>
           <p className="text-muted-foreground mx-auto mt-[24px] max-w-[620px] text-center font-sans text-[17px] leading-[28px] md:mt-[32px]">
             {DESCRIPTION}

@@ -6,6 +6,7 @@ import robots from './robots'
 import sitemap from './sitemap'
 import { GET as llmsTxt } from './llms.txt/route'
 import { POSTS } from '@/content/posts'
+import { ORGANIZATION, POSITIONING } from '@/lib/brand'
 import { FAQ_ENTRIES, PENDING_CONFIRMATION } from '@/lib/marketing-faq'
 import { SOCIAL_LINKS } from '@/lib/marketing-nav'
 
@@ -120,9 +121,9 @@ describe('the site tells a crawler who it is', () => {
     expect(layout).not.toMatch(/url: "\/",/)
   })
 
-  it('titles child pages through one template', () => {
-    expect(layout).toMatch(/default: "Mason — sketch to code"/)
-    expect(layout).toMatch(/template: "%s · Mason"/)
+  it('titles child pages through one template, with the public name as the suffix', () => {
+    expect(layout).toMatch(/default: "SketchMason — draw the shape, get the product"/)
+    expect(layout).toMatch(/template: "%s \| SketchMason"/)
   })
 
   /**
@@ -133,12 +134,12 @@ describe('the site tells a crawler who it is', () => {
    */
   it('leaves no page suffixing the name by hand', () => {
     const offenders = ['src/app/(marketing)/blog/page.tsx', 'src/app/auth/sign-in/layout.tsx']
-    for (const path of offenders) expect(read(path)).not.toMatch(/\| Mason/)
+    for (const path of offenders) expect(read(path)).not.toMatch(/\| (Sketch)?Mason/)
   })
 
   it('declares an Open Graph card and a large Twitter one', () => {
     expect(layout).toMatch(/openGraph: \{/)
-    expect(layout).toMatch(/siteName: "Mason"/)
+    expect(layout).toMatch(/siteName: "SketchMason"/)
     expect(layout).toMatch(/card: "summary_large_image"/)
   })
 
@@ -148,7 +149,11 @@ describe('the site tells a crawler who it is', () => {
     // Alt text is a named export, and omitting it is the easiest thing to
     // forget — the image still renders, so nothing fails.
     expect(image).toMatch(/export const alt = /)
-    expect(image).toMatch(/Sketch → code/)
+    expect(image).toMatch(/SketchMason/)
+    expect(image).toMatch(/Draw the shape, get the product/)
+    // The subtitle was "Sketch → code": a category the product is not in,
+    // on the one image every share of the site carried.
+    expect(withoutComments(image)).not.toMatch(/Sketch → code/)
   })
 
   /** The sentence itself, without the comment above it that explains it. */
@@ -176,9 +181,9 @@ describe('the site tells a crawler who it is', () => {
    * step, with nothing before it to say what the step was for — on the one
    * result most people meet the product through.
    */
-  it('leads the free canvas with what Mason is, not with a step', () => {
+  it('leads the free canvas with what SketchMason is, not with a step', () => {
     const description = tryDescription()
-    expect(description).toMatch(/^Mason\b/)
+    expect(description).toMatch(/^SketchMason\b/)
     expect(description).toMatch(/sketch/i)
   })
 
@@ -403,10 +408,13 @@ describe('/llms.txt', () => {
     expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8')
   })
 
-  it('says what Mason is before it says where anything is', async () => {
+  it('says what SketchMason is before it says where anything is', async () => {
     const text = await body()
-    expect(text.startsWith('# Mason')).toBe(true)
-    expect(text).toMatch(/turns a hand-drawn interface sketch into working code/)
+    expect(text.startsWith('# SketchMason')).toBe(true)
+    // Both names in the first sentence: a model that reads this is the thing
+    // most likely to be asked "what is Mason?" without the prefix.
+    expect(text).toMatch(/^SketchMason — Mason for short — is an AI design tool/m)
+    expect(text).toMatch(/turns a hand-drawn\s+interface sketch into a finished, consistent UI design/)
   })
 
   it('links every public page, on the host that answers 200', async () => {
@@ -457,8 +465,9 @@ describe('what the home page tells a machine it is', () => {
 
   it('declares itself an application, on the canonical host', () => {
     expect(home).toMatch(/'@type': 'SoftwareApplication'/)
-    expect(home).toMatch(/name: 'Mason'/)
-    expect(home).toMatch(/applicationCategory: 'DeveloperApplication'/)
+    expect(home).toMatch(/name: 'SketchMason'/)
+    // A design tool, which is the claim the copy makes; it said Developer.
+    expect(home).toMatch(/applicationCategory: 'DesignApplication'/)
     expect(home).toMatch(/operatingSystem: 'Web'/)
     expect(home).toMatch(/url: SITE_URL/)
   })
@@ -482,8 +491,47 @@ describe('what the home page tells a machine it is', () => {
 
   /** See the /llms.txt test of the same name: one list, read in both places. */
   it('names its own accounts, from the same list the footer renders', () => {
-    expect(home).toMatch(/sameAs: SOCIAL_LINKS\.map\(\(link\) => link\.href\)/)
-    expect(SOCIAL_LINKS.map((link) => link.href)).toContain('https://x.com/danieldxdere')
+    expect(home).toMatch(/sameAs: ORGANIZATION\.sameAs/)
+    expect(ORGANIZATION.sameAs).toEqual(SOCIAL_LINKS.map((link) => link.href))
+    expect(ORGANIZATION.sameAs).toContain('https://x.com/danieldxdere')
+  })
+
+  /**
+   * The public name is SketchMason and the product's own name is Mason. A
+   * search engine that is not told they are one thing holds two brands — and
+   * "Mason" on its own is a jar, a university and a bricklayer. `alternateName`
+   * is the formal statement, and it is on both blocks so that neither can be
+   * read without it. The blog's posts name the same Organization as their
+   * publisher rather than spelling a second one by hand.
+   */
+  it('tells a machine that SketchMason and Mason are one entity', () => {
+    expect(ORGANIZATION).toEqual({
+      '@type': 'Organization',
+      name: 'SketchMason',
+      alternateName: 'Mason',
+      url: 'https://www.sketchmason.com',
+      sameAs: SOCIAL_LINKS.map((link) => link.href),
+    })
+    expect(home).toMatch(/\{ '@context': 'https:\/\/schema\.org', \.\.\.ORGANIZATION \}/)
+    expect(home).toMatch(/alternateName: 'Mason'/)
+    expect(home.match(/<JsonLd data=/g)).toHaveLength(2)
+    const post = read('src/app/(marketing)/blog/[slug]/page.tsx')
+    expect(post).toMatch(/author: ORGANIZATION,/)
+    expect(post).toMatch(/publisher: ORGANIZATION,/)
+  })
+
+  /**
+   * One sentence for the visitor, the crawler and the structured data: the
+   * hero prints it under the headline, the meta description is it, and the
+   * SoftwareApplication's `description` is the same constant. The root layout
+   * falls back to it for any page without a sentence of its own.
+   */
+  it('says the same sentence to a visitor, a crawler and a machine', () => {
+    expect(POSITIONING).toMatch(/^SketchMason is an AI design tool/)
+    expect(POSITIONING.length).toBeLessThanOrEqual(155)
+    expect(home).toMatch(/const DESCRIPTION = POSITIONING/)
+    expect(read('src/components/marketing/home/HeroSection.tsx')).toMatch(/\{POSITIONING\}/)
+    expect(read('src/app/layout.tsx')).toMatch(/description: POSITIONING,/)
   })
 
   /**
@@ -621,5 +669,52 @@ describe('structured data cannot break out of its own script tag', () => {
     expect(read('src/components/marketing/JsonLd.tsx')).toMatch(
       /JSON\.stringify\(data\)\.replace\(\/<\/g, '\\\\u003c'\)/,
     )
+  })
+})
+
+/**
+ * The category, held in words.
+ *
+ * SketchMason is a design tool with an HTML export — `exportDesignHtml` and
+ * `exportDesignPrompt` are what a design becomes — and copy that says "sketch
+ * to code" or promises "production-ready components" describes a product that
+ * does not exist here, which is the first thing a visitor measures the canvas
+ * against. The root description, the share card, /try's description and
+ * /llms.txt all said it, so the check is on the whole public surface rather
+ * than on the four files that were fixed. Comments are stripped first: they
+ * are allowed to say what the copy used to say.
+ */
+describe('the public surface stays in its category', () => {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) return walk(path)
+      return /\.tsx?$/.test(entry.name) && !entry.name.includes('.test.') ? [path] : []
+    })
+  const surface = [
+    join(APP_DIR, 'layout.tsx'),
+    join(APP_DIR, 'opengraph-image.tsx'),
+    join(APP_DIR, 'try/layout.tsx'),
+    ...walk(join(APP_DIR, '(marketing)')),
+    ...walk(join(APP_DIR, 'llms.txt')),
+    ...walk(join(APP_DIR, 's')),
+    ...walk(join(process.cwd(), 'src/components/marketing')),
+    ...walk(join(process.cwd(), 'src/components/share')),
+    ...walk(join(process.cwd(), 'src/components/explore')),
+    join(process.cwd(), 'src/lib/brand.ts'),
+    ...walk(join(process.cwd(), 'src/lib')).filter((path) => /\/marketing-[^/]+\.ts$/.test(path)),
+  ]
+
+  it('is read from disk, so a new page is covered by existing', () => {
+    expect(surface.length).toBeGreaterThan(30)
+  })
+
+  it('never says sketch-to-code, and never promises production-ready components', () => {
+    for (const path of surface) {
+      const source = withoutComments(readFileSync(path, 'utf8'))
+      expect(source, path).not.toMatch(
+        /sketch[- ]to[- ]code|sketch → code|production[- ]ready|working code|real code|code behind it/i,
+      )
+    }
   })
 })

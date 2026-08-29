@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Check } from "lucide-react";
 
+import { POSITIONING } from "@/lib/brand";
 import { HERO } from "@/lib/marketing-content";
 import { ctaHref } from "@/lib/try/free-week";
 
@@ -12,7 +13,9 @@ import { ctaHref } from "@/lib/try/free-week";
  * rest of the page uses), one line of headline, six checklist lines in two
  * columns of three, one row of links — and no more than that. Putting a
  * further row of pills here made the copy block tall enough to push the
- * product below the fold, and the product is the argument.
+ * product below the fold, and the product is the argument. The one line
+ * added since is the definition under the headline: what the product is, in
+ * the words the brand uses everywhere else, and a line and a half at most.
  *
  * The capture below the headline is a real screenshot of the app, not a CSS
  * drawing of it: the inspiration board with a reference in it, an empty
@@ -50,6 +53,15 @@ export function HeroSection() {
             {HERO.headline.lead} <span className="text-foreground">{HERO.headline.emphasis}</span>{" "}
             {HERO.headline.tail}
           </h1>
+
+          {/* The definition, in the brand's words — the same sentence as the
+              meta description and the structured data, so a visitor and a
+              crawler read the same thing. The headline is the pitch; this is
+              the plain answer to "what is it", and it stays plain: no
+              highlight, no link. */}
+          <p className="mb-6 max-w-[760px] text-[clamp(0.98rem,1.5vw,1.15rem)] leading-relaxed text-muted-foreground">
+            {POSITIONING}
+          </p>
 
           {/* Column-major: items one to three fill the left column, four to
               six the right, so the list reads down before it reads across. */}

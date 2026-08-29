@@ -7,21 +7,22 @@ import { HeroSection } from '@/components/marketing/home/HeroSection'
 import { ManifestoSection } from '@/components/marketing/home/ManifestoSection'
 import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
-import { SOCIAL_LINKS } from '@/lib/marketing-nav'
+import { ORGANIZATION, POSITIONING } from '@/lib/brand'
 import { SITE_URL } from '@/lib/site'
 
 /**
  * One sentence, used twice: as the page's meta description and as the
  * `description` of the SoftwareApplication below it. Structured data that
- * contradicts the description on the same page is worse than none.
+ * contradicts the description on the same page is worse than none. The
+ * sentence is the positioning line in `@/lib/brand`, which the hero prints
+ * too — a visitor and a crawler are told the same thing.
  */
-const DESCRIPTION =
-  'Rough out a screen with rectangles. Get a design system from your mood board, a finished interface from your sketch, and the whole flow around it.'
+const DESCRIPTION = POSITIONING
 
 export const metadata = {
-  // `absolute` opts out of the root's "%s · Mason" template: this title already
-  // opens with the word, and the suffix would say it twice.
-  title: { absolute: 'Mason — draw the shape, get the product' },
+  // `absolute` opts out of the root's "%s | SketchMason" template: this title
+  // already opens with the name, and the suffix would say it twice.
+  title: { absolute: 'SketchMason — draw the shape, get the product' },
   description: DESCRIPTION,
 }
 
@@ -37,19 +38,35 @@ export const metadata = {
 const SOFTWARE_APPLICATION = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Mason',
+  // Both names, on both blocks. SketchMason is the public name and Mason is
+  // what the product calls itself, and `alternateName` is the formal,
+  // machine-readable statement that they are one entity — without it a search
+  // engine holds two brands, one of which shares its name with a jar, a
+  // university and a bricklayer.
+  name: 'SketchMason',
+  alternateName: 'Mason',
   url: SITE_URL,
-  applicationCategory: 'DeveloperApplication',
+  // A design tool, not a developer one: the category is the claim the copy
+  // makes everywhere else, and a machine reads this field before the prose.
+  applicationCategory: 'DesignApplication',
   operatingSystem: 'Web',
   description: DESCRIPTION,
-  // The accounts that are Mason's, so a machine reading this does not have
-  // to guess. Google's AI Overview for the brand query was crediting an
+  // The accounts that are the site's own, so a machine reading this does not
+  // have to guess. Google's AI Overview for the brand query was crediting an
   // Instagram @sketchmason — somebody at George Mason — to this site, because
   // the site declared no social identity and the name was the only signal.
-  // Read from the footer's list rather than spelled out again: one place says
+  // Read from the Organization rather than spelled out again: one place says
   // which accounts exist, and /llms.txt reads the same one.
-  sameAs: SOCIAL_LINKS.map((link) => link.href),
+  sameAs: ORGANIZATION.sameAs,
 }
+
+/**
+ * The organisation behind the application, as a block of its own. Google
+ * reads a publisher from the homepage, and every BlogPosting names the same
+ * object as its `publisher`, so the entity is declared once and the pages
+ * that mention it all mean the same thing by it.
+ */
+const ORGANIZATION_BLOCK = { '@context': 'https://schema.org', ...ORGANIZATION }
 
 /**
  * The order is the reference's: a left-aligned hero over the product, one
@@ -69,6 +86,7 @@ const SOFTWARE_APPLICATION = {
 export default function Home() {
   return (
     <>
+      <JsonLd data={ORGANIZATION_BLOCK} />
       <JsonLd data={SOFTWARE_APPLICATION} />
       <HeroSection />
       <FeatureSections />

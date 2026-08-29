@@ -20,12 +20,15 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
   const shared = await fetchQuery(api.shares.getSharedDesign, { token }).catch(() => null)
 
   const label = shared?.label ?? 'Shared design'
-  const title = `${label} · Made with Mason`
-  const description = 'Sketched by hand, turned into a real page by Mason.'
+  const title = `${label} · Made with SketchMason`
+  const description = 'Sketched by hand, turned into a finished design by SketchMason.'
   const image = shared?.previewUrl ?? `/s/${token}/opengraph-image`
 
   return {
-    title,
+    // `absolute`, or the root's "%s | SketchMason" template suffixes a title
+    // that already ends "Made with SketchMason" and the tab reads the name
+    // twice. The card titles below are plain strings and never templated.
+    title: { absolute: title },
     description,
     openGraph: { title, description, images: [image] },
     twitter: { card: 'summary_large_image', title, description, images: [image] },

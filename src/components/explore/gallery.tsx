@@ -54,7 +54,7 @@ export const ExploreGallery = () => {
           yours could be the first one today.
         </p>
         <Link href="/try" className="pill pill-primary mt-7">
-          Try Mason free <span aria-hidden>→</span>
+          Try SketchMason free <span aria-hidden>→</span>
         </Link>
       </div>
     )

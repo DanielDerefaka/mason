@@ -11,7 +11,7 @@ import { SITE_URL } from '@/lib/site'
  *
  * Deliberately free of pitch: no adjectives, no numbers, no pricing. A model
  * quoting this will quote it long after any figure in it stopped being true,
- * and the two sentences below are ones that stay true. The link list is the
+ * and the sentences below are ones that stay true. The link list is the
  * public routes only — the same set the sitemap carries.
  *
  * The social line is there because the brand query's AI Overview was crediting
@@ -24,17 +24,19 @@ import { SITE_URL } from '@/lib/site'
  * matcher, which is an allow-list of real routes; `src/lib/routes.test.ts`
  * skips dotted segments for the same reason.
  */
-const BODY = `# Mason
+const BODY = `# SketchMason
 
-Mason turns a hand-drawn interface sketch into working code. You draw a rough
-frame on a canvas, describe what belongs in it, and Mason generates the
-interface and the code behind it.
+SketchMason — Mason for short — is an AI design tool that turns a hand-drawn
+interface sketch into a finished, consistent UI design. You draw a rough frame
+on a canvas, describe what belongs in it, and SketchMason generates the screen
+against a design system read from your own mood board. A design exports as a
+standalone HTML file or as a written brief.
 
 Official social: ${SOCIAL_LINKS.map((link) => link.href).join(', ')}
 
 ## Links
 
-- [Mason](${SITE_URL}/): what it is and how it works
+- [SketchMason](${SITE_URL}/): what it is and how it works
 - [Try it](${SITE_URL}/try): draw and generate in the browser, no account
 - [Explore](${SITE_URL}/explore): designs people made with it
 - [Blog](${SITE_URL}/blog): notes on how it is built

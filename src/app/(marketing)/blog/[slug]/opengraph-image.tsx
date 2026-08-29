@@ -13,7 +13,7 @@ import { postBySlug } from '@/content/posts'
  * with no art step between the text and the unfurl.
  */
 export const runtime = 'nodejs'
-export const alt = 'A post from the Mason blog'
+export const alt = 'A post from the SketchMason blog'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -49,7 +49,7 @@ export default async function PostImage({ params }: { params: Promise<{ slug: st
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <Mark size={56} />
-          <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: -0.5 }}>Mason</div>
+          <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: -0.5 }}>SketchMason</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

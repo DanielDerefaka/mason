@@ -43,7 +43,7 @@ const PAGES = ['/try', '/explore', '/', '/auth/sign-in', '/s/not-a-live-token']
  * Text a page must have drawn by the time it is judged — the half of a screen
  * that only exists once the bundle has run and its query has answered.
  */
-const EXPECTS = { '/s/not-a-live-token': 'Try Mason free' }
+const EXPECTS = { '/s/not-a-live-token': 'Try SketchMason free' }
 
 /** How long a page gets to load, hydrate and settle before it is judged. */
 const SETTLE_MS = Number(process.env.SMOKE_SETTLE_MS ?? 9000)

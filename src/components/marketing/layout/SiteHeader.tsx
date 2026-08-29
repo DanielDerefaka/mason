@@ -66,10 +66,10 @@ export function SiteHeader({ freeWeek = false }: { freeWeek?: boolean }) {
     <>
       <header className="sticky top-0 z-[100] border-b border-hairline bg-[rgba(10,10,10,0.72)] backdrop-blur-[20px] backdrop-saturate-[1.4]">
         <div className="flex items-center justify-between px-6 py-3.5 md:px-8">
-          <Link href="/" aria-label="Mason home" className="flex items-center gap-2.5">
+          <Link href="/" aria-label="SketchMason home" className="flex items-center gap-2.5">
             <LogoMark className="h-7 w-7 text-foreground" />
             <span className="font-display text-[1.15rem] font-medium tracking-[-0.02em] text-foreground">
-              Mason
+              SketchMason
             </span>
           </Link>
 
