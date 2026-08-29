@@ -35,7 +35,7 @@ const PORT = Number(process.env.CDP_PORT ?? 9422)
  * server-rendered and already covered; these are the ones with a client shell
  * that can throw after the server has said 200.
  */
-const PAGES = ['/try', '/explore', '/', '/auth/sign-in', '/download']
+const PAGES = ['/try', '/explore', '/', '/auth/sign-in']
 
 /** How long a page gets to load, hydrate and settle before it is judged. */
 const SETTLE_MS = Number(process.env.SMOKE_SETTLE_MS ?? 9000)

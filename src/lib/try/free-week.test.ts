@@ -43,7 +43,7 @@ describe('links during the free week', () => {
 
   it('leaves everything else alone', () => {
     expect(freeWeekHref('/blog', true)).toBe('/blog')
-    expect(freeWeekHref('/download', true)).toBe('/download')
+    expect(freeWeekHref('/explore', true)).toBe('/explore')
   })
 
   it('changes nothing when the week is off', () => {
