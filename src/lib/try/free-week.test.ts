@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { CTA } from '../marketing-content'
 import { ctaHref, freeWeekHref, isFreeWeek } from './free-week'
 
 afterEach(() => {
@@ -87,12 +88,58 @@ describe('nothing offers an account while the week is on', () => {
     (_label, path) => {
       const source = readFileSync(path, 'utf8')
       if (!/["'`]\/auth\//.test(source)) return
-      // Either the file knows about the week, or its auth link is inside a
-      // section the week never renders. Only the home page is in the second
-      // group, and it is unreachable during the week because `/` redirects.
+      // Either the file knows about the week, or its auth link is one the
+      // week's own redirect catches: /auth/* goes to /try while the week is
+      // on, so a home section linking there lands a visitor on the canvas
+      // rather than a shut door. The link is still an account being offered
+      // where none is needed, which is a copy problem rather than a broken
+      // one — see the closing-call-to-action block below for the case that
+      // was neither guarded nor caught.
       const knowsAboutTheWeek = /freeWeek|freeWeekHref/.test(source)
       const isHomeSection = path.includes(join('marketing', 'home'))
       expect(knowsAboutTheWeek || isHomeSection).toBe(true)
     },
   )
+})
+
+/**
+ * The other half, and the half that has no flag to read: what the site offers
+ * when the week is *off*.
+ *
+ * The regression this exists for: CtaSection closes all seven marketing pages,
+ * and it chose its pill on `isFreeWeek()` — /try during the week, and
+ * `/auth/sign-up` outside it. So with `FREE_WEEK` unset every marketing page
+ * ended in a sign-up wall that the header pill on the same page (`/try`,
+ * unconditionally) and the answer on /faq ("No. The canvas at /try runs
+ * without one") both said was not needed. /try is public either way, so the
+ * flag was never the right thing to ask.
+ *
+ * Pinned by reading the source rather than by rendering, because what is under
+ * test is the absence of a dependency: a component that cannot see the switch
+ * cannot be wrong about it in one of its two states, and the state that was
+ * wrong is the one nobody was looking at.
+ */
+describe('the closing call to action', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src/components/marketing/home/CtaSection.tsx'),
+    'utf8',
+  )
+
+  it('sends everyone to the canvas', () => {
+    expect(CTA.primaryCta.href).toBe('/try')
+  })
+
+  it('says so, rather than promising a trial and linking to a form', () => {
+    expect(CTA.primaryCta.label.toLowerCase()).toContain('free')
+    expect(CTA.primaryCta.href).not.toMatch(/^\/auth/)
+  })
+
+  it('does not read the free-week switch at all', () => {
+    expect(source).not.toMatch(/isFreeWeek|ctaHref|freeWeek/)
+  })
+
+  it('offers exactly one link, and no auth route', () => {
+    expect(source).not.toMatch(/["'`]\/auth/)
+    expect(source.match(/<Link/g)).toHaveLength(1)
+  })
 })
