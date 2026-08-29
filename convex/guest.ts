@@ -6,6 +6,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { dayKey } from '../src/lib/try/pool-day'
 import { looksLikeEmail, normaliseEmail } from '../src/lib/try/email'
 import { GUEST_IP_CAP } from '../src/lib/try/guest-refusal'
+import { DEFAULT_GUEST_SESSIONS_PER_IP_PER_DAY, limitFromEnv } from '../src/lib/try/limits'
 import { ensureGuestRow, guestRow, poolAvailableFor, poolDayRow } from './lib/pool'
 import { bump } from './lib/signals'
 
@@ -19,8 +20,22 @@ import { bump } from './lib/signals'
  * one that somehow does not.
  */
 
-/** New anonymous sessions one network may open in a UTC day. */
-export const GUEST_SESSIONS_PER_IP_PER_DAY = 10
+/**
+ * New anonymous sessions one network may open in a UTC day.
+ *
+ * A function rather than a constant because it is read from the Convex
+ * deployment's environment: `npx convex env set GUEST_SESSIONS_PER_IP_PER_DAY
+ * 40` takes effect at once, with no deploy and no build. The cap counts a
+ * network rather than a person, so one NAT is a household, an office or a
+ * lecture hall — and the day that matters is a weekday in the middle of the
+ * free week, when a campus trips it with legitimate visitors and the fix has
+ * to be a minute long. Unset, it is ten, exactly as it was.
+ */
+export const guestSessionsPerIpPerDay = () =>
+  limitFromEnv(
+    process.env.GUEST_SESSIONS_PER_IP_PER_DAY,
+    DEFAULT_GUEST_SESSIONS_PER_IP_PER_DAY,
+  )
 
 /** What sharing on X is worth, once. */
 export const SHARE_BONUS = 2
@@ -322,7 +337,7 @@ export const admitIp = internalMutation({
       .unique()
 
     const count = row?.count ?? 0
-    if (count >= GUEST_SESSIONS_PER_IP_PER_DAY) {
+    if (count >= guestSessionsPerIpPerDay()) {
       throw new ConvexError(GUEST_IP_CAP)
     }
 

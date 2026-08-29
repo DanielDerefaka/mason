@@ -1,5 +1,6 @@
 import type { GenericDatabaseReader, GenericDatabaseWriter } from 'convex/server'
 import type { DataModel, Doc, Id } from '../_generated/dataModel'
+import { limitFromEnv } from '../../src/lib/try/limits'
 import { dayKey } from '../../src/lib/try/pool-day'
 
 /**
@@ -14,10 +15,14 @@ import { dayKey } from '../../src/lib/try/pool-day'
 /** Twenty a day unless the deployment says otherwise. */
 export const DEFAULT_POOL_SIZE = 20
 
-export const poolSize = (): number => {
-  const configured = Number(process.env.COMMUNITY_POOL_SIZE)
-  return Number.isFinite(configured) && configured >= 0 ? Math.floor(configured) : DEFAULT_POOL_SIZE
-}
+/**
+ * Read through `limitFromEnv` rather than parsed here, because `Number('')` is
+ * `0` and zero is a value this accepts: a variable set to the empty string
+ * used to empty the community pool for the whole site, which is the one
+ * failure the free week cannot survive quietly. Blank means unset now.
+ */
+export const poolSize = (): number =>
+  limitFromEnv(process.env.COMMUNITY_POOL_SIZE, DEFAULT_POOL_SIZE)
 
 export const poolDayRow = (db: GenericDatabaseReader<DataModel>, day: string) =>
   db
