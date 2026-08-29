@@ -18,9 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 24 live checks against a running server
+npm run smoke        # 28 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 824 unit tests, no server needed
+npm test             # 850 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -75,6 +75,24 @@ to be bypassed. It was briefly three lists: `scripts/smoke.mjs` kept its own han
 page list, so /faq and /llms.txt shipped to production with no check on them. That script
 derives both from `src/app` now — the marketing group for pages, dotted directories for
 files — so a new page is covered by existing, and the count above moves on its own.
+
+**A robots.txt disallow does not keep a page out of the index — it hides the tag that
+would.** `/auth/` was disallowed, and the brand SERP grew a "Sign in" sitelink anyway:
+Google indexed the URL from the header link without ever reading the page, and listed it
+with no snippet. A `noindex` on a disallowed page is never seen. `/auth/*` sends
+`robots: { index: false }` from its layout and is deliberately *not* in `robots.ts`;
+`metadata.test.ts` pins both halves, because a disallow added back would quietly
+re-create the sitelink.
+
+**A share card under a route group is not served at `/opengraph-image`.** Next appends a
+hash of the parent path to any metadata route whose path has a `(group)` or `@slot` segment
+in it, so `(marketing)/blog/[slug]/opengraph-image.tsx` answers at
+`/blog/<slug>/opengraph-image-yqks0s` and the plain URL is a 404. The `og:image` tag Next
+writes is right on its own; anything that spells the URL by hand — the BlogPosting `image`
+did — must carry the suffix. It is djb2 of `"/(marketing)/blog/[slug]"`, so it moves only
+when the directory does; `blog.test.ts` recomputes it with Next's own `fillMetadataSegment`,
+and `smoke` fetches whatever card the page advertises rather than a path written into the
+script.
 
 **A call to action must not be conditional on `FREE_WEEK`.** `/try` is public with
 or without the week, so a link that points at `/auth/sign-up` "outside the week" is a

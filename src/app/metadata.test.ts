@@ -7,6 +7,7 @@ import sitemap from './sitemap'
 import { GET as llmsTxt } from './llms.txt/route'
 import { POSTS } from '@/content/posts'
 import { FAQ_ENTRIES, PENDING_CONFIRMATION } from '@/lib/marketing-faq'
+import { SOCIAL_LINKS } from '@/lib/marketing-nav'
 
 /**
  * What a crawler and a link preview see.
@@ -173,13 +174,37 @@ describe('robots.txt', () => {
     expect(rules.sitemap).toBe('https://www.sketchmason.com/sitemap.xml')
   })
 
-  it.each(['/api/', '/auth/', '/dashboard/', '/billing', '/settings'])(
+  it.each(['/api/', '/dashboard/', '/billing', '/settings'])(
     'keeps a crawler out of %s, which has only a redirect to offer it',
     (path) => {
       const disallowed = (rules.rules as { disallow?: string[] }).disallow ?? []
       expect(disallowed).toContain(path)
     },
   )
+
+  /**
+   * The regression this exists for: /auth/ was disallowed, and the brand SERP
+   * grew a "Sign in" sitelink anyway. A disallow stops the crawl, not the
+   * indexing — Google took the URL from the header link and listed it with no
+   * snippet, and the `noindex` that would have removed it sat on a page the
+   * crawler was forbidden to read. The auth layout carries the tag; this
+   * keeps the door open so it is seen.
+   */
+  it('lets a crawler read /auth/, or the noindex there is never seen', () => {
+    const disallowed = (rules.rules as { disallow?: string[] }).disallow ?? []
+    expect(disallowed).not.toContain('/auth/')
+  })
+})
+
+describe('the auth screens stay out of the index', () => {
+  it('send noindex from the one layout all three share', () => {
+    expect(read('src/app/auth/layout.tsx')).toMatch(/robots: \{ index: false, follow: false \}/)
+  })
+
+  /** One tag, inherited — not three copies that can go out of step. */
+  it.each(['sign-in', 'sign-up', 'forgot-password'])('and /auth/%s does not override it', (screen) => {
+    expect(read(`src/app/auth/${screen}/layout.tsx`)).not.toMatch(/robots/)
+  })
 })
 
 describe('sitemap.xml', () => {
@@ -337,6 +362,18 @@ describe('/llms.txt', () => {
     expect(text).not.toMatch(/\d/)
     expect(text).not.toMatch(/free tier|per month|credits|\bplan\b/i)
   })
+
+  /**
+   * The regression this exists for: the AI Overview for the brand query was
+   * crediting Instagram's @sketchmason — somebody at George Mason — to this
+   * site, because nothing on the site said which accounts were its own and
+   * the name was the only signal. Named here and in the homepage's `sameAs`,
+   * both read from the one list the footer renders.
+   */
+  it("names the account that is actually Mason's", async () => {
+    const text = await body()
+    expect(text).toContain('Official social: https://x.com/danieldxdere')
+  })
 })
 
 describe('what the home page tells a machine it is', () => {
@@ -365,6 +402,12 @@ describe('what the home page tells a machine it is', () => {
     // on the same page is worse than having neither.
     expect(home).toMatch(/description: DESCRIPTION,/g)
     expect(home.match(/description: DESCRIPTION,/g)).toHaveLength(2)
+  })
+
+  /** See the /llms.txt test of the same name: one list, read in both places. */
+  it('names its own accounts, from the same list the footer renders', () => {
+    expect(home).toMatch(/sameAs: SOCIAL_LINKS\.map\(\(link\) => link\.href\)/)
+    expect(SOCIAL_LINKS.map((link) => link.href)).toContain('https://x.com/danieldxdere')
   })
 
   /**
