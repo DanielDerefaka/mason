@@ -22,6 +22,10 @@
  *      crawler — a description of its own and Article markup. An ImageResponse
  *      that throws is a 500 nothing else fetches, and four posts sharing one
  *      description is invisible from any single page.
+ *   6. The sitemap lists every public page and served file, and the icons
+ *      carry the mark at the sizes that get picked. Both are hand-written
+ *      files a crawler reads before anything else, and both shipped wrong
+ *      with every other check green.
  *
  * The first and fourth lists are derived from `src/app` rather than written
  * down, because a list is the thing that gets forgotten: /faq and /llms.txt
@@ -88,6 +92,10 @@ const PUBLIC_PAGES = [
   // The free canvas: a bypass route, so it must answer 200 to a visitor with
   // no cookie at all. /explore is the same and comes from the group above.
   '/try',
+  // A share link, with a token that exists nowhere. Same rule — no cookie,
+  // 200 — and the screen it ends on is drawn in the browser, so all this can
+  // see is that the route answers; smoke:browser watches the rest.
+  '/s/not-a-live-token',
 ]
 
 /** Anonymous visitors belong at sign-in, not inside. */
@@ -234,6 +242,23 @@ const main = async () => {
     record(path, body.trim().length > 0, body.trim().length > 0 ? '' : 'empty body')
   }
 
+  // The sitemap is the first thing a crawler reads, and it is written by
+  // hand: /llms.txt answered 200 for a week while the ten URLs in it left the
+  // file out. Pathnames only — the entries name the production host whatever
+  // BASE this is running against.
+  console.log('\nThe sitemap lists every public page and served file')
+  {
+    const response = await get('/sitemap.xml', 'follow')
+    const xml = response.status === 200 ? await response.text() : ''
+    const listed = new Set([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname))
+    const missing = ['/', ...MARKETING_PAGES, '/try', ...SERVED_FILES].filter((path) => !listed.has(path))
+    record(
+      '/sitemap.xml lists every public page and served file',
+      response.status === 200 && missing.length === 0,
+      response.status !== 200 ? `status ${response.status}` : missing.length ? `missing ${missing.join(', ')}` : '',
+    )
+  }
+
   console.log('\nShare cards render, and a post is a page to a crawler')
   const card = async (path) => {
     const response = await get(path, 'follow')
@@ -301,9 +326,11 @@ const main = async () => {
         layers.push(bytes.getUint8(6 + 16 * index) || 256)
       }
     }
-    const complete = [16, 32, 48].every((size) => layers.includes(size))
+    // Largest first as well: Next advertises the file at the size of its
+    // first entry, and production said sizes="16x16" with a 48 in the file.
+    const complete = [16, 32, 48].every((size) => layers.includes(size)) && layers[0] === 48
     record(
-      '/favicon.ico carries 16, 32 and 48',
+      '/favicon.ico carries 48, 32 and 16, largest first',
       complete,
       complete ? '' : response.status === 200 ? `layers: ${layers.join(', ') || 'none'}` : `status ${response.status}`,
     )

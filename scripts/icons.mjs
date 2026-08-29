@@ -10,8 +10,12 @@
  * noticed. The SVG is the only artwork now; the .ico and the apple icon are
  * derived from it here, and `src/app/icons.test.ts` fails if either drifts.
  *
- * favicon.ico carries 16, 32 and 48 — Google wants a layer of at least 48 —
+ * favicon.ico carries 48, 32 and 16 — Google wants a layer of at least 48 —
  * as 32-bit BMPs with the 1-bit AND mask that pre-alpha renderers still read.
+ * Largest first, because Next's production build advertises the file at the
+ * size of its *first* directory entry: written smallest first, the link tag
+ * said sizes="16x16" with the 48 two entries down. Browsers read the whole
+ * table and are indifferent to the order; only the tag is not.
  * apple-icon.png is 180 and square to the edge: iOS and iMessage lay their own
  * rounded mask over it and paint black under any transparency, so the SVG's
  * corner radius comes off for that one file and the device rounds it instead.
@@ -23,7 +27,7 @@ import sharp from 'sharp'
 
 const APP = join(process.cwd(), 'src/app')
 const SVG = readFileSync(join(APP, 'icon.svg'), 'utf8')
-const ICO_SIZES = [16, 32, 48]
+const ICO_SIZES = [48, 32, 16]
 const APPLE_SIZE = 180
 
 /** The mark at `size`: straight-alpha RGBA, top row first. */

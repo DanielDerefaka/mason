@@ -1,13 +1,18 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
-// The allowance is not described here on purpose. It is a number that changes
-// with the pool, and a description is cached by crawlers and shared long after
-// it stops being true; the canvas itself says what is left.
+// Leads with what Mason is. The old sentence began at "Draw a frame" — a
+// step, with nothing before it to say what the step was for — on the one
+// result most people meet the product through.
+//
+// Neither the allowance nor the week is described here, on purpose. Both are
+// numbers and dates that change, and a description is cached by crawlers and
+// quoted in shares long after it stops being true; the canvas itself says what
+// is left, and the week is the auth layout's business.
 export const metadata: Metadata = {
   title: 'Try Mason free',
   description:
-    'Draw a frame, describe what goes in it, and generate working code. No account needed.',
+    'Mason turns a rough sketch into a working interface: draw a frame, describe what goes in it, and get real code back. No account needed.',
   // No `openGraph` block here on purpose, though there was one.
   //
   // It existed to override the root's og:url, which used to be the hardcoded

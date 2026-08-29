@@ -18,9 +18,9 @@ would otherwise look like arbitrary code.
 
 ```bash
 npm run dev          # then, in another terminal:
-npm run smoke        # 29 live checks against a running server
-npm run smoke:browser # 4 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 855 unit tests, no server needed
+npm run smoke        # 31 live checks against a running server
+npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
+npm test             # 863 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -141,10 +141,11 @@ crosses the proxy as an ordinary 200 and arrives as `{ signingIn: false }`.
 Google's favicon picker takes the .ico. That file was still create-next-app's — a white
 triangle in a black circle — for three weeks after the mark went into the SVG, so the brand
 results wore the starter's icon; nobody opens a .ico, so nothing noticed until a search did.
-Both raster icons are derived from the SVG now: `npm run icons` writes favicon.ico (16, 32
-and 48 — Google wants a 48) and apple-icon.png (180, square to the edge, because iOS masks it
-and paints black under transparency), and `icons.test.ts` renders the SVG and fails if either
-file drifts from it. Google re-crawls favicons on its own schedule, so the results lag a fix
+Both raster icons are derived from the SVG now: `npm run icons` writes favicon.ico (48, 32
+and 16, largest first — Google wants a 48, and Next advertises the file at the size of its
+*first* entry, which is how production's link tag said `16x16` with a 48 in the file) and
+apple-icon.png (180, square to the edge, because iOS masks it and paints black under
+transparency), and `icons.test.ts` renders the SVG and fails if either file drifts from it. Google re-crawls favicons on its own schedule, so the results lag a fix
 here by days. That is latency, not a failed fix.
 
 **There is no Prettier config in this repo.** Running `npx prettier --write` on a file
