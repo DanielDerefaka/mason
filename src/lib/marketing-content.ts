@@ -318,5 +318,11 @@ export const FAQS: FaqItem[] = [
 export const CTA = {
   headline: { lead: 'Draw the shape.', emphasis: 'Get the product.' },
   body: 'Free to start. The first style guide and screen are on us.',
-  primaryCta: { label: 'Start free', href: '/auth/sign-up' },
+  // The canvas, not a sign-up form, and not conditionally: /try is public with
+  // or without the free week, and this pill closes every marketing page. It
+  // said "Start free" and went to /auth/sign-up whenever FREE_WEEK was unset,
+  // which contradicted the header pill on the same page and the answer on /faq
+  // that says no account is needed. The full promise is made here — unlike the
+  // header's shortened "Try it free", this pill has a row to itself.
+  primaryCta: { label: 'Try it free — no sign-up', href: '/try' },
 }

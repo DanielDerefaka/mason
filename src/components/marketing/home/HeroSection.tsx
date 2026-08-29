@@ -26,8 +26,10 @@ import { ctaHref } from "@/lib/try/free-week";
 export function HeroSection() {
   // During the free week /auth/* redirects to the canvas, so the secondary
   // pill would be a link that bounces. It reads the switch directly because
-  // this is a server component; `/` redirects to /try that week anyway, which
-  // makes this belt and braces rather than a path anyone walks.
+  // this is a server component. Not belt and braces: `/` used to redirect to
+  // /try during the week, which would have kept anyone off this page, but that
+  // redirect took the whole landing page off the internet and was removed —
+  // the hero is now rendered during the week like any other.
   const signUpHref = ctaHref();
 
   return (

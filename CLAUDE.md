@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 24 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 790 unit tests, no server needed
+npm test             # 794 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -66,6 +66,13 @@ to be bypassed. It was briefly three lists: `scripts/smoke.mjs` kept its own han
 page list, so /faq and /llms.txt shipped to production with no check on them. That script
 derives both from `src/app` now — the marketing group for pages, dotted directories for
 files — so a new page is covered by existing, and the count above moves on its own.
+
+**A call to action must not be conditional on `FREE_WEEK`.** `/try` is public with
+or without the week, so a link that points at `/auth/sign-up` "outside the week" is a
+sign-up wall on a site whose header and /faq both say no account is needed. `CtaSection`
+closes all seven marketing pages and did exactly that whenever the flag was unset — the
+half nobody was looking at, because the flag was on. It reads no flag now, and
+`free-week.test.ts` pins the absence. The switch's only job is `/auth/*`.
 
 **`FREE_WEEK` must never gate `/`.** It did: `(marketing)/page.tsx` called `redirect('/try')`
 whenever the flag was on, so setting it in production took the whole landing page off the
