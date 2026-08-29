@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 22 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 770 unit tests, no server needed
+npm test             # 784 unit tests, no server needed
 npm run build        # always check the exit code, not the log
 npx convex dev --once
 ```
@@ -77,6 +77,19 @@ collide and three separate files got it wrong: one crashed `/try` on mount, one 
 instruction bar permanently disabled, one broke remix. Go through
 `shapesAdapter.getSelectors()` and hand it `state.shapes.entities`. `shapes.test.ts` scans
 `src/` for both mistakes.
+
+**Convex masks a thrown `Error`, so a rule reads as a fault.** Anything that is not a
+`ConvexError` reaches the browser as `[Request ID: …] Server Error` — right for an internal
+failure, wrong for a deliberate refusal. `guest.admitIp` threw a plain `Error` at the
+per-network cap, so /try told a capped visitor Mason was busy and offered a refresh that
+could not work before midnight UTC. Refusals that a person is meant to act on throw
+`ConvexError` with a code from `src/lib/try/guest-refusal.ts`; the wording lives on the
+screen, never in the error.
+
+**There is no Prettier config in this repo.** Running `npx prettier --write` on a file
+therefore applies Prettier's defaults — double quotes and semicolons — and rewrites the
+whole file away from the house style, which is single quotes and no semicolons. It turned a
+30-line change into a 126-line diff once. Edit by hand and match the file you are in.
 
 **Secrets never get echoed.** Env inspections are masked, `.env`/`.env.local` stay
 gitignored, and every commit is preceded by a staged-diff secret scan. `convex env list`

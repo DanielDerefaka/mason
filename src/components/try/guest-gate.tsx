@@ -27,7 +27,7 @@ type Resolver = (ok: boolean) => void
  * the year the flag happened to be off, which is most of them.
  */
 export const TryGuestGate = ({ children }: { children: ReactNode }) => {
-  const { ready, failed } = useGuestSession()
+  const { ready, refusal } = useGuestSession()
   const me = useQuery(api.guest.me, ready ? {} : 'skip')
   const isGuest = me?.isGuest ?? false
   // Asked once, and "once" has to survive a reload — so it is the guest row
@@ -69,14 +69,44 @@ export const TryGuestGate = ({ children }: { children: ReactNode }) => {
     setPending(null)
   }
 
-  if (failed) {
+  /**
+   * The cap is a rule, so it is said as one.
+   *
+   * It counts a network for a UTC day rather than a person, and one NAT can be
+   * an office or a lecture hall — so whoever is reading this has very likely
+   * done nothing except arrive tenth. The screen that used to be here said
+   * Mason was busy and offered a refresh; both were false, and no refresh can
+   * succeed before midnight UTC.
+   *
+   * No figure is quoted, for the reason `src/lib/marketing-faq.ts` gives:
+   * `GUEST_SESSIONS_PER_IP_PER_DAY` is configuration, and a sentence naming it
+   * is wrong the moment someone tunes it. No account is offered either —
+   * during the free week `src/app/auth/layout.tsx` sends every /auth screen
+   * back to /try, so a "make an account" link here would walk a refused
+   * visitor into a circle.
+   */
+  if (refusal === 'network-cap') {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <LogoMark className="size-8 text-muted-foreground" />
+        <p className="text-base font-medium">This network has used its guest sessions for today</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Guest sessions are counted per network, and this one — an office or a campus, most
+          likely — has opened its share for the day. It starts again at midnight UTC, so come back
+          tomorrow and the canvas is yours.
+        </p>
+      </div>
+    )
+  }
+
+  if (refusal === 'unknown') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <LogoMark className="size-8 text-muted-foreground" />
         <p className="text-base font-medium">Mason is busy — try again in a minute</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          New guest sessions are capped so the community pool stays fair. Nothing you do here
-          needs an account, so a refresh in a moment is all it takes.
+          Something went wrong opening a guest session. Nothing you do here needs an account, so a
+          refresh in a moment is usually all it takes.
         </p>
         <Button size="sm" className="rounded-full px-4" onClick={() => window.location.reload()}>
           Try again

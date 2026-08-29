@@ -1,10 +1,11 @@
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { dayKey } from '../src/lib/try/pool-day'
 import { looksLikeEmail, normaliseEmail } from '../src/lib/try/email'
+import { GUEST_IP_CAP } from '../src/lib/try/guest-refusal'
 import { ensureGuestRow, guestRow, poolAvailableFor, poolDayRow } from './lib/pool'
 import { bump } from './lib/signals'
 
@@ -302,6 +303,15 @@ export const redeemClaim = mutation({
  * Internal: only the auth action calls it, with an ipHash it got from a
  * signed admission token. Ten a day is generous for a household and useless
  * for a script.
+ *
+ * A `ConvexError` rather than an `Error`, because the refusal is a rule and
+ * not a fault: Convex masks a plain throw as "Server Error" by the time it
+ * reaches the browser, which had /try telling a capped visitor that Mason was
+ * busy and to refresh in a minute. The cap is a whole network's share of a
+ * UTC day, so an office or a campus behind one NAT can reach it with ten
+ * ordinary visitors — during a free week that screen is the product looking
+ * broken to a building full of people. The code travels; the wording lives on
+ * the screen.
  */
 export const admitIp = internalMutation({
   args: { ipHash: v.string(), day: v.string() },
@@ -313,7 +323,7 @@ export const admitIp = internalMutation({
 
     const count = row?.count ?? 0
     if (count >= GUEST_SESSIONS_PER_IP_PER_DAY) {
-      throw new Error('Too many guest sessions from this network today')
+      throw new ConvexError(GUEST_IP_CAP)
     }
 
     if (row) await ctx.db.patch(row._id, { count: count + 1 })
