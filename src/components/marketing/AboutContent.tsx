@@ -110,10 +110,14 @@ export function AboutContent() {
         {/* 2 — Intro */}
         <div className="relative mt-[48px] md:mt-[64px]">
           <div className="relative z-10 mx-auto flex max-w-[620px] flex-col gap-[32px]">
+            {/* The first sentence is ABOUT_DEFINITION, the page's description
+                too; marketing-about.test.ts holds the two together. It is set
+                here by hand only so the highlights can be applied. */}
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              <Hl>Mason</Hl> turns the roughest thing you can draw into{" "}
-              <Hl>a finished interface</Hl>. Rectangles on a canvas become a real screen,
-              built from a design system read out of your own mood board.
+              <Hl>Mason</Hl> (sketchmason.com) turns rough sketches — rectangles and boxes —
+              into <Hl>finished user interfaces</Hl>, design systems, and flows. A frame drawn
+              on the canvas becomes a real screen, built from a design system read out of
+              your own mood board.
             </p>
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
               It starts with a mood board and ends with something you can move, resize and

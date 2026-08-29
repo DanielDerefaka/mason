@@ -1,10 +1,29 @@
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
 import { isFreeWeek } from '@/lib/try/free-week'
 
 import { api } from '../../../convex/_generated/api'
+
+/**
+ * Out of the index, all three screens.
+ *
+ * The brand SERP was showing "Sign in" as a sitelink: a login form listed
+ * under the name, in the row where the pages that say what Mason is belong.
+ * Nobody searches for it and it is the opposite of a definitional URL.
+ * noindex is right in both states this layout has — during the free week the
+ * screens redirect to /try anyway, and outside it they are a form.
+ *
+ * It only works because robots.ts no longer disallows /auth/. A crawler kept
+ * out by robots.txt never reads the tag, and Google indexed the URL regardless
+ * from the header link — which is exactly how a bare "Sign in" with no
+ * snippet got into the result in the first place.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 /**
  * Sends a signed-in *account* to the dashboard, and lets everyone else

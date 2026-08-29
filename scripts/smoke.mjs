@@ -18,6 +18,10 @@
  *   4. Every file the site serves at a dotted path — /llms.txt — answers with
  *      text rather than markup. A route handler that starts returning the app
  *      shell still answers 200, so the body is what has to be checked.
+ *   5. The share cards render as images, and a post is its own page to a
+ *      crawler — a description of its own and Article markup. An ImageResponse
+ *      that throws is a 500 nothing else fetches, and four posts sharing one
+ *      description is invisible from any single page.
  *
  * The first and fourth lists are derived from `src/app` rather than written
  * down, because a list is the thing that gets forgotten: /faq and /llms.txt
@@ -228,6 +232,58 @@ const main = async () => {
       continue
     }
     record(path, body.trim().length > 0, body.trim().length > 0 ? '' : 'empty body')
+  }
+
+  console.log('\nShare cards render, and a post is a page to a crawler')
+  const card = async (path) => {
+    const response = await get(path, 'follow')
+    const type = response.headers.get('content-type') ?? ''
+    const image = response.status === 200 && type.startsWith('image/')
+    record(path, image, image ? '' : response.status === 200 ? `served ${type}` : `status ${response.status}`)
+  }
+  await card('/opengraph-image')
+
+  // The post is found from the index so no slug is written down here: the
+  // check is on whichever post is listed first, and stays true as posts change.
+  const index = await (await get('/blog', 'follow')).text()
+  const slugs = [...new Set([...index.matchAll(/href="\/blog\/([^"/]+)"/g)].map((m) => m[1]))]
+  if (slugs.length < 2) {
+    record('/blog lists its posts', false, `found ${slugs.length} post link(s)`)
+  } else {
+    // Two posts, two descriptions. The regression: every post inherited the
+    // site's sentence, so the results showed one description under four titles.
+    const crawl = async (slug) => {
+      const html = await (await get(`/blog/${slug}`, 'follow')).text()
+      return {
+        description: html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? '',
+        article: html.includes('"@type":"BlogPosting"'),
+        image: html.match(/<meta property="og:image" content="([^"]*)"/)?.[1] ?? '',
+      }
+    }
+    const [first, second] = await Promise.all(slugs.slice(0, 2).map(crawl))
+
+    // The card is fetched at the URL the page advertises, not one written
+    // here: a metadata route under a route group is served with a hash in its
+    // name, and the invariant is that whatever the page points at renders.
+    // Its path only, against BASE — in development Next advertises the card on
+    // localhost whatever the host it was asked on.
+    if (first.image) {
+      const advertised = new URL(first.image)
+      await card(advertised.pathname + advertised.search)
+    } else {
+      record(`/blog/${slugs[0]} advertises a card`, false, 'no og:image')
+    }
+    const own = first.description.length > 0 && first.description !== second.description
+    record(
+      `/blog/${slugs[0]} describes itself`,
+      own,
+      own ? '' : first.description ? 'same description as the next post' : 'no description',
+    )
+    record(
+      `/blog/${slugs[0]} is a BlogPosting`,
+      first.article,
+      first.article ? '' : 'no BlogPosting structured data',
+    )
   }
 
   const failed = results.filter((result) => !result.ok)

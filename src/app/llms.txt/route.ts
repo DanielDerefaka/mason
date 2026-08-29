@@ -1,3 +1,4 @@
+import { SOCIAL_LINKS } from '@/lib/marketing-nav'
 import { SITE_URL } from '@/lib/site'
 
 /**
@@ -13,6 +14,12 @@ import { SITE_URL } from '@/lib/site'
  * and the two sentences below are ones that stay true. The link list is the
  * public routes only — the same set the sitemap carries.
  *
+ * The social line is there because the brand query's AI Overview was crediting
+ * an Instagram account that is not Mason's: with nothing on the site saying
+ * which accounts are its own, the name was the only signal, and "Mason" is a
+ * name a lot of people have. It reads the footer's list, the same one the
+ * homepage's structured data names in `sameAs`.
+ *
  * Note the directory name contains a dot. That keeps it out of the middleware
  * matcher, which is an allow-list of real routes; `src/lib/routes.test.ts`
  * skips dotted segments for the same reason.
@@ -22,6 +29,8 @@ const BODY = `# Mason
 Mason turns a hand-drawn interface sketch into working code. You draw a rough
 frame on a canvas, describe what belongs in it, and Mason generates the
 interface and the code behind it.
+
+Official social: ${SOCIAL_LINKS.map((link) => link.href).join(', ')}
 
 ## Links
 

@@ -38,10 +38,15 @@ export interface FaqItem {
 export interface BlogPost {
   slug: string;
   title: string;
+  /** For reading: "4 August 2026". */
   date: string;
+  /** For machines: the ISO date behind it, for <time> and the structured data. */
+  dateTime: string;
   excerpt: string;
   category: string;
   readTime: string;
   cover: string;
+  /** What is in the cover picture, for the <img> alt. */
+  coverAlt: string;
   body: string[];
 }
