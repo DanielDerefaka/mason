@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 32 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 867 unit tests, no server needed
+npm test             # 868 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -185,7 +185,7 @@ on both JSON-LD blocks, which is what tells a machine the two are one entity —
 canvas, the editor and everything behind a session say Mason. `src/lib/brand.ts` holds the
 positioning sentence and the Organization block. The category is sketch-to-*design* with an
 HTML export: never "sketch to code", never "production-ready components";
-`metadata.test.ts` refuses both across the public surface. `hello@mason.design` stays until
+`metadata.test.ts` refuses both across the public surface. The Next.js project starter (`exportDesignProject`) is named on /faq and nowhere else — never in a title, a meta description, a share card or /llms.txt; the same test pins that. `hello@mason.design` stays until
 a sketchmason.com inbox exists.
 
 Never invent an API key. `.env.example` carries names only.

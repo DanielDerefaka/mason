@@ -717,4 +717,22 @@ describe('the public surface stays in its category', () => {
       )
     }
   })
+
+  /**
+   * The Next.js project starter is real (`exportDesignProject`), and the
+   * founder chose to name it on /faq — and only there. A code export named in
+   * a title, a meta description, a share card or /llms.txt is what a crawler
+   * classifies the product by, so the FAQ answer is the one place on the
+   * public surface where "Next.js" may appear. Every other swept file is
+   * checked, so the sentence cannot be lifted into a meta without a red test.
+   */
+  it('names the code export on /faq and nowhere else', () => {
+    const faq = join(process.cwd(), 'src/lib/marketing-faq.ts')
+    expect(withoutComments(readFileSync(faq, 'utf8'))).toMatch(/Next\.js project starter/)
+    for (const path of surface) {
+      if (path === faq) continue
+      const source = withoutComments(readFileSync(path, 'utf8'))
+      expect(source, path).not.toMatch(/Next\.js|project starter/i)
+    }
+  })
 })
