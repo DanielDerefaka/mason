@@ -22,7 +22,7 @@ const DESCRIPTION = POSITIONING
 export const metadata = {
   // `absolute` opts out of the root's "%s | SketchMason" template: this title
   // already opens with the name, and the suffix would say it twice.
-  title: { absolute: 'SketchMason — draw the shape, get the product' },
+  title: { absolute: 'SketchMason: draw the shape, get the product' },
   description: DESCRIPTION,
 }
 

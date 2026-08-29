@@ -88,7 +88,7 @@ export function MobileNav({
           {/* The canvas whether or not the week is on, matching the header and
               the hero. Full copy here: the pill is w-full, so there is room. */}
           <Link href="/try" onClick={onClose} className="pill pill-primary w-full">
-            Try it free — no sign-up
+            Try it free, no sign-up
           </Link>
         </div>
       </div>

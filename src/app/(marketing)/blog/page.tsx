@@ -11,7 +11,7 @@ import { BLOG_POSTS } from "@/lib/marketing-blog";
 // line under the heading: the page says what it is in the words the result
 // shows, and there is one copy of them.
 const DESCRIPTION =
-  "Notes on sketching, design systems and generating interfaces — how SketchMason is built and what it is for.";
+  "Notes on sketching, design systems and generating interfaces. How SketchMason is built, and what it is for.";
 
 export const metadata: Metadata = {
   title: "Blog",

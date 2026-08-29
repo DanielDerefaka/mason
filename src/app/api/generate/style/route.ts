@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const limit = await checkRateLimit()
     if (!limit.ok) {
       return NextResponse.json(
-        { message: `Too many requests — try again in ${limit.retryAfter}s` },
+        { message: `Too many requests. Try again in ${limit.retryAfter}s` },
         { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
       )
     }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           message:
-            'Add mood board images, or turn on brand mode and name the product — either is enough to build a style guide from.',
+            'Add mood board images, or turn on brand mode and name the product. Either is enough to build a style guide from.',
         },
         { status: 400 },
       )
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       // when the file was fine and the fetch was the problem.
       const reasons = new Set(failures.map((failure) => failure.reason))
       const message = reasons.has('unreachable')
-        ? 'Could not download the mood board images. They may still be uploading — try again in a moment.'
+        ? 'Could not download the mood board images. They may still be uploading, so try again in a moment.'
         : reasons.has('not-an-image')
           ? 'Those files are not images. Upload PNG, JPEG or WebP.'
           : 'Could not read those images. Re-export them as PNG or JPEG and upload again.'

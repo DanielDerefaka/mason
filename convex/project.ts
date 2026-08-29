@@ -57,7 +57,7 @@ export const createProject = mutation({
       const live = mine.filter((project) => !project.archivedAt)
       if (live.length >= GUEST_PROJECT_LIMIT) {
         throw new Error(
-          `A guest session can hold ${GUEST_PROJECT_LIMIT} sketches — keep your work with an account for more`,
+          `A guest session can hold ${GUEST_PROJECT_LIMIT} sketches. Keep your work with an account for more`,
         )
       }
     }

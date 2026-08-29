@@ -19,7 +19,7 @@ import { FAQ_ENTRIES } from '@/lib/marketing-faq'
 export const metadata: Metadata = {
   title: 'FAQ',
   description:
-    'Common questions about SketchMason — how a sketch becomes a finished design, what you can try without an account, and what comes out at the end.',
+    'Common questions about SketchMason: how a sketch becomes a finished design, what you can try without an account, and what comes out at the end.',
   alternates: { canonical: './' },
 }
 

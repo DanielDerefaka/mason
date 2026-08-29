@@ -5,7 +5,7 @@ import { shapesAdapter, snapshotHistory, updateShapeLive } from '@/redux/slice/s
 
 const selectors = shapesAdapter.getSelectors()
 
-const PLACEHOLDER = 'Describe the selected frame (optional) — e.g. a pricing page for a coffee subscription'
+const PLACEHOLDER = 'Describe the selected frame (optional), e.g. a pricing page for a coffee subscription'
 
 /**
  * One line of words to go with the sketch. It edits the selected frame's

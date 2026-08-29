@@ -25,7 +25,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     question: 'What is SketchMason?',
     answer:
-      'SketchMason — Mason for short — is an AI design tool that turns a hand-drawn interface sketch into a finished UI design. You draw a rough frame on a canvas, describe what belongs inside it, and SketchMason generates the screen, built on a design system so the next screen matches it.',
+      'SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn interface sketch into a finished UI design. You draw a rough frame on a canvas, describe what belongs inside it, and SketchMason generates the screen, built on a design system so the next screen matches it.',
   },
   {
     question: 'How does the sketch become a design?',
@@ -35,7 +35,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     question: 'Do I need to draw well?',
     answer:
-      'No. Boxes are enough. Writing a word or two inside them helps a great deal, though — a labelled rectangle is an instruction, an unlabelled one is a guess.',
+      'No. Boxes are enough. Writing a word or two inside them helps a great deal, though. A labelled rectangle is an instruction, an unlabelled one is a guess.',
   },
   {
     question: 'Do I need an account to try it?',
@@ -65,7 +65,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     question: 'How long is my work kept if I do not make an account?',
     answer:
-      'Fourteen days. A guest session and the projects made in it are kept that long in the browser you drew in; a guest who never makes an account is forgotten after that. Making an account keeps the work — the project moves across with its history and its share links, so there is nothing to export and re-import.',
+      'Fourteen days. A guest session and the projects made in it are kept that long in the browser you drew in; a guest who never makes an account is forgotten after that. Making an account keeps the work: the project moves across with its history and its share links, so there is nothing to export and re-import.',
   },
   {
     question: 'What does it cost?',

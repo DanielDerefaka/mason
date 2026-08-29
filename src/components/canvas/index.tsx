@@ -1044,7 +1044,7 @@ export const Canvas = () => {
             <p className="text-sm font-medium">Draw a frame, then press Generate.</p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               Press <Key>F</Key> for a frame or <Key>R</Key> for a rectangle, and label the
-              boxes with <Key>T</Key> — a labelled sketch is an instruction, an unlabelled
+              boxes with <Key>T</Key>. A labelled sketch is an instruction, an unlabelled
               one is a guess. <Key>New Frame</Key> above picks a device size for you.
             </p>
           </div>

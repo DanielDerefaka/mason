@@ -50,8 +50,8 @@ export const ExploreGallery = () => {
           Nothing here yet
         </h2>
         <p className="text-muted-foreground mt-3 max-w-[420px] text-[0.95rem] leading-relaxed">
-          The gallery fills up as people draw. Every design on it starts as a rough sketch —
-          yours could be the first one today.
+          The gallery fills up as people draw. Every design on it starts as a rough sketch.
+          Yours could be the first one today.
         </p>
         <Link href="/try" className="pill pill-primary mt-7">
           Try SketchMason free <span aria-hidden>→</span>

@@ -171,7 +171,7 @@ export const Properties = ({
       {locked && (
         <div className="flex items-center gap-2 border-b border-white/[0.08] bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200/90">
           <Lock className="size-3 shrink-0" />
-          <span className="min-w-0 flex-1">Locked — it cannot be picked or dragged on the canvas.</span>
+          <span className="min-w-0 flex-1">Locked. It cannot be picked or dragged on the canvas.</span>
           <button
             type="button"
             onClick={onUnlock}
@@ -377,7 +377,7 @@ const Alignment = ({
           <Toggle
             key={position}
             on={vertical === position}
-            label={canVertical ? label : `${label} — needs a parent with a layout`}
+            label={canVertical ? label : `${label} (needs a parent with a layout)`}
             disabled={!canVertical}
             onClick={() => onStyles(alignWrites(element, 'vertical', position))}
           >

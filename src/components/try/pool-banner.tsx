@@ -40,11 +40,11 @@ export const PoolBanner = ({ me }: { me: GuestMe | null | undefined }) => {
 
   let line: string
   if (remaining <= 0) {
-    line = `Pool used up — resets in ${formatCountdown(resetsAt - now)}. Add your own key to keep going.`
+    line = `The pool is used up and resets in ${formatCountdown(resetsAt - now)}. Add your own key to keep going.`
   } else if (guestSpent) {
     line = guest.canClaimShare
-      ? "You've used your free generation today — share on X for 2 more, or add your key."
-      : "You've used your free generation today — add your key to keep going."
+      ? "You've used your free generation today. Share on X for 2 more, or add your key."
+      : "You've used your free generation today. Add your key to keep going."
   } else {
     line = `Community pool · ${remaining} of ${status.size} free generations left today`
   }

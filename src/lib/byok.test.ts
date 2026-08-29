@@ -166,8 +166,8 @@ describe('explaining a refusal', () => {
   it.each([
     [401, '', 'Your Anthropic key was rejected'],
     [400, '{"error":{"message":"Your credit balance is too low"}}', 'Your Anthropic account has no credit'],
-    [429, '', 'Your Anthropic account is rate limited — try again in a moment'],
-    [529, '', 'Anthropic is overloaded — try again in a moment'],
+    [429, '', 'Your Anthropic account is rate limited. Try again in a moment'],
+    [529, '', 'Anthropic is overloaded. Try again in a moment'],
   ])('turns a %s into a sentence', (status, body, message) => {
     expect(describeRefusal(status, body)).toBe(message)
   })
