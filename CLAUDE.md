@@ -44,6 +44,15 @@ exit code.
 return 200 with an empty body: the model spent its whole budget reasoning. If a model call
 misbehaves in a way that makes no sense, verify the transport before debugging the prompt.
 
+**Both of /try's ceilings are Convex environment variables, and blank is not zero.**
+`COMMUNITY_POOL_SIZE` (default 20) and `GUEST_SESSIONS_PER_IP_PER_DAY` (default 10) are read
+per call through `limitFromEnv` in `src/lib/try/limits.ts`, so `npx convex env set …` moves
+them live — which is the only useful shape for a cap that counts a *network*, when an office
+or campus NAT trips it mid-week. Both accept a real `0` as an off switch, which is why the
+empty string had to stop meaning zero: `Number('')` is `0`, so `npx convex env set
+COMMUNITY_POOL_SIZE ""` would have emptied the pool for the whole site with every check
+still green.
+
 **A green `npm run smoke` does not mean the page works.** It fetches, so it only ever sees
 what the server rendered. `/try` answered 200 for a week while being an error boundary in
 every real browser: the server renders a Suspense fallback and the client shell throws on
