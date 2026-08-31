@@ -65,12 +65,13 @@ describe('every post tells a machine what it is', () => {
     expect(post).toMatch(/"@type": "BlogPosting"/)
     expect(post).toMatch(/headline: post\.title/)
     expect(post).toMatch(/datePublished: post\.dateTime/)
-    expect(post).toMatch(/<JsonLd data=\{blogPosting\(post\)\} \/>/)
+    expect(post).toMatch(/<JsonLd data=\{blogPosting\(post\) as Record<string, unknown>\} \/>/)
+    expect(post).toMatch(/BreadcrumbList/)
   })
 
-  /** A modified date that is really the published one is a claim, not an omission. */
-  it('claims no modified date it does not have', () => {
-    expect(post).not.toMatch(/dateModified/)
+  it('writes a modified date only when the post actually changed', () => {
+    expect(post).toMatch(/dateModified: post\.updated/)
+    expect(post).toMatch(/post\.updated !== post\.dateTime/)
   })
 
   /**
@@ -88,7 +89,7 @@ describe('every post tells a machine what it is', () => {
     const name = served.split('/').pop()
     expect(post).toContain(`const POST_CARD = "${name}";`)
     expect(post).toMatch(/import \{ SITE_URL \} from "@\/lib\/site"/)
-    expect(post).toMatch(/image: `\$\{url\}\/\$\{POST_CARD\}`/)
+    expect(post).toMatch(/image: \[`\$\{url\}\/\$\{POST_CARD\}`, `\$\{SITE_URL\}\$\{post\.cover\}`\]/)
   })
 
   it('carries the date as a <time> a machine can read', () => {
@@ -121,9 +122,9 @@ describe('every post has a card of its own', () => {
 describe('the cover says what it shows', () => {
   /**
    * The regression this exists for: both pages rendered the cover with
-   * `alt=""`. The alt describes the picture that is actually there — a
-   * painted landscape, the one placeholder every post shares — rather than
-   * naming the post, which would describe a picture that is not.
+   * `alt=""`. The alt describes the picture that is actually there, and each
+   * post has its own picture. Four posts sharing one landscape is how Google
+   * indexes one image and none of the articles.
    */
   it.each([INDEX, POST])('%s gives the cover its alt', (path) => {
     const source = code(path)
@@ -133,6 +134,19 @@ describe('the cover says what it shows', () => {
 
   it('from a field beside the cover it describes', () => {
     for (const post of BLOG_POSTS) expect(post.coverAlt.length).toBeGreaterThan(20)
+  })
+
+  it('gives every post a cover of its own, on disk', () => {
+    const covers = BLOG_POSTS.map((post) => post.cover)
+    expect(new Set(covers).size).toBe(BLOG_POSTS.length)
+    const alts = BLOG_POSTS.map((post) => post.coverAlt)
+    expect(new Set(alts).size).toBe(BLOG_POSTS.length)
+    for (const post of BLOG_POSTS) {
+      expect(post.cover).not.toMatch(/blog-cover/)
+      expect(existsSync(join(process.cwd(), 'public', post.cover.replace(/^\//, '')))).toBe(
+        true,
+      )
+    }
   })
 })
 

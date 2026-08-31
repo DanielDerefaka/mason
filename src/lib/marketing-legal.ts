@@ -16,7 +16,7 @@ export const PRIVACY_DESCRIPTION =
 export const TERMS_DESCRIPTION =
   'The terms for using SketchMason: the canvas, guest sessions, credits, and what you may do with a generated design.'
 
-export const LEGAL_UPDATED = '31 August 2026'
+export const LEGAL_UPDATED = '1 September 2026'
 
 export const PRIVACY_SECTIONS: { heading: string; body: string[] }[] = [
   {
@@ -31,7 +31,7 @@ export const PRIVACY_SECTIONS: { heading: string; body: string[] }[] = [
       'An account is an email address and a password, or whatever the sign-in provider sends us. A guest session is anonymous: it is a cookie in the browser you drew in, not a name.',
       'Downloading a design as a guest asks for an email address, once. That address goes on the launch list and the newsletter. It is not required to draw or to generate.',
       'A project holds the sketches, references, generated screens and history you make. A design you publish to Explore is a copy of one screen and the sketch behind it, offered to the public on purpose.',
-      'The site records ordinary request logs and, through DataFast, page views on sketchmason.com. Errors may be sent to Sentry so a crash can be fixed.',
+      'The site records ordinary request logs and, through DataFast, page views on sketchmason.com. If PostHog is configured, product events go there too. Errors may be sent to Sentry so a crash can be fixed.',
       'If you paste an Anthropic API key into the canvas, it is held in that browser tab only, sent with the generation request, and gone when the tab closes. SketchMason never stores it.',
     ],
   },
@@ -54,7 +54,7 @@ export const PRIVACY_SECTIONS: { heading: string; body: string[] }[] = [
   {
     heading: 'Who else sees it',
     body: [
-      'Generation is sent to the model provider (Anthropic, unless you brought your own key). Stock photographs may be fetched from Pexels. Payments go through Polar. Auth, storage and the database run on Convex. Hosting is Vercel. Analytics is DataFast. Error reports may go to Sentry.',
+      'Generation is sent to the model provider (Anthropic, unless you brought your own key). Stock photographs may be fetched from Pexels. Payments go through Polar. Auth, storage and the database run on Convex. Hosting is Vercel. Analytics is DataFast, and PostHog when a project key is set. Error reports may go to Sentry.',
       'We do not sell your information. We do not use a generated design as advertising unless you published it to Explore or shared the link yourself.',
     ],
   },
