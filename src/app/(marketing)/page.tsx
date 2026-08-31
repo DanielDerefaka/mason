@@ -68,6 +68,14 @@ const SOFTWARE_APPLICATION = {
  */
 const ORGANIZATION_BLOCK = { '@context': 'https://schema.org', ...ORGANIZATION }
 
+const WEBSITE_BLOCK = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'SketchMason',
+  alternateName: 'Mason',
+  url: SITE_URL,
+}
+
 /**
  * The order is the reference's: a left-aligned hero over the product, one
  * feature per screen, the capability grid, proof, a statement, what it costs,
@@ -87,6 +95,7 @@ export default function Home() {
   return (
     <>
       <JsonLd data={ORGANIZATION_BLOCK} />
+      <JsonLd data={WEBSITE_BLOCK} />
       <JsonLd data={SOFTWARE_APPLICATION} />
       <HeroSection />
       <FeatureSections />

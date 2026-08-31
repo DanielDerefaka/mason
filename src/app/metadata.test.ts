@@ -162,7 +162,7 @@ describe('the site tells a crawler who it is', () => {
 
   it('gives the free canvas a description that will still be true next month', () => {
     const tryLayout = read('src/app/try/layout.tsx')
-    expect(tryLayout).toMatch(/title: 'Try Mason free'/)
+    expect(tryLayout).toMatch(/title: 'Try SketchMason free'/)
     const description = tryDescription()
     expect(description).toMatch(/No account needed/)
     // The old one promised "one free generation a day", which is a number the
@@ -358,6 +358,40 @@ describe('the chrome offers the canvas on every page, not just the home page', (
   })
 
   /**
+   * Mid-page pills used to send people to sign-up while the header on the
+   * same screen sent them to /try. The contradiction is the one a visitor
+   * actually clicks.
+   */
+  it('sends every home-section call to action at the canvas', () => {
+    const content = read('src/lib/marketing-content.ts')
+    expect(content).toMatch(/primaryCta: \{ label: 'Start free', href: '\/try' \}/)
+    expect(content).toMatch(/cta: \{ label: 'Try it on your own sketch', href: '\/try' \}/)
+    expect(content).toMatch(/cta: \{ label: 'Start free', href: '\/try' \}/)
+    expect(read('src/components/marketing/home/FeatureSections.tsx')).toMatch(
+      /href="\/try"/,
+    )
+    expect(read('src/components/marketing/home/FeatureSections.tsx')).not.toMatch(
+      /href="\/auth\/sign-up"/,
+    )
+  })
+
+  it('puts the FAQ page in the header and footer, not only a home-page hash', () => {
+    const nav = read('src/lib/marketing-nav.ts')
+    expect(nav).toMatch(/\{ label: 'FAQ', href: '\/faq' \}/)
+    expect(nav).toMatch(/\{ label: 'FAQs', href: '\/faq' \}/)
+    expect(nav).not.toMatch(/href: '\/#faqs'/)
+  })
+
+  it('keeps session-only /try routes out of the index', () => {
+    expect(read('src/app/try/editor/page.tsx')).toMatch(
+      /robots: \{ index: false, follow: false \}/,
+    )
+    expect(read('src/app/try/preview/page.tsx')).toMatch(
+      /robots: \{ index: false, follow: false \}/,
+    )
+  })
+
+  /**
    * Sign-in stays in the header outside the free week. The guard around it is
    * deliberate and stays: while the week is on, `src/app/auth/layout.tsx`
    * redirects every auth screen to /try, and a link that bounces is worse than
@@ -380,7 +414,11 @@ describe('the footer links to accounts that exist', () => {
   const open = nav.indexOf('= [', nav.indexOf('SOCIAL_LINKS'))
   const literal = nav.slice(open, nav.indexOf(']', open) + 1)
 
-  it('points X at a real handle', () => {
+  it('points X at the product account', () => {
+    expect(literal).toMatch(/href: 'https:\/\/x\.com\/usesketchmason'/)
+  })
+
+  it('still names the founder account, so sameAs does not drop it', () => {
     expect(literal).toMatch(/href: 'https:\/\/x\.com\/danieldxdere'/)
   })
 
@@ -419,7 +457,17 @@ describe('/llms.txt', () => {
 
   it('links every public page, on the host that answers 200', async () => {
     const text = await body()
-    for (const path of ['/', '/try', '/explore', '/blog', '/faq']) {
+    for (const path of [
+      '/',
+      '/try',
+      '/explore',
+      '/blog',
+      '/faq',
+      '/about-us',
+      '/pricing',
+      '/compare',
+      '/sketch-to-ui',
+    ]) {
       expect(text).toContain(`https://www.sketchmason.com${path})`)
     }
   })
@@ -456,7 +504,11 @@ describe('/llms.txt', () => {
    */
   it("names the account that is actually Mason's", async () => {
     const text = await body()
-    expect(text).toContain('Official social: https://x.com/danieldxdere')
+    expect(text).toContain('https://x.com/usesketchmason')
+    expect(text).toContain('https://x.com/danieldxdere')
+    expect(text.indexOf('https://x.com/usesketchmason')).toBeLessThan(
+      text.indexOf('https://x.com/danieldxdere'),
+    )
   })
 })
 
@@ -493,6 +545,7 @@ describe('what the home page tells a machine it is', () => {
   it('names its own accounts, from the same list the footer renders', () => {
     expect(home).toMatch(/sameAs: ORGANIZATION\.sameAs/)
     expect(ORGANIZATION.sameAs).toEqual(SOCIAL_LINKS.map((link) => link.href))
+    expect(ORGANIZATION.sameAs[0]).toBe('https://x.com/usesketchmason')
     expect(ORGANIZATION.sameAs).toContain('https://x.com/danieldxdere')
   })
 
@@ -514,7 +567,7 @@ describe('what the home page tells a machine it is', () => {
     })
     expect(home).toMatch(/\{ '@context': 'https:\/\/schema\.org', \.\.\.ORGANIZATION \}/)
     expect(home).toMatch(/alternateName: 'Mason'/)
-    expect(home.match(/<JsonLd data=/g)).toHaveLength(2)
+    expect(home.match(/<JsonLd data=/g)).toHaveLength(3)
     const post = read('src/app/(marketing)/blog/[slug]/page.tsx')
     expect(post).toMatch(/author: ORGANIZATION,/)
     expect(post).toMatch(/publisher: ORGANIZATION,/)

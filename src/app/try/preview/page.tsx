@@ -4,7 +4,10 @@ import { Suspense } from 'react'
 import { DesignPreview } from '@/components/editor/preview'
 import { TryGuestGate } from '@/components/try/guest-gate'
 
-export const metadata: Metadata = { title: 'Preview' }
+export const metadata: Metadata = {
+  title: 'Preview',
+  robots: { index: false, follow: false },
+}
 
 /**
  * `admit={false}` for the same reason as the editor beside it: this route

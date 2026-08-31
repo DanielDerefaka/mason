@@ -26,11 +26,14 @@ import { SITE_URL } from '@/lib/site'
  */
 const BODY = `# SketchMason
 
+> SketchMason, or Mason for short, turns labelled boxes on a canvas into a finished UI design.
+
 SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn
 interface sketch into a finished, consistent UI design. You draw a rough frame
 on a canvas, describe what belongs in it, and SketchMason generates the screen
 against a design system read from your own mood board. A design exports as a
-standalone HTML file or as a written brief.
+standalone HTML file or as a written brief. The layout comes from the sketch,
+not from a prompt.
 
 Official social: ${SOCIAL_LINKS.map((link) => link.href).join(', ')}
 
@@ -38,9 +41,13 @@ Official social: ${SOCIAL_LINKS.map((link) => link.href).join(', ')}
 
 - [SketchMason](${SITE_URL}/): what it is and how it works
 - [Try it](${SITE_URL}/try): draw and generate in the browser, no account
+- [Sketch to UI](${SITE_URL}/sketch-to-ui): how a labelled sketch becomes a screen
+- [Compare](${SITE_URL}/compare): how this differs from Uizard, Stitch and prompt-to-app tools
 - [Explore](${SITE_URL}/explore): designs people made with it
 - [Blog](${SITE_URL}/blog): notes on how it is built
 - [FAQ](${SITE_URL}/faq): common questions
+- [About](${SITE_URL}/about-us): who it is
+- [What it costs](${SITE_URL}/pricing): guests, keys, and drawing for free
 `
 
 export const dynamic = 'force-static'

@@ -69,6 +69,11 @@ export const config = {
     '/about-us',
     '/faq',
     '/explore',
+    '/pricing',
+    '/privacy',
+    '/terms',
+    '/compare',
+    '/sketch-to-ui',
     '/s/:path*',
   ],
 }

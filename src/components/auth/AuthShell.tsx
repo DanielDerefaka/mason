@@ -56,9 +56,16 @@ export function AuthShell({
           </div>
         )}
 
-        {/* Plain text until /terms and /privacy exist — a link to a 404 is worse than none. */}
         <p className="mt-10 text-[12px] text-[#6f6f6f]">
-          By continuing you agree to Mason&apos;s terms and privacy policy.
+          By continuing you agree to Mason&apos;s{' '}
+          <Link href="/terms" className="underline-offset-2 hover:underline">
+            terms
+          </Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="underline-offset-2 hover:underline">
+            privacy policy
+          </Link>
+          .
         </p>
       </div>
     </div>

@@ -4,7 +4,10 @@ import { Suspense } from 'react'
 import { DesignEditor } from '@/components/editor'
 import { TryGuestGate } from '@/components/try/guest-gate'
 
-export const metadata: Metadata = { title: 'Editor' }
+export const metadata: Metadata = {
+  title: 'Editor',
+  robots: { index: false, follow: false },
+}
 
 /**
  * The same full-screen editor the dashboard uses, inside GuestProvider so an
