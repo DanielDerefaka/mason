@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { CtaSection } from "@/components/marketing/home/CtaSection";
 import { JsonLd } from "@/components/marketing/JsonLd";
 import { ORGANIZATION } from "@/lib/brand";
-import { BLOG_POSTS, getPostBySlug } from "@/lib/marketing-blog";
+import { BLOG_POSTS, getPostBySlug, relatedPosts } from "@/lib/marketing-blog";
 import { SITE_URL } from "@/lib/site";
 import type { BlogPost } from "@/types/marketing-content";
 
@@ -47,17 +47,11 @@ export async function generateMetadata({
 const POST_CARD = "opengraph-image-yqks0s";
 
 /**
- * BlogPosting structured data — the Article subtype for a blog — built from
- * the same record the page renders, so the two cannot drift.
+ * BlogPosting structured data, built from the same record the page renders.
  *
- * A post carries one date, so there is no modified date here: one that is
- * really the published date is a claim rather than an omission. No publisher
- * logo either — the only mark on disk is white on transparent, invisible on
- * the white ground Google draws a logo onto. The image is the post's own card,
- * composed beside this file in `opengraph-image.tsx`, the same one the share
- * tags point at. Author and publisher are the Organization the homepage
- * declares — SketchMason, alternateName Mason — so a post is attributed to
- * the entity the site says it is, not to a second one spelled by hand.
+ * dateModified is only written when the post actually changed after it was
+ * published. The image is both the share card and the cover on the page, so
+ * Google has a picture of this article, not a landscape reused four times.
  */
 const blogPosting = (post: BlogPost) => {
   const url = `${SITE_URL}/blog/${post.slug}`;
@@ -67,12 +61,41 @@ const blogPosting = (post: BlogPost) => {
     headline: post.title,
     description: post.excerpt,
     datePublished: post.dateTime,
+    ...(post.updated && post.updated !== post.dateTime
+      ? { dateModified: post.updated }
+      : {}),
     articleSection: post.category,
-    image: `${url}/${POST_CARD}`,
+    image: [`${url}/${POST_CARD}`, `${SITE_URL}${post.cover}`],
     url,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     author: ORGANIZATION,
     publisher: ORGANIZATION,
+  };
+};
+
+const breadcrumbs = (post: BlogPost) => {
+  const url = `${SITE_URL}/blog/${post.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+      { "@type": "ListItem", position: 3, name: post.title, item: url },
+    ],
+  };
+};
+
+const faqPage = (post: BlogPost) => {
+  if (!post.faq?.length) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: post.faq.map((entry) => ({
+      "@type": "Question",
+      name: entry.question,
+      acceptedAnswer: { "@type": "Answer", text: entry.answer },
+    })),
   };
 };
 
@@ -116,18 +139,34 @@ export default async function PostPage({ params }: PostPageProps) {
 
   if (!post) notFound();
 
+  const related = relatedPosts(post.slug);
+  const faq = faqPage(post);
+
   return (
     <>
-      <JsonLd data={blogPosting(post)} />
+      <JsonLd data={blogPosting(post) as Record<string, unknown>} />
+      <JsonLd data={breadcrumbs(post) as Record<string, unknown>} />
+      {faq ? <JsonLd data={faq as Record<string, unknown>} /> : null}
       <article className="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[110px] lg:pt-[222px] lg:pb-[140px]">
         <div className="container-site">
           <div className="mx-auto max-w-[760px]">
-            <Link
-              href="/blog"
-              className="text-muted-foreground hover:text-foreground font-sans text-[14px] transition-colors duration-400 ease-out"
-            >
-              &larr; All posts
-            </Link>
+            <nav aria-label="Breadcrumb" className="font-sans text-[13px] text-muted-foreground">
+              <ol className="flex flex-wrap items-center gap-2">
+                <li>
+                  <Link href="/" className="hover:text-foreground">
+                    Home
+                  </Link>
+                </li>
+                <li aria-hidden>/</li>
+                <li>
+                  <Link href="/blog" className="hover:text-foreground">
+                    Blog
+                  </Link>
+                </li>
+                <li aria-hidden>/</li>
+                <li className="text-foreground">{post.title}</li>
+              </ol>
+            </nav>
 
             <p className="text-muted-foreground mt-[28px] font-sans text-[13px] leading-[20px]">
               {post.category} &middot; <time dateTime={post.dateTime}>{post.date}</time> &middot;{" "}
@@ -155,9 +194,52 @@ export default async function PostPage({ params }: PostPageProps) {
               ))}
             </div>
 
+            {post.faq?.length ? (
+              <section className="mt-[48px]">
+                <h2 className="text-foreground font-display text-[30px] leading-[34px] font-normal tracking-[-1.3px]">
+                  Questions
+                </h2>
+                <dl className="mt-[18px] space-y-3">
+                  {post.faq.map((entry) => (
+                    <div key={entry.question} className="card-surface px-5 py-4">
+                      <dt className="font-sans text-[16px] font-semibold text-foreground">
+                        {entry.question}
+                      </dt>
+                      <dd className="text-muted-foreground mt-2 font-sans text-[15px] leading-[26px]">
+                        {entry.answer}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ) : null}
+
+            {related.length > 0 ? (
+              <section className="mt-[48px]">
+                <h2 className="text-foreground font-display text-[30px] leading-[34px] font-normal tracking-[-1.3px]">
+                  Keep reading
+                </h2>
+                <ul className="mt-[18px] space-y-3">
+                  {related.map((entry) => (
+                    <li key={entry.slug}>
+                      <Link
+                        href={`/blog/${entry.slug}`}
+                        className="text-foreground font-sans text-[16px] font-semibold underline-offset-4 hover:underline"
+                      >
+                        {entry.title}
+                      </Link>
+                      <p className="text-muted-foreground mt-1 font-sans text-[14px] leading-[22px]">
+                        {entry.excerpt}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             <div className="mt-[48px]">
               <Link href="/blog" className="pill pill-secondary">
-                Read more articles
+                All posts
               </Link>
             </div>
           </div>

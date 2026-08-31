@@ -72,6 +72,13 @@ export default function SketchToUiPage() {
             <Link href="/try" className="text-foreground underline-offset-4 hover:underline">
               Try a labelled sketch on the canvas
             </Link>
+            , read{' '}
+            <Link
+              href="/blog/how-a-labelled-sketch-becomes-a-ui"
+              className="text-foreground underline-offset-4 hover:underline"
+            >
+              how a labelled sketch becomes a UI
+            </Link>
             , or{' '}
             <Link href="/compare" className="text-foreground underline-offset-4 hover:underline">
               see how this differs from Uizard and v0

@@ -42,6 +42,8 @@ export interface BlogPost {
   date: string;
   /** For machines: the ISO date behind it, for <time> and the structured data. */
   dateTime: string;
+  /** Present when the page changed after it was published. */
+  updated?: string;
   excerpt: string;
   category: string;
   readTime: string;
@@ -49,4 +51,5 @@ export interface BlogPost {
   /** What is in the cover picture, for the <img> alt. */
   coverAlt: string;
   body: string[];
+  faq?: { question: string; answer: string }[];
 }

@@ -3,7 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { CtaSection } from "@/components/marketing/home/CtaSection";
+import { JsonLd } from "@/components/marketing/JsonLd";
+import { ORGANIZATION } from "@/lib/brand";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
+import { SITE_URL } from "@/lib/site";
 
 // The description is the card's subtitle as well as the search snippet, and
 // without one it fell back to the site's — so /blog, /explore and /download all
@@ -24,9 +27,27 @@ export const metadata: Metadata = {
  * Header and footer come from the root layout, so the top padding here
  * clears the fixed 72px header and lands the title ~150px below it.
  */
+const blogIndex = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  name: "The SketchMason blog",
+  description: DESCRIPTION,
+  url: `${SITE_URL}/blog`,
+  publisher: ORGANIZATION,
+  blogPost: BLOG_POSTS.map((post) => ({
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.dateTime,
+    url: `${SITE_URL}/blog/${post.slug}`,
+    image: `${SITE_URL}${post.cover}`,
+  })),
+};
+
 export default function BlogPage() {
   return (
     <>
+      <JsonLd data={blogIndex as Record<string, unknown>} />
       <section className="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[110px] lg:pt-[222px] lg:pb-[140px]">
         <div className="container-site">
           {/* Named, not labelled. "Our Blogs" gave a machine nothing to attach
