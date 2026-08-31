@@ -80,7 +80,7 @@ export function FeatureSections() {
                     ))}
                   </p>
 
-                  <Link href="/auth/sign-up" className="pill pill-secondary mt-7">
+                  <Link href="/try" className="pill pill-secondary mt-7">
                     Try it free <span aria-hidden>→</span>
                   </Link>
                 </div>

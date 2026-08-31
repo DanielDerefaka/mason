@@ -84,7 +84,7 @@ export const SERVICES_INTRO = {
   /** Two runs: the lead sits grey, the emphasis sits white. */
   headline: { lead: 'Everything between', emphasis: 'a box and a build.' },
   body: 'One canvas, one design system, and every step from the first rectangle to the last screen of the flow.',
-  primaryCta: { label: 'Start free', href: '/auth/sign-up' },
+  primaryCta: { label: 'Start free', href: '/try' },
   secondaryCta: { label: 'Read the blog', href: '/blog' },
 }
 
@@ -246,7 +246,7 @@ export const CASE_IN_POINT = {
     { lead: 'Palette from the board', rest: ': colour and type taken from the references.' },
     { lead: 'Ready to grow', rest: ': every later screen shares the same shell.' },
   ],
-  cta: { label: 'Try it on your own sketch', href: '/auth/sign-up' },
+  cta: { label: 'Try it on your own sketch', href: '/try' },
   images: {
     page: {
       src: '/images/generated-page.webp',
@@ -281,7 +281,7 @@ export const CREDITS = {
     { label: 'Revision from the design chat', value: '1 credit' },
     { label: 'Canvas, references, history', value: 'Free' },
   ],
-  cta: { label: 'Start free', href: '/auth/sign-up' },
+  cta: { label: 'Start free', href: '/try' },
 }
 
 /* ------------------------------------------------------------------ *

@@ -27,6 +27,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/blog`, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE}/about-us`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${SITE}/faq`, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${SITE}/pricing`, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${SITE}/compare`, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${SITE}/sketch-to-ui`, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${SITE}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${SITE}/terms`, changeFrequency: 'yearly', priority: 0.2 },
     // Not a page but a file, and the one entry a crawler written for models
     // is looking for. It answered 200 for a week while this list left it out,
     // which is the kind of omission nothing reports.

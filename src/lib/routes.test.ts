@@ -108,7 +108,7 @@ describe('and nothing else', () => {
    * the site does not serve, so /random-nonsense was not a 404 — it was a
    * redirect to /auth/sign-in, and a mistyped link asked a stranger to log in.
    */
-  it.each(['/random-nonsense', '/pricing', '/docs/getting-started', '/wp-admin'])(
+  it.each(['/random-nonsense', '/careers', '/docs/getting-started', '/wp-admin'])(
     '%s falls through to a real 404',
     (path) => {
       expect(matches(path)).toBe(false)

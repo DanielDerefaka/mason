@@ -9,7 +9,7 @@ import { ABOUT_DEFINITION } from "@/lib/marketing-about";
 // and the one page meant to say what Mason is described it in the home page's
 // words.
 export const metadata: Metadata = {
-  title: "About Us",
+  title: { absolute: 'About SketchMason' },
   description: ABOUT_DEFINITION,
 };
 

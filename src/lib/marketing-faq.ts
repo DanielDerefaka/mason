@@ -70,7 +70,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     question: 'What does it cost?',
     answer:
-      'Generating costs credits, and one credit is one generation: a style guide, a screen, a page in a generated flow, or a revision from the design chat. Drawing, moving, resizing, references and history cost nothing. Current plan prices are on the billing page.',
+      'Generating costs credits, and one credit is one generation: a style guide, a screen, a page in a generated flow, or a revision from the design chat. Drawing, moving, resizing, references and history cost nothing. How credits work, and how to try without an account, is on the pricing page.',
   },
   {
     question: 'What can I export?',

@@ -20,6 +20,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="marketing min-h-screen">
+      {/* Turns on the scroll-in animation only for browsers that run JS.
+          Without this class, `.reveal` stays fully visible, which is what a
+          crawler that never executes script needs. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.currentScript&&document.currentScript.parentElement&&document.currentScript.parentElement.classList.add('reveal-js')`,
+        }}
+      />
       <SmoothScroll />
       <Preloader />
       <RevealObserver />

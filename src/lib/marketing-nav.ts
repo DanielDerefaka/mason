@@ -11,6 +11,7 @@ export const HEADER_NAV: NavItem[] = [
   { label: 'About Us', href: '/about-us' },
   { label: 'Features', href: '/#services', sectionId: 'services' },
   { label: 'How It Works', href: '/#approach', sectionId: 'approach' },
+  { label: 'FAQ', href: '/faq' },
   { label: 'Blog', href: '/blog' },
   { label: 'Explore', href: '/explore' },
 ]
@@ -31,7 +32,7 @@ export const SECTION_TO_NAV: Record<string, string> = {
   introduction: 'About Us',
   services: 'Features',
   approach: 'How It Works',
-  faqs: 'How It Works',
+  faqs: 'FAQ',
   cta: 'How It Works',
 }
 
@@ -46,7 +47,9 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
     links: [
       { label: 'Features', href: '/#services' },
       { label: 'How it works', href: '/#approach' },
-      { label: 'FAQs', href: '/#faqs' },
+      { label: 'FAQs', href: '/faq' },
+      { label: 'Pricing', href: '/pricing' },
+      { label: 'Compare', href: '/compare' },
       // The canvas, not the sign-up form. "Create account" in the next column
       // is still there for anyone who wants one; this link is for the visitor
       // who does not, and it used to send them to the same page.
@@ -58,6 +61,7 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
     links: [
       { label: 'About us', href: '/about-us' },
       { label: 'Blog', href: '/blog' },
+      { label: 'Sketch to UI', href: '/sketch-to-ui' },
       { label: 'Sign in', href: '/auth/sign-in' },
       { label: 'Create account', href: '/auth/sign-up' },
     ],
@@ -67,8 +71,8 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
     links: [
       { label: 'Infinite canvas', href: '/#services' },
       { label: 'Style guides', href: '/#services' },
-      { label: 'Design chat', href: '/#approach' },
-      { label: 'Flow generation', href: '/#approach' },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
     ],
   },
 ]
@@ -89,11 +93,17 @@ export interface SocialLink {
  * as they are actually opened.
  */
 export const SOCIAL_LINKS: SocialLink[] = [
-  { label: 'X', href: 'https://x.com/danieldxdere' },
+  // Official product account. Footer renders `label: 'X'` only; the founder
+  // handle stays in this list so `sameAs` and /llms.txt still name it.
+  { label: 'X', href: 'https://x.com/usesketchmason' },
+  { label: 'Founder', href: 'https://x.com/danieldxdere' },
 ]
 
 export const CONTACT = {
-  email: 'hello@mason.design',
+  // The public inbox has to live on the canonical host. mason.design is
+  // someone else's portfolio, and printing that address taught crawlers the
+  // wrong entity owned the product.
+  email: 'hello@sketchmason.com',
   phone: '—',
   whatsapp: 'Support',
   location: 'Built remotely',

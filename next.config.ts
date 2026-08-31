@@ -27,6 +27,15 @@ const nextConfig: NextConfig = {
    * Both are opt-in by env so the web build is byte-identical to before.
    */
   ...(process.env.DESKTOP_BUILD ? { output: 'standalone' as const } : {}),
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'mason-puce.vercel.app' }],
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+    ]
+  },
   async rewrites() {
     const upstream = process.env.DESKTOP_UPSTREAM
     if (!upstream) return []

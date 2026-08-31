@@ -200,8 +200,8 @@ on both JSON-LD blocks, which is what tells a machine the two are one entity —
 canvas, the editor and everything behind a session say Mason. `src/lib/brand.ts` holds the
 positioning sentence and the Organization block. The category is sketch-to-*design* with an
 HTML export: never "sketch to code", never "production-ready components";
-`metadata.test.ts` refuses both across the public surface. The Next.js project starter (`exportDesignProject`) is named on /faq and nowhere else — never in a title, a meta description, a share card or /llms.txt; the same test pins that. `hello@mason.design` stays until
-a sketchmason.com inbox exists.
+`metadata.test.ts` refuses both across the public surface. The Next.js project starter (`exportDesignProject`) is named on /faq and nowhere else — never in a title, a meta description, a share card or /llms.txt; the same test pins that. Contact is `hello@sketchmason.com`. `mason.design` is someone
+else's portfolio, so it is not printed as ours.
 
 Copy a visitor can read carries no em dash. The founder's call, made on reading the site on
 2026-08-29: they read as machine-written. A comma, a colon or a full stop does the same job,

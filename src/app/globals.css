@@ -336,16 +336,21 @@
     );
   }
 
-  /* Scroll-in: sections start slightly low and transparent, then settle.
-     `RevealObserver` adds `.revealed` when an element enters the viewport. */
+  /* Scroll-in: visible by default so a crawler that never runs JS still
+     reads the copy. `.reveal-js` is added on the marketing root only after
+     a script runs, and `RevealObserver` then adds `.revealed`. */
   .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-js .reveal:not(.revealed) {
     opacity: 0;
     transform: translateY(24px);
     transition:
       opacity 0.7s cubic-bezier(0.22, 0.68, 0.35, 1),
       transform 0.7s cubic-bezier(0.22, 0.68, 0.35, 1);
   }
-  .reveal.revealed {
+  .reveal-js .reveal.revealed {
     opacity: 1;
     transform: none;
   }

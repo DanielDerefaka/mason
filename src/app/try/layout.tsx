@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 // quoted in shares long after it stops being true; the canvas itself says what
 // is left, and the week is the auth layout's business.
 export const metadata: Metadata = {
-  title: 'Try Mason free',
+  title: 'Try SketchMason free',
   description:
     'SketchMason turns a rough sketch into a finished interface: draw a frame, describe what goes in it, and export the design as HTML. No account needed.',
   // No `openGraph` block here on purpose, though there was one.

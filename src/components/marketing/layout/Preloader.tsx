@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/marketing/icons";
 import { cn } from "@/lib/utils";
 
-const SESSION_KEY = "visuvate-preloaded";
+const SESSION_KEY = "mason-preloaded";
 
 /**
  * The reference holds a black screen with its mark for a beat before revealing the page.
