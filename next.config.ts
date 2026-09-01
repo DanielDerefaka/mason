@@ -34,6 +34,15 @@ const nextConfig: NextConfig = {
         has: [{ type: 'host', value: 'mason-puce.vercel.app' }],
         headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
+      {
+        // Google's favicon cache held create-next-app's triangle (the one that
+        // looks like Vercel's) after the mark shipped, in part because this
+        // file was advertised as uncacheable. A week is long enough for the
+        // crawler to treat the URL as a stable asset and short enough to pick
+        // up a real change.
+        source: '/favicon.ico',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }],
+      },
     ]
   },
   async rewrites() {

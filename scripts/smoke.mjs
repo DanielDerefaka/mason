@@ -102,6 +102,13 @@ const PUBLIC_PAGES = [
 const PROTECTED_PAGES = ['/dashboard', '/billing', '/settings']
 
 /**
+ * URLs that used to be pages and must not become pages again. A 404 here
+ * is how the brand SERP kept a "Download | Mason" sitelink after the Mac
+ * page was pulled; 410 is the signal that drops it.
+ */
+const GONE_PAGES = ['/download']
+
+/**
  * Every route that can reach a model. Kept as one list on purpose: adding a
  * generation route and forgetting to add it here is the mistake this catches,
  * and src/app/api/routes.test.ts fails if a generation route is
@@ -168,6 +175,21 @@ const main = async () => {
       path,
       redirected && toSignIn,
       redirected ? (toSignIn ? '' : `redirected to ${location}`) : `status ${response.status}`,
+    )
+  }
+
+  console.log('\nGone URLs stay gone')
+  for (const path of GONE_PAGES) {
+    const response = await get(path, 'follow')
+    const robots = response.headers.get('x-robots-tag') ?? ''
+    record(
+      path,
+      response.status === 410 && /noindex/i.test(robots),
+      response.status === 410
+        ? robots
+          ? ''
+          : '410 without noindex'
+        : `status ${response.status}`,
     )
   }
 

@@ -44,5 +44,10 @@ export const ORGANIZATION = {
   name: 'SketchMason',
   alternateName: 'Mason',
   url: SITE_URL,
+  // The knowledge-panel logo, not the SERP favicon. Google reads this from
+  // Organization; the favicon is a separate crawl of /favicon.ico. The apple
+  // icon is the mark at 180, square, a stable URL — Next's hashed /icon.svg
+  // is not.
+  logo: `${SITE_URL}/apple-icon.png`,
   sameAs: SOCIAL_LINKS.map((link) => link.href),
 }

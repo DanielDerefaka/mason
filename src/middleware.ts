@@ -75,5 +75,10 @@ export const config = {
     '/compare',
     '/sketch-to-ui',
     '/s/:path*',
+    // Gone, on purpose: answers 410. Listed so a crawler hits the handler
+    // rather than the auth wall; unlisted it would 404 the same way unknown
+    // paths do, which is the weaker not-here-today signal Google already
+    // had, and the brand SERP kept the Download sitelink.
+    '/download',
   ],
 }
