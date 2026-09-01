@@ -8,6 +8,7 @@ import { ReduxProvider } from "@/redux/provider";
 import { ThemeProvider } from "@/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
 import { POSITIONING } from "@/lib/brand";
+import { AHREFS_ANALYTICS_KEY, AHREFS_ANALYTICS_SRC } from "@/lib/ahrefs";
 import { DATAFAST_DOMAIN, DATAFAST_WEBSITE_ID } from "@/lib/datafast";
 import { SITE_URL } from "@/lib/site";
 
@@ -142,6 +143,11 @@ export default function RootLayout({
             src="https://datafa.st/js/script.js"
             data-website-id={DATAFAST_WEBSITE_ID}
             data-domain={DATAFAST_DOMAIN}
+            strategy="afterInteractive"
+          />
+          <Script
+            src={AHREFS_ANALYTICS_SRC}
+            data-key={AHREFS_ANALYTICS_KEY}
             strategy="afterInteractive"
           />
           <ConvexClientProvider>
