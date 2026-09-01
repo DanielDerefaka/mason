@@ -8,7 +8,7 @@ import {
   LogoMark,
   TwitterIcon,
 } from "@/components/marketing/icons";
-import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/marketing-nav";
+import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, PRESS_BADGES, SOCIAL_LINKS } from "@/lib/marketing-nav";
 import { freeWeekHref } from "@/lib/try/free-week";
 
 /**
@@ -124,23 +124,45 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
             </a>
           </div>
 
-          <div className="flex items-center gap-2">
-            {SOCIAL_LINKS.map((social) => {
-              const Icon = SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
-              if (!Icon) return null;
-              return (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={social.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              );
-            })}
+          <div className="flex flex-wrap items-center gap-4">
+            {PRESS_BADGES.map((badge) => (
+              <a
+                key={badge.href}
+                href={badge.href}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {/* Native img on purpose: a third-party badge, served from
+                    their host so the feature count is theirs. Next/Image
+                    would proxy it. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={badge.src}
+                  alt={badge.alt}
+                  width={badge.width}
+                  height={badge.height}
+                  className="h-[50px] w-[200px]"
+                />
+              </a>
+            ))}
+            <div className="flex items-center gap-2">
+              {SOCIAL_LINKS.map((social) => {
+                const Icon = SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
+                if (!Icon) return null;
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={social.label}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

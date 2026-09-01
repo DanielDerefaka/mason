@@ -99,6 +99,26 @@ export const SOCIAL_LINKS: SocialLink[] = [
   { label: 'Founder', href: 'https://x.com/danieldxdere' },
 ]
 
+/**
+ * Press marks. Not in SOCIAL_LINKS: that list is `sameAs` and /llms.txt, and
+ * a newsletter badge is a citation, not an account we own.
+ */
+export const PRESS_BADGES: {
+  href: string
+  src: string
+  alt: string
+  width: number
+  height: number
+}[] = [
+  {
+    href: 'https://tools.launchllama.co?utm_source=badge&utm_medium=referral',
+    src: 'https://tools.launchllama.co/featured-badge.png?v=2',
+    alt: 'As seen on Launch Llama Newsletter',
+    width: 200,
+    height: 50,
+  },
+]
+
 export const CONTACT = {
   // The public inbox has to live on the canonical host. mason.design is
   // someone else's portfolio, and printing that address taught crawlers the

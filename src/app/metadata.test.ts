@@ -443,6 +443,24 @@ describe('the footer links to accounts that exist', () => {
   )
 })
 
+describe('the footer cites Launch Llama without claiming the account', () => {
+  it('renders the featured badge on every marketing page', () => {
+    const footer = read('src/components/marketing/layout/SiteFooter.tsx')
+    expect(footer).toMatch(/PRESS_BADGES/)
+    expect(read('src/lib/marketing-nav.ts')).toMatch(
+      /href: 'https:\/\/tools\.launchllama\.co\?utm_source=badge&utm_medium=referral'/,
+    )
+  })
+
+  it('is not in sameAs or SOCIAL_LINKS, which are accounts we own', () => {
+    expect(ORGANIZATION.sameAs.join(' ')).not.toMatch(/launchllama/i)
+    const nav = read('src/lib/marketing-nav.ts')
+    const open = nav.indexOf('= [', nav.indexOf('SOCIAL_LINKS'))
+    const literal = nav.slice(open, nav.indexOf(']', open) + 1)
+    expect(literal).not.toMatch(/launchllama/i)
+  })
+})
+
 describe('/llms.txt', () => {
   // The route is a plain function with no request context, so it can be called
   // rather than read — and what is asserted is the body a crawler receives.
