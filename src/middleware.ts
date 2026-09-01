@@ -1,13 +1,17 @@
+import { trackAICrawlerRequest } from '@datafast/ai-crawl'
 import {
   convexAuthNextjsMiddleware,
   createRouteMatcher,
   nextjsMiddlewareRedirect,
 } from '@convex-dev/auth/nextjs/server'
+import type { NextFetchEvent, NextRequest } from 'next/server'
+
+import { datafastCrawlerConfig } from '@/lib/datafast'
 import { isBypassRoute } from '@/lib/permissions'
 
 const bypassMatcher = createRouteMatcher(isBypassRoute)
 
-export default convexAuthNextjsMiddleware(
+const auth = convexAuthNextjsMiddleware(
   async (request, { convexAuth }) => {
     if (bypassMatcher(request)) return
     if (await convexAuth.isAuthenticated()) return
@@ -21,6 +25,18 @@ export default convexAuthNextjsMiddleware(
     cookieConfig: { maxAge: 60 * 60 * 24 * 30 },
   },
 )
+
+/**
+ * DataFast bot-traffic tracking is a server call, not the browser script.
+ * Crawlers skip JavaScript, so the pageview pixel never sees them. The
+ * package filters humans and static assets itself; we must not await it,
+ * or the page waits on their network. `event` is how Vercel `waitUntil`s
+ * the POST after we have already returned.
+ */
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  trackAICrawlerRequest(request, event, datafastCrawlerConfig())
+  return auth(request, event)
+}
 
 /**
  * The routes this app actually serves — and nothing else.
@@ -80,5 +96,12 @@ export const config = {
     // paths do, which is the weaker not-here-today signal Google already
     // had, and the brand SERP kept the Download sitelink.
     '/download',
+    // Crawler-facing files. The DataFast bot tracker only sees what this
+    // middleware runs on, and AI crawlers ask for these before the pages.
+    // They stay bypassed: listing them here used to be how a crawler was
+    // sent to sign-in instead of the file.
+    '/robots.txt',
+    '/sitemap.xml',
+    '/llms.txt',
   ],
 }

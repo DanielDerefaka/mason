@@ -95,4 +95,11 @@ describe('the marketing site', () => {
   it('/download is readable without a session, so a crawler sees 410', () => {
     expect(bypass(at('/download'))).toBe(true)
   })
+
+  it.each(['/robots.txt', '/sitemap.xml', '/llms.txt'])(
+    '%s is bypassed, so a crawler is not sent to sign-in',
+    (path) => {
+      expect(bypass(at(path))).toBe(true)
+    },
+  )
 })

@@ -124,10 +124,20 @@ describe('and nothing else', () => {
     expect(matches('/opengraph-image')).toBe(false)
   })
 
-  it.each(['/robots.txt', '/sitemap.xml', '/favicon.ico', '/llms.txt'])(
-    '%s is served, not gated',
+  it('leaves favicon.ico unmatched, as a static asset', () => {
+    expect(matches('/favicon.ico')).toBe(false)
+  })
+
+  /**
+   * DataFast's bot tracker only runs where the middleware does. These files
+   * used to skip it by omission, which is also how a crawler fetching them
+   * never appeared on the Bot traffic card. They are matched so the tracker
+   * sees them, and bypassed so the crawler still gets the file.
+   */
+  it.each(['/robots.txt', '/sitemap.xml', '/llms.txt'])(
+    '%s is matched so a crawler is tracked',
     (path) => {
-      expect(matches(path)).toBe(false)
+      expect(matches(path)).toBe(true)
     },
   )
 })
