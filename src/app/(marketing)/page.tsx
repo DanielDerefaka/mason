@@ -72,7 +72,13 @@ const WEBSITE_BLOCK = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'SketchMason',
-  alternateName: 'Mason',
+  // Google's site-name picker treats alternateName as a real candidate, not
+  // as a synonym. Naming Mason here is why the brand SERP printed "Mason"
+  // beside the icon: SketchMason was too new to corroborate off-site, so the
+  // fallback won, and Mason is the generic word. The host is the fallback
+  // the docs recommend. Mason stays on Organization and SoftwareApplication,
+  // which is the entity-identity statement, not the chrome of a search result.
+  alternateName: new URL(SITE_URL).hostname,
   url: SITE_URL,
 }
 

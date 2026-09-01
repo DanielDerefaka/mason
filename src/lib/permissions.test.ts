@@ -86,4 +86,13 @@ describe('the marketing site', () => {
   it('and so is the landing page it hangs off', () => {
     expect(bypass(at('/'))).toBe(true)
   })
+
+  /**
+   * /download answers 410. If it is matched and not bypassed, a crawler is
+   * sent to sign-in and recrawls a login form at the old Download URL, which
+   * is how a sitelink stays in the index.
+   */
+  it('/download is readable without a session, so a crawler sees 410', () => {
+    expect(bypass(at('/download'))).toBe(true)
+  })
 })

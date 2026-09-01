@@ -97,6 +97,18 @@ describe('favicon.ico', () => {
     // layer must be far away, or the comparison above measured nothing.
     expect(distance(svg, Buffer.alloc(svg.length))).toBeGreaterThan(SAME * 5)
   })
+
+  /**
+   * Google's favicon cache held create-next-app's triangle (the one that
+   * looks like Vercel's) after the mark shipped. The file was served
+   * `max-age=0, must-revalidate`, which is a signal the URL is not a
+   * stable asset. A week is the compromise: cacheable, still rotatable.
+   */
+  it('is advertised as a cacheable asset', () => {
+    const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
+    expect(config).toMatch(/source: '\/favicon\.ico'/)
+    expect(config).toMatch(/max-age=604800/)
+  })
 })
 
 describe('apple-icon.png', () => {

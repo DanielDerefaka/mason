@@ -82,6 +82,10 @@ export const metadata: Metadata = {
   // components you own", which is a different product: what comes out is a
   // design, exported as HTML or as a brief.
   description: POSITIONING,
+  // The name browsers put on an installed web app, and one more signal the
+  // site-name picker reads. Without it the only short name on the wire was
+  // "Mason" from the product and from WebSite.alternateName.
+  applicationName: "SketchMason",
   // "./" resolves against the *current* pathname, not against metadataBase —
   // `resolveRelativeUrl` in next/dist/lib/metadata/resolvers/resolve-url.js
   // posix-resolves it — so one line here gives every route its own canonical.

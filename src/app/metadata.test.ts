@@ -143,6 +143,10 @@ describe('the site tells a crawler who it is', () => {
     expect(layout).toMatch(/card: "summary_large_image"/)
   })
 
+  it('names the installed app SketchMason, not Mason', () => {
+    expect(layout).toMatch(/applicationName: "SketchMason"/)
+  })
+
   it('draws that card at the size the platforms crop to', () => {
     const image = read('src/app/opengraph-image.tsx')
     expect(image).toMatch(/size = \{ width: 1200, height: 630 \}/)
@@ -291,6 +295,10 @@ describe('sitemap.xml', () => {
   it('lists no page that has been removed', () => {
     const pages = urls.map((url) => new URL(url).pathname).filter((path) => path.split('/').length === 2)
     for (const path of pages) expect(pageExists(path), `${path} is listed but has no page`).toBe(true)
+  })
+
+  it('does not list /download, which answers 410', () => {
+    expect(urls).not.toContain('https://www.sketchmason.com/download')
   })
 
   it('lists one entry per written post, from the same source /blog renders', () => {
@@ -563,6 +571,7 @@ describe('what the home page tells a machine it is', () => {
       name: 'SketchMason',
       alternateName: 'Mason',
       url: 'https://www.sketchmason.com',
+      logo: 'https://www.sketchmason.com/apple-icon.png',
       sameAs: SOCIAL_LINKS.map((link) => link.href),
     })
     expect(home).toMatch(/\{ '@context': 'https:\/\/schema\.org', \.\.\.ORGANIZATION \}/)
@@ -571,6 +580,22 @@ describe('what the home page tells a machine it is', () => {
     const post = read('src/app/(marketing)/blog/[slug]/page.tsx')
     expect(post).toMatch(/author: ORGANIZATION,/)
     expect(post).toMatch(/publisher: ORGANIZATION,/)
+  })
+
+  /**
+   * The regression this exists for: WebSite.alternateName was "Mason", and
+   * Google's site-name picker treated that as a real candidate. The brand
+   * SERP printed "Mason" beside the icon because SketchMason was too new to
+   * corroborate off-site and the generic fallback won. Organization and
+   * SoftwareApplication still say Mason — that is the entity, not the chrome.
+   */
+  it('offers the host, not Mason, as the WebSite name fallback', () => {
+    const block = home.slice(home.indexOf('WEBSITE_BLOCK'))
+    const body = block.slice(0, block.indexOf('\n}'))
+    expect(body).toMatch(/'@type': 'WebSite'/)
+    expect(body).toMatch(/name: 'SketchMason'/)
+    expect(body).toMatch(/alternateName: new URL\(SITE_URL\)\.hostname/)
+    expect(body).not.toMatch(/alternateName: 'Mason'/)
   })
 
   /**

@@ -34,6 +34,9 @@ export const isBypassRoute = [
   '/terms(.*)',
   '/compare(.*)',
   '/sketch-to-ui(.*)',
+  // Pulled. A crawler that hits the auth wall here would recrawl a sign-in
+  // page at the old Download URL, which is how a sitelink stays in the index.
+  '/download(.*)',
   // The landing page too. As a public route it bounced signed-in visitors to
   // the dashboard, so anyone with an account could never reach their own
   // marketing site again without signing out — and the header on /blog and
