@@ -97,9 +97,9 @@ describe('the site tells a crawler who it is', () => {
   ])('%s reads the host from @/lib/site rather than spelling it out', (path) => {
     const source = read(path)
     expect(source).toMatch(/import \{ SITE_URL \} from '@\/lib\/site'/)
-    // Not asserted against layout.tsx, which carries the Datafast
-    // `data-domain`: that is an analytics site key rather than a URL anything
-    // fetches, and rewriting it would split the dashboard's history in two.
+    // Not asserted against layout.tsx: the Datafast domain lives in
+    // `@/lib/datafast` and is an analytics site key rather than a URL
+    // anything fetches. Rewriting it would split the dashboard's history.
     expect(source).not.toMatch(/sketchmason\.com/)
   })
 

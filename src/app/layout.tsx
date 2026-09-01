@@ -8,6 +8,7 @@ import { ReduxProvider } from "@/redux/provider";
 import { ThemeProvider } from "@/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
 import { POSITIONING } from "@/lib/brand";
+import { DATAFAST_DOMAIN, DATAFAST_WEBSITE_ID } from "@/lib/datafast";
 import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
@@ -139,8 +140,8 @@ export default function RootLayout({
         >
           <Script
             src="https://datafa.st/js/script.js"
-            data-website-id="dfid_6YC1RxSs1SLge4Me6Am0C"
-            data-domain="sketchmason.com"
+            data-website-id={DATAFAST_WEBSITE_ID}
+            data-domain={DATAFAST_DOMAIN}
             strategy="afterInteractive"
           />
           <ConvexClientProvider>
