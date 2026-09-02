@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
+      // Low on purpose, unlike the page-writing routes: this is one element
+      // whose direction the page already decided, and it has to come back in
+      // seconds. Deliberation here redesigns the element instead of editing it.
       providerOptions: { anthropic: { effort: 'low' } },
       // The ceiling follows the input. It was a flat 4000 on the reasoning
       // that one element is a fraction of a page — but the editor's own

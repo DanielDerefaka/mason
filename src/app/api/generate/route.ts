@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { streamText } from 'ai'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import type { Id } from '../../../../convex/_generated/dataModel'
-import { UI_MODEL } from '@/lib/anthropic'
+import { UI_EFFORT, UI_MODEL } from '@/lib/anthropic'
 import {
   describeGenerationFailure,
   failedBeforeStreaming,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
-      providerOptions: { anthropic: { effort: 'low' } },
+      providerOptions: { anthropic: { effort: UI_EFFORT } },
       // A full page of inline-styled markup is verbose — six cards of copy plus their styles ran
       // past 16k and the stream simply stopped, leaving a half-written
       // element and no footer. Truncation is reported below rather
@@ -182,6 +182,47 @@ export async function POST(request: NextRequest) {
           return
         }
 
+        // Each read is wrapped: these settle only once the call completes,
+        // and a failure while diagnosing a failure should not replace the
+        // diagnosis with a stack trace.
+        const settle = async <T,>(value: PromiseLike<T>): Promise<T | null> => {
+          try {
+            return await value
+          } catch {
+            return null
+          }
+        }
+        const finishReason = await settle(result.finishReason)
+        const usage = await settle(result.usage)
+
+        /**
+         * One line per generation, so "does the effort setting reach the API"
+         * is answered by the next production log rather than argued about.
+         * Effort travels inside `output_config`, which the house gateway has
+         * silently dropped before; a BYOK request goes direct. If the gateway
+         * drops it now, a house-key page runs at the model's default and a
+         * visitor's at UI_EFFORT, and the two populations get different pages
+         * with nothing to say so. Reasoning tokens are the tell, because they
+         * move with effort. A count the SDK does not have is logged as null
+         * rather than left out: "not reported" and "absent from the line" are
+         * different findings. No user content here.
+         */
+        console.info(
+          '[generate] usage',
+          JSON.stringify({
+            effort: UI_EFFORT,
+            model: UI_MODEL,
+            transport: byok ? 'direct' : 'house',
+            finishReason,
+            inputTokens: usage?.inputTokens ?? null,
+            outputTokens: usage?.outputTokens ?? null,
+            reasoningTokens: usage?.outputTokenDetails?.reasoningTokens ?? null,
+            cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens ?? null,
+            bytes: produced.length,
+            elapsedMs: Date.now() - startedAt,
+          }),
+        )
+
         // Finished cleanly with nothing in it. The stream never errored, so
         // the refund above never ran — without this the credit is spent on
         // silence and the canvas waits for a chunk that already came and went.
@@ -197,20 +238,9 @@ export async function POST(request: NextRequest) {
            * knows is recorded here so the next occurrence is diagnosable
            * instead of merely survivable.
            */
-          // Each read is wrapped: these settle only once the call completes,
-          // and a failure while diagnosing a failure should not replace the
-          // diagnosis with a stack trace.
-          const settle = async <T,>(value: PromiseLike<T>): Promise<T | null> => {
-            try {
-              return await value
-            } catch {
-              return null
-            }
-          }
-
           const diagnosis = {
-            finishReason: await settle(result.finishReason),
-            usage: await settle(result.usage),
+            finishReason,
+            usage,
             warnings: await settle(Promise.resolve(result.warnings)),
             chunks,
             bytes: produced.length,
@@ -233,7 +263,7 @@ export async function POST(request: NextRequest) {
         // route was the one path that never said so: the client has always
         // looked for the marker, and nothing here ever appended it, so a first
         // generation cut off at the ceiling was saved as though it were whole.
-        if ((await result.finishReason) === 'length') {
+        if (finishReason === 'length') {
           await refundCredit()
           controller.enqueue(encoder.encode(TRUNCATION_MARKER))
         }
