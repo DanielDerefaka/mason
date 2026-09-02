@@ -207,6 +207,12 @@ const component = (
  * that is what makes `bg-primary` and `text-primary` exist as utilities — the
  * export is a Tailwind project, so the palette has to be part of Tailwind and
  * not merely present on the page.
+ *
+ * No reset of its own, unlike the HTML export (`design-reset.ts`). The
+ * `@import "tailwindcss"` at the top brings the real preflight in, in
+ * Tailwind's `base` layer beneath the design's unlayered stylesheet, which is
+ * exactly the cascade the editor rendered under. A second copy of a subset
+ * here could only drift from the import, one Tailwind release at a time.
  */
 const globalsCss = (model: DesignModel, stylesheet: string): string => {
   const { colours, family, radii } = model.tokens

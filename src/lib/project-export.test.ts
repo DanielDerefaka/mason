@@ -80,10 +80,19 @@ describe('elementToJsx', () => {
   it('keeps the case of an SVG attribute', () => {
     // `viewbox` is not `viewBox` to React, and the DOM lowercases it on the
     // way in — so it has to be put back.
-    const jsx = elementToJsx(mount('<svg viewBox="0 0 24 24" stroke-width="2"><path d="M0 0"/></svg>'))
+    const jsx = elementToJsx(
+      mount(
+        '<svg viewBox="0 0 24 24" stroke-width="2"><path d="M0 0" fill-rule="evenodd" fill-opacity=".5"/><use xlink:href="#a"/></svg>',
+      ),
+    )
 
     expect(jsx).toContain('viewBox="0 0 24 24"')
     expect(jsx).toContain('strokeWidth="2"')
+    // The attributes the sanitiser now keeps have to come out spelt the way
+    // React spells them, or the project warns on every icon.
+    expect(jsx).toContain('fillRule="evenodd"')
+    expect(jsx).toContain('fillOpacity=".5"')
+    expect(jsx).toContain('xlinkHref="#a"')
   })
 
   it('writes a boolean attribute as a bare prop', () => {

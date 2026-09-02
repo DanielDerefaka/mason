@@ -17,12 +17,34 @@ const ALLOWED_TAGS = new Set([
   // Controls that actually do something. A design drawn with divs is a
   // picture of an interface; these are the elements that make it one.
   'details', 'summary', 'label', 'option', 'optgroup', 'fieldset', 'legend',
+  // What a sign-up box or a sign-in card actually is, and what a model wraps
+  // its inputs in. It was missing, and a removed element takes its subtree
+  // with it, so the whole box vanished on first paint with nothing in the
+  // layer tree to say it had been there. Inert: `action`, `method` and
+  // `enctype` are not on the attribute list below, so a surviving form has
+  // nowhere to send anything, and `onsubmit` goes with every other handler.
+  'form',
+  // Inline semantics a landing page is written with, which the walk used to
+  // delete contents and all.
+  'address', 'kbd', 'q', 'cite',
+  // A container and nothing more. Its `<source>` children are still removed:
+  // `srcset` is a list with a grammar of its own (a comma separates
+  // candidates except inside a data URL) that the one-URL rule for `src`
+  // does not read, so they stay out until it does. Without them a picture
+  // renders its `<img>` fallback, which is the photograph; allowing the tag
+  // is what keeps that fallback on the page.
+  'picture',
   // Scoped and rewritten below. Without it a design has no way to express a
   // hover, a focus ring or a selected state, because an inline style cannot.
   'style',
   // Inline icons.
   'svg', 'circle', 'ellipse', 'g', 'line', 'path', 'polygon', 'polyline',
   'rect', 'defs', 'lineargradient', 'radialgradient', 'stop', 'text', 'tspan',
+  // The parts of an icon that are referenced rather than drawn: a clip, a
+  // mask, a symbol a `<use>` repeats, and the name and description a screen
+  // reader gets. `use` is held to a fragment reference and `title` to the
+  // SVG namespace in the walk below.
+  'clippath', 'mask', 'symbol', 'use', 'title', 'desc',
 ])
 
 const ALLOWED_ATTRS = new Set([
@@ -49,10 +71,38 @@ const ALLOWED_ATTRS = new Set([
   'stroke-linejoin', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2',
   'y1', 'y2', 'points', 'transform', 'opacity', 'offset', 'stop-color',
   'gradientunits', 'preserveaspectratio', 'xmlns',
+  // Paint the walk used to strip. `fill-rule="evenodd"` is how most icon
+  // sets cut the holes in a filled glyph, so without it a ring rendered as a
+  // disc and an outlined letter as a blob. None of these can name a URL.
+  'fill-rule', 'clip-rule', 'fill-opacity', 'stroke-opacity', 'stroke-dasharray',
+  'stroke-dashoffset', 'text-anchor', 'dominant-baseline',
+  // How a photograph loads, not where from: both take a fixed set of keywords.
+  'loading', 'decoding',
 ])
 
 /** Only these may carry a URL, and only an inert one. */
 const URL_ATTRS = new Set(['href', 'src'])
+
+/**
+ * Presentation attributes whose value is CSS, and so can fetch.
+ *
+ * `clip-path="url(#clip)"` reaches the clipPath beside it, which is the whole
+ * point of it; `clip-path="url(https://…)"` is the same request a background
+ * image makes, one attribute over. Held to the stylesheet's rule rather than
+ * the `<img src>` one, for the reason the stylesheet is.
+ */
+const CSS_VALUE_ATTRS = new Set(['clip-path', 'mask'])
+
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
+
+/**
+ * Where a `<use>` may point: back into its own document, and nowhere else.
+ *
+ * A fragment clones an element that has already been through this walk. A
+ * path or an https URL fetches an SVG document from somewhere, and whatever
+ * arrives has not, so both spellings of the reference are held to a `#`.
+ */
+const isFragment = (value: string) => value.trim().startsWith('#')
 
 const isSafeUrl = (value: string) => {
   const trimmed = value.trim().toLowerCase()
@@ -336,7 +386,10 @@ export const sanitiseHtml = (html: string, scope: string = DESIGN_SCOPE): string
   for (const element of Array.from(doc.body.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
 
-    if (!ALLOWED_TAGS.has(tag)) {
+    // `title` is on the list for an icon's accessible name, which lives in
+    // the SVG namespace. The HTML element of the same name is a document's
+    // title, which has no business inside a design and stays removed.
+    if (!ALLOWED_TAGS.has(tag) || (tag === 'title' && element.namespaceURI !== SVG_NAMESPACE)) {
       element.remove()
       continue
     }
@@ -354,8 +407,16 @@ export const sanitiseHtml = (html: string, scope: string = DESIGN_SCOPE): string
     for (const attr of Array.from(element.attributes)) {
       const name = attr.name.toLowerCase()
 
+      if (tag === 'use' && (name === 'href' || name === 'xlink:href')) {
+        if (!isFragment(attr.value)) element.removeAttribute(attr.name)
+        continue
+      }
       if (URL_ATTRS.has(name)) {
         if (!isSafeUrl(attr.value)) element.removeAttribute(attr.name)
+        continue
+      }
+      if (CSS_VALUE_ATTRS.has(name)) {
+        if (!declarationUrls(attr.value).every(isSafeCssUrl)) element.removeAttribute(attr.name)
         continue
       }
       if (name === 'style') {
