@@ -29,6 +29,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { useGuest } from '@/components/try/guest-context'
 import { useDesignEditor } from '@/hooks/use-design-editor'
+import { useDesignFonts } from '@/hooks/use-design-fonts'
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { canvasPathOf, useWorkspacePath } from '@/hooks/use-workspace-path'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
@@ -177,6 +178,10 @@ export const DesignEditor = () => {
   const [historyTick, setHistoryTick] = useState(0)
 
   useGoogleFont(styleGuide?.typography.fontFamily, [300, 400, 500, 600, 700, 800])
+
+  // The faces the design named itself, which the line above never covered: it
+  // asks for the guide's family, and a design pairs two of its own.
+  useDesignFonts(design?.html)
 
   /** The guide's tokens, bound so the design's var() references resolve. */
   const cssVars = useMemo(() => {

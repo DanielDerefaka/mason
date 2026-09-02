@@ -135,6 +135,45 @@ describe('buildDesignHtml', () => {
     expect(bare).toContain('--font-family: system-ui, sans-serif')
     expect(bare).not.toContain('fonts.googleapis.com')
   })
+
+  /**
+   * What shipped broken: only the guide's family was ever linked.
+   *
+   * A design pairs two faces of its own, and on /try there is no guide at all,
+   * so the downloaded file asked for nothing and opened in whatever the
+   * fallback stack reached first. The file is the artefact somebody shows to
+   * somebody else, which makes it the worst place for the typography to be the
+   * browser's rather than the design's.
+   */
+  it('links the faces the design named, not only the one the guide did', () => {
+    const styled = build(
+      `<style>.hero h1 { font-family: 'Playfair Display', serif } .hero p { font-family: 'Space Grotesk', sans-serif }</style><div class="hero"><h1>Plans</h1><p>Simple.</p></div>`,
+    )
+    expect(styled).toContain('css2?family=Inter')
+    expect(styled).toContain('css2?family=Playfair+Display')
+    expect(styled).toContain('css2?family=Space+Grotesk')
+  })
+
+  it('links a face when there is no guide to name one', () => {
+    const bare = build(
+      `<style>h1 { font-family: 'Fraunces', serif }</style><h1>Hi</h1>`,
+      null,
+    )
+    expect(bare).toContain('css2?family=Fraunces')
+    expect(bare).toContain("--font-family: 'Fraunces', sans-serif")
+  })
+
+  // The same face twice is a second stylesheet for a font the page already
+  // has, and the design naming the guide's own family is the common case.
+  it('does not link the same family twice', () => {
+    const serif = { ...guide, typography: { fontFamily: 'Fraunces, serif', styles: [] } } as StyleGuide
+    const doubled = buildDesignHtml(
+      design(`<style>h1 { font-family: 'Fraunces', serif }</style><h1>Hi</h1>`),
+      serif,
+      { origin: 'https://mason.example' },
+    )
+    expect(doubled.match(/css2\?family=Fraunces/g)).toHaveLength(1)
+  })
 })
 
 describe('designResetCss', () => {
