@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { CtaSection } from '@/components/marketing/home/CtaSection'
+import { JsonLd } from '@/components/marketing/JsonLd'
 import { PlanCard } from '@/components/marketing/pricing/PlanCard'
 import {
   PRICING_DESCRIPTION,
@@ -10,9 +11,10 @@ import {
 import { pricePhrase } from '@/lib/plan'
 import { planPrice } from '@/lib/plan-price'
 import { polarConfigured } from '@/lib/polar'
+import { breadcrumbs, webPage } from '@/lib/structured-data'
 
 export const metadata: Metadata = {
-  title: 'Pricing',
+  title: 'Pricing: pay per generation, drawing is free',
   description: PRICING_DESCRIPTION,
 }
 
@@ -30,6 +32,8 @@ export default async function PricingPage() {
 
   return (
     <>
+      <JsonLd data={webPage('Pricing', '/pricing', PRICING_DESCRIPTION)} />
+      <JsonLd data={breadcrumbs([{ name: 'Pricing', path: '/pricing' }])} />
       <section className="section-pad">
         <div className="container-home">
           <div className="mx-auto max-w-[640px] text-center">

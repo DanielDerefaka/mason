@@ -8,7 +8,9 @@ import { ManifestoSection } from '@/components/marketing/home/ManifestoSection'
 import { ServicesSection } from '@/components/marketing/home/ServicesSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
 import { ORGANIZATION, POSITIONING } from '@/lib/brand'
+import { FAQS } from '@/lib/marketing-content'
 import { SITE_URL } from '@/lib/site'
+import { ORGANIZATION_ID, SOFTWARE_ID, WEBSITE_ID } from '@/lib/structured-data'
 
 /**
  * One sentence, used twice: as the page's meta description and as the
@@ -22,7 +24,7 @@ const DESCRIPTION = POSITIONING
 export const metadata = {
   // `absolute` opts out of the root's "%s | SketchMason" template: this title
   // already opens with the name, and the suffix would say it twice.
-  title: { absolute: 'SketchMason: draw the shape, get the product' },
+  title: { absolute: 'SketchMason: from a rough sketch to a finished UI design' },
   description: DESCRIPTION,
 }
 
@@ -38,6 +40,10 @@ export const metadata = {
 const SOFTWARE_APPLICATION = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
+  // One product, two pages. /try emits a block with this same name and its
+  // own url, which without a shared identifier reads as a second product
+  // rather than a second page about the first.
+  '@id': SOFTWARE_ID,
   // Both names, on both blocks. SketchMason is the public name and Mason is
   // what the product calls itself, and `alternateName` is the formal,
   // machine-readable statement that they are one entity — without it a search
@@ -58,6 +64,7 @@ const SOFTWARE_APPLICATION = {
   // Read from the Organization rather than spelled out again: one place says
   // which accounts exist, and /llms.txt reads the same one.
   sameAs: ORGANIZATION.sameAs,
+  publisher: { '@id': ORGANIZATION_ID },
 }
 
 /**
@@ -71,6 +78,7 @@ const ORGANIZATION_BLOCK = { '@context': 'https://schema.org', ...ORGANIZATION }
 const WEBSITE_BLOCK = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
+  '@id': WEBSITE_ID,
   name: 'SketchMason',
   // Google's site-name picker treats alternateName as a real candidate, not
   // as a synonym. Naming Mason here is why the brand SERP printed "Mason"
@@ -80,6 +88,27 @@ const WEBSITE_BLOCK = {
   // which is the entity-identity statement, not the chrome of a search result.
   alternateName: new URL(SITE_URL).hostname,
   url: SITE_URL,
+  publisher: { '@id': ORGANIZATION_ID },
+}
+
+/**
+ * The home page's own questions, as structured data.
+ *
+ * /faq and /compare and /sketch-to-ui each emitted an FAQPage built from the
+ * list they render; the home page rendered eight answers inside an accordion
+ * and emitted none, so the page most likely to be the brand result was the
+ * one page whose answers no machine could quote. The numbers are stripped
+ * because they belong to the accordion's layout, not to the question: "1. Do
+ * I need to be able to draw?" is not a question anybody asks.
+ */
+const FAQ_PAGE = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((entry) => ({
+    '@type': 'Question',
+    name: entry.question.replace(/^\d+\.\s*/, ''),
+    acceptedAnswer: { '@type': 'Answer', text: entry.answer },
+  })),
 }
 
 /**
@@ -103,6 +132,7 @@ export default function Home() {
       <JsonLd data={ORGANIZATION_BLOCK} />
       <JsonLd data={WEBSITE_BLOCK} />
       <JsonLd data={SOFTWARE_APPLICATION} />
+      <JsonLd data={FAQ_PAGE} />
       <HeroSection />
       <FeatureSections />
       <ServicesSection />

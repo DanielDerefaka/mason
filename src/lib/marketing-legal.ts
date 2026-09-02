@@ -70,7 +70,7 @@ export const TERMS_SECTIONS: { heading: string; body: string[] }[] = [
   {
     heading: 'The product',
     body: [
-      'SketchMason, or Mason for short, is an AI design tool. You sketch a screen, it generates a design against a design system, and you can export that design as HTML or as a written brief. It is not a promise of production software, and it is not legal, medical or financial advice.',
+      'SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn interface sketch into a finished UI design. You sketch a screen, it generates a design against a design system, and you can export that design as HTML or as a written brief. It is not a promise of production software, and it is not legal, medical or financial advice.',
     ],
   },
   {

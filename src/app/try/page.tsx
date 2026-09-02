@@ -5,6 +5,7 @@ import { JsonLd } from '@/components/marketing/JsonLd'
 import { TryShell } from '@/components/try/shell'
 import { ORGANIZATION, POSITIONING } from '@/lib/brand'
 import { SITE_URL } from '@/lib/site'
+import { ORGANIZATION_ID, SOFTWARE_ID } from '@/lib/structured-data'
 import { isFreeWeek } from '@/lib/try/free-week'
 
 /**
@@ -20,9 +21,15 @@ const CRAWLER_COPY = {
   ],
 }
 
+/**
+ * The same node as the homepage's block, said again on the page a crawler is
+ * most likely to land on. The `@id` is what makes it the same node: two
+ * blocks with one name and two urls read as two products.
+ */
 const TRY_APPLICATION = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
+  '@id': SOFTWARE_ID,
   name: 'SketchMason',
   alternateName: 'Mason',
   url: `${SITE_URL}/try`,
@@ -30,6 +37,7 @@ const TRY_APPLICATION = {
   operatingSystem: 'Web',
   description: POSITIONING,
   sameAs: ORGANIZATION.sameAs,
+  publisher: { '@id': ORGANIZATION_ID },
 }
 
 export default function TryPage() {

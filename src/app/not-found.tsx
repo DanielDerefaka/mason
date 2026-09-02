@@ -24,7 +24,7 @@ export default function NotFound() {
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button asChild size="sm">
-            <Link href="/try">Try Mason free</Link>
+            <Link href="/try">Try SketchMason free</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/">Home</Link>

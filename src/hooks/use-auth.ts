@@ -39,7 +39,7 @@ export const useAuthentication = () => {
       if (backendDown) {
         toast.error('Signing in is unavailable right now', {
           description:
-            'The backend rejected the request rather than your details — your password is probably fine. Check the Convex deployment status.',
+            'The backend rejected the request rather than your details, so your password is probably fine. Check the Convex deployment status.',
         })
       } else {
         toast.error('Those credentials did not match an account.')

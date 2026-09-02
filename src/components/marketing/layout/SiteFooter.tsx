@@ -67,7 +67,7 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
               </span>
             </Link>
             <p className="mt-4 max-w-[280px] text-[0.85rem] leading-relaxed text-muted-foreground">
-              Finished interfaces from the roughest sketch you can draw.
+              A finished UI design from the roughest sketch you can draw.
             </p>
 
             {/* Plain GET: /try prefills from `?email=`, so no client JS is needed. */}
@@ -102,9 +102,13 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
 
           {FOOTER_COLUMNS.map((col) => (
             <div key={col.title}>
-              <h3 className="mb-4 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-faint">
+              {/* A label, not a heading. As <h3> these three sat in every
+                  page's outline under whatever the page's own last heading
+                  was, so an assistant reading /pricing found "Inside the app"
+                  as a subsection of the plan. */}
+              <p className="mb-4 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-faint">
                 {col.title}
-              </h3>
+              </p>
               <ul className="space-y-2.5">
                 {links(col).map((link) => (
                   <li key={link.label}>

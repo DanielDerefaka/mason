@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 
 import { CtaSection } from '@/components/marketing/home/CtaSection'
+import { JsonLd } from '@/components/marketing/JsonLd'
 import { LEGAL_UPDATED, TERMS_DESCRIPTION, TERMS_SECTIONS } from '@/lib/marketing-legal'
+import { breadcrumbs, webPage } from '@/lib/structured-data'
 
 export const metadata: Metadata = {
   title: 'Terms',
@@ -11,6 +13,8 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
+      <JsonLd data={webPage('Terms of use', '/terms', TERMS_DESCRIPTION)} />
+      <JsonLd data={breadcrumbs([{ name: 'Terms', path: '/terms' }])} />
       <article className="section-pad">
         <div className="container-home">
           <div className="mx-auto max-w-[680px]">

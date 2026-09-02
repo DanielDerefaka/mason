@@ -6,11 +6,21 @@ export interface NavItem {
   sectionId?: string
 }
 
+/**
+ * The header is the site's own statement of what matters, and two of its seven
+ * slots were anchors into the home page: on every other page "Features" and
+ * "How It Works" were a link back to `/`. Meanwhile the three pages written for
+ * search intent, /sketch-to-ui, /compare and /pricing, appeared in the footer
+ * only. Those three take the anchors' places. The anchors keep their home in
+ * the footer's Product column, where a link back to `/` is what a reader
+ * expects.
+ */
 export const HEADER_NAV: NavItem[] = [
   { label: 'Home', href: '/', sectionId: 'hero' },
   { label: 'About Us', href: '/about-us' },
-  { label: 'Features', href: '/#services', sectionId: 'services' },
-  { label: 'How It Works', href: '/#approach', sectionId: 'approach' },
+  { label: 'Sketch to UI', href: '/sketch-to-ui' },
+  { label: 'Compare', href: '/compare' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Blog', href: '/blog' },
   { label: 'Explore', href: '/explore' },
@@ -26,14 +36,22 @@ export const HOME_SECTION_IDS = [
   'cta',
 ] as const
 
-/** Which nav label lights up for a given home section. */
+/**
+ * Which nav label lights up for a given home section.
+ *
+ * The sections the header no longer links to map to the nearest label it does
+ * carry: the features and approach sections describe how a sketch becomes a
+ * design, which is /sketch-to-ui. A section mapped to a label that is not in
+ * `HEADER_NAV` highlights nothing, so `marketing-nav.test.ts` holds every
+ * value here to a label that exists.
+ */
 export const SECTION_TO_NAV: Record<string, string> = {
   hero: 'Home',
   introduction: 'About Us',
-  services: 'Features',
-  approach: 'How It Works',
+  services: 'Sketch to UI',
+  approach: 'Sketch to UI',
   faqs: 'FAQ',
-  cta: 'How It Works',
+  cta: 'Sketch to UI',
 }
 
 export interface FooterColumn {
@@ -73,6 +91,9 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
       { label: 'Style guides', href: '/#services' },
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
+      // Nothing linked /llms.txt except the sitemap, which is not a page an
+      // assistant follows from.
+      { label: 'For AI assistants', href: '/llms.txt' },
     ],
   },
 ]

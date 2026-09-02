@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 import { CtaSection } from '@/components/marketing/home/CtaSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
 import { FAQ_ENTRIES } from '@/lib/marketing-faq'
+import { breadcrumbs, webPage } from '@/lib/structured-data'
 
 /**
  * Title and description, and a canonical that resolves itself.
@@ -16,10 +18,12 @@ import { FAQ_ENTRIES } from '@/lib/marketing-faq'
  * `alternates.canonical` is likewise inherited as "./" from the root and is
  * restated here only because it is the one tag this page exists to get right.
  */
+const DESCRIPTION =
+  'Common questions about SketchMason: how a sketch becomes a finished design, what you can try without an account, and what comes out at the end.'
+
 export const metadata: Metadata = {
-  title: 'FAQ',
-  description:
-    'Common questions about SketchMason: how a sketch becomes a finished design, what you can try without an account, and what comes out at the end.',
+  title: 'FAQ: how a sketch becomes a UI design',
+  description: DESCRIPTION,
   alternates: { canonical: './' },
 }
 
@@ -55,6 +59,8 @@ export default function FaqPage() {
   return (
     <>
       <JsonLd data={faqPage} />
+      <JsonLd data={webPage('SketchMason FAQ', '/faq', DESCRIPTION)} />
+      <JsonLd data={breadcrumbs([{ name: 'FAQ', path: '/faq' }])} />
       <section className="section-pad">
         <div className="container-home">
           <div className="mx-auto max-w-[640px] text-center">
@@ -72,6 +78,18 @@ export default function FaqPage() {
                 </dt>
                 <dd className="mt-2.5 text-[0.9rem] leading-relaxed text-muted-foreground">
                   {entry.answer}
+                  {entry.more ? (
+                    <>
+                      {' '}
+                      <Link
+                        href={entry.more.href}
+                        className="text-foreground underline underline-offset-4 hover:no-underline"
+                      >
+                        {entry.more.label}
+                      </Link>
+                      .
+                    </>
+                  ) : null}
                 </dd>
               </div>
             ))}

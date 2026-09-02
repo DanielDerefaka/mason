@@ -11,6 +11,11 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
 
 const render = (isGuest: boolean) =>
   renderToStaticMarkup(
+    // GuestProvider's props declare `children` as required, so createElement's
+    // third argument does not satisfy the type and the prop has to carry it.
+    // The rule that objects to is an error rather than a warning here, which
+    // is how this line failed `npm run build` while `npm test` stayed green.
+    // eslint-disable-next-line react/no-children-prop
     createElement(GuestProvider, { isGuest, children: createElement(ExploreNotice) }),
   )
 
