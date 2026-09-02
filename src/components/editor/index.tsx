@@ -213,9 +213,6 @@ export const DesignEditor = () => {
     const root = stage.current
     if (!root || painted.current || !design?.html) return
     painted.current = true
-    // The design's own stylesheet is confined beneath this class, so the
-    // editing surface has to carry it or every scoped rule misses.
-    root.classList.add(DESIGN_SCOPE)
     root.innerHTML = sanitiseHtml(design.html)
     // Designs saved before the ring was stripped on the way out still carry
     // one; clear it on the way in so it is gone after the next save.
@@ -1554,6 +1551,13 @@ export const DesignEditor = () => {
               onMouseLeave={() => setHoverId(null)}
               style={cssVars}
               className={cn(
+                // The design's own stylesheet is confined beneath this class,
+                // so the editing surface has to carry it or every scoped rule
+                // misses. It belongs in the className React writes, never in a
+                // `classList.add` from the paint effect: `draggingNode` below
+                // changes this string, React writes the attribute whole, and an
+                // imperatively added class is gone from the first drag onwards.
+                DESIGN_SCOPE,
                 // Dragging an element otherwise paints a text selection right
                 // across the design. Selection is re-enabled on the node that
                 // is actually open for typing.
