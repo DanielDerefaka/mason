@@ -162,7 +162,9 @@ describe('what the editor and its hook do with the history', () => {
 
   /** A failed checkpoint is not a failed edit; see the catch it must keep. */
   it('never lets a refused checkpoint surface as a save error', () => {
-    expect(hook()).toMatch(/checkpoint\(\{[^}]*\}\)\s*\.catch\(/s)
+    // No dotAll flag: the pattern has no `.` to widen, and the repo's target
+    // predates es2018, so `/s` fails the typecheck without changing the match.
+    expect(hook()).toMatch(/checkpoint\(\{[^}]*\}\)\s*\.catch\(/)
   })
 
   it('offers the history from the editor header', () => {
