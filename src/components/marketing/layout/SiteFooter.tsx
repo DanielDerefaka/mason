@@ -30,9 +30,8 @@ const SOCIAL_ICONS = {
 } as const;
 
 /**
- * `freeWeek` comes from the server layout. During the week "Create account"
- * leaves the columns, because sign-up is closed; "Sign in" stays, because the
- * accounts made before the week are not.
+ * `freeWeek` comes from the server layout. During the week both auth links
+ * leave the columns, because both screens behind them redirect to /try.
  */
 export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
   // The email form goes to the canvas whether or not the week is on. It used
@@ -44,10 +43,15 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
   // did, so whatever was typed here is already filled in on arrival.
   const startHref = "/try";
   // Dropped rather than bent: this used to rewrite every /auth link to /try,
-  // which left "Sign in" in the footer pointing at the canvas. A link with the
-  // wrong words over it is worse than no link, and sign-in is open anyway.
+  // which left "Sign in" in the footer pointing at the canvas under the wrong
+  // words. Both screens redirect there themselves now, so both links go.
+  // `forgot-password` is not in the columns and stays open regardless.
   const links = (col: FooterColumn) =>
-    freeWeek ? col.links.filter((link) => link.href !== "/auth/sign-up") : col.links;
+    freeWeek
+      ? col.links.filter(
+          (link) => link.href !== "/auth/sign-up" && link.href !== "/auth/sign-in"
+        )
+      : col.links;
 
   return (
     <footer className="relative border-t border-hairline bg-surface px-6 py-10 md:px-8 md:py-12">

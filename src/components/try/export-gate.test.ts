@@ -27,11 +27,12 @@ describe('a download costs an email, never an account', () => {
   })
 
   /**
-   * The gate reads the flag now, for the exits around it: the cap screen, the
-   * out-of-credits sheet and "Keep this canvas" say "accounts open soon"
-   * during the week and offer one outside it. What a download costs is not
-   * one of those. It is an address, in both states, and the two places that
-   * could reintroduce the old bug are the toll itself and the dialog's mount.
+   * The gate reads the flag now, for the exits around it: the cap screen and
+   * the out-of-credits sheet say "accounts open soon" during the week and
+   * offer one outside it, and "Keep this canvas" is not rendered during it at
+   * all. What a download costs is not one of those. It is an address, in both
+   * states, and the two places that could reintroduce the old bug are the toll
+   * itself and the dialog's mount.
    */
   it('does not let the free-week flag decide what a download costs', () => {
     const toll = gate.slice(gate.indexOf('const requireExport'), gate.indexOf('const settle'))

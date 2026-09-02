@@ -46,10 +46,11 @@ const COPY: Record<EmailGatePurpose, { title: string; action: string }> = {
  * the launch list. It says what the address is for now, in as many words.
  *
  * There is deliberately no password and no "sign in instead" here. During
- * the free week accounts are not on offer, so there is nothing for a password
- * to make; outside it the header's "Sign in" and the "Keep this canvas" button
- * are the doors to an account, and this box is not one of them. The address
- * is the entire transaction.
+ * the free week accounts are not on offer at all, so there is nothing for a
+ * password to make and nowhere for a sign-in link to go; outside it the
+ * header's "Sign in" and the "Keep this canvas" button are the doors to an
+ * account, and this box is not one of them. The address is the entire
+ * transaction.
  */
 export const EmailGateDialog = ({
   open,

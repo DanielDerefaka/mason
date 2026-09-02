@@ -30,9 +30,10 @@ type Pending = { purpose: EmailGatePurpose; resolve: Resolver }
  * the year the flag happened to be off, which is most of them.
  *
  * `freeWeek` is the server's switch, handed down by `src/app/try/page.tsx`.
- * It changes what the exits say — the cap screen below, the out-of-credits
- * sheet and "Keep this canvas" offer an account outside the week and say
- * "accounts open soon" during it — and nothing about what a download costs.
+ * It changes what the exits say — the cap screen below and the out-of-credits
+ * sheet offer an account outside the week and say "accounts open soon" during
+ * it, and "Keep this canvas" is not rendered at all — and nothing about what a
+ * download costs.
  *
  * `admit` is what separates the canvas from the two routes that only display
  * something. /try starts work, so it opens a session; /try/editor and
@@ -143,13 +144,13 @@ export const TryGuestGate = ({
    * `GUEST_SESSIONS_PER_IP_PER_DAY` is configuration, and a sentence naming it
    * is wrong the moment someone tunes it.
    *
-   * An account is offered, because it is the answer: the cap counts guest
-   * sessions, and an account is not one. It was not offered before, when
-   * `src/app/auth/layout.tsx` sent every /auth screen back to /try during the
-   * week and the link would have walked a refused visitor into a circle.
-   * Sign-in is open in both states now, and sign-up only outside the week —
-   * so during it the primary goes to Explore, and the body says accounts open
-   * soon rather than pointing at a form that redirects here.
+   * Outside the week an account is offered, because it is the answer: the cap
+   * counts guest sessions, and an account is not one. During the week neither
+   * auth screen is reachable, so neither is named: every /auth link a refused
+   * visitor could press would redirect them back to the page refusing them,
+   * which is a circle, and telling somebody to sign in to a door that is shut
+   * is worse than saying nothing. Explore is the offer instead, because it is
+   * the one thing the cap does not touch that is still worth doing.
    *
    * What it says either way is the one thing that is still true: a shared
    * design opens anyway. `/s/<token>` is bypassed by the middleware and
@@ -163,7 +164,7 @@ export const TryGuestGate = ({
     const shared =
       "Guest sessions are shared by everyone on this network, most likely an office or a campus, and today's are used. The count starts again at midnight UTC, so come back tomorrow"
     const body = freeWeek
-      ? `${shared}. Sign in if you already have an account, or come back when accounts open.`
+      ? `${shared}. Accounts open after the free week, and they are not capped.`
       : `${shared}, or make an account, which is not capped.`
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
@@ -180,16 +181,18 @@ export const TryGuestGate = ({
               <Link href="/explore">Browse Explore</Link>
             </Button>
           ) : (
-            <Button asChild size="sm" className="rounded-full px-4">
-              <Link href="/auth/sign-up">Create an account</Link>
-            </Button>
+            <>
+              <Button asChild size="sm" className="rounded-full px-4">
+                <Link href="/auth/sign-up">Create an account</Link>
+              </Button>
+              <Link
+                href="/auth/sign-in"
+                className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                Sign in
+              </Link>
+            </>
           )}
-          <Link
-            href="/auth/sign-in"
-            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            Sign in
-          </Link>
         </div>
       </div>
     )

@@ -121,26 +121,37 @@ or without the week, so a link that points at `/auth/sign-up` "outside the week"
 sign-up wall on a site whose header and /faq both say no account is needed. `CtaSection`
 closes all seven marketing pages and did exactly that whenever the flag was unset — the
 half nobody was looking at, because the flag was on. It reads no flag now, and
-`free-week.test.ts` pins the absence. The switch's only job is `/auth/sign-up`.
+`free-week.test.ts` pins the absence. The switch's job is the two `/auth` screens, not the
+calls to action in front of them.
 
 **`FREE_WEEK` must never gate `/`.** It did: `(marketing)/page.tsx` called `redirect('/try')`
 whenever the flag was on, so setting it in production took the whole landing page off the
 internet — `/` answered 307 and every campaign link resolved to the canvas instead of the
 pitch. The header, footer and hero all offer /try on their own now. The flag still redirects
-sign-up, which is the half that is meant to.
+the two `/auth` screens, which is the half that is meant to.
 
-**The free week closes sign-up, and only sign-up.** `isFreeWeek()` sat in
-`src/app/auth/layout.tsx`, the layout all three auth screens share, so during the week
-sign-in and the password reset redirected to /try as well — on the theory that half a
-door is worse than none. What that shut was every account made *before* the week: a
-subscriber who pressed "Sign in" landed on the guest canvas with no way back to their own
-work, for seven days, while the header still showed the link. The week's promise is that
-nothing *needs* an account, which is a fact about /try and not a reason to lock out the
-people who already have one. The redirect lives in `sign-up/layout.tsx` now, because a
-shared layout cannot see which of its children is rendering. `free-week.test.ts` sweeps
-`src/app/auth` and fails if any layout but that one reads the flag, and pins the other
-direction too: a `!freeWeek &&` around the header's or the mobile menu's "Sign in" is the
-regression coming back.
+**The free week closes sign-up *and* sign-in, and nothing else under /auth.** Changed on
+2026-09-03; it read "and only sign-up" before, so a checkout of an older commit disagrees
+with this paragraph on purpose. The week is /try and nothing else: both screens redirect
+there, and the header, the mobile menu and the footer drop the links that pointed at them
+— `SiteHeader` and `MobileNav` take `freeWeek` as a prop from `(marketing)/layout.tsx`,
+because `FREE_WEEK` is deliberately not NEXT_PUBLIC and a client component cannot read it.
+On /try the "Keep this canvas" button is not rendered at all (`canKeep` in
+`src/components/try/header.tsx`) and the network-cap screen names no /auth route, since
+every one of them would return a refused visitor to the page refusing them. The founder
+made this call knowing the cost, which is real: an account created before the week cannot
+be reached until `FREE_WEEK` is unset. Sessions already issued are untouched, so it refuses
+a sign-in rather than signing anybody out.
+
+What must *not* come back is the shape of the original mistake, which is a different thing
+from the rule above. `isFreeWeek()` sat in `src/app/auth/layout.tsx`, the layout all three
+screens share, so closing sign-up closed the password reset with it and left anyone
+mid-reset with no way to finish and nobody to ask. A shared layout cannot see which of its
+children is rendering, so each closed screen redirects in its own `layout.tsx`;
+`free-week.test.ts` sweeps `src/app/auth`, fails if the shared layout or any screen but
+those two reads the flag, and names `forgot-password` so "no layout closed it" cannot be
+satisfied by deleting it. The same file pins both directions of the link guards, so
+removing a `!freeWeek &&` is as loud as adding one.
 
 **`state.shapes.entities` is the entity adapter's state, not the table of shapes.** The
 table is one level further in, at `state.shapes.entities.entities`, so `state.shapes.ids`

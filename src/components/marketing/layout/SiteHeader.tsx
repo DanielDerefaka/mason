@@ -13,12 +13,12 @@ import { MobileNav } from "./MobileNav";
  * Full-bleed sticky header, always translucent. The active nav item on the home
  * page is chosen by an IntersectionObserver over the page sections — not by click.
  *
- * It took a `freeWeek` prop from the server layout and no longer does. The
- * flag's only job here was hiding Sign in during the week, back when /auth/*
- * bounced to /try; sign-in no longer bounces, so the header renders the same
- * in both states and reads nothing.
+ * `freeWeek` has one job here: during the week /auth/sign-in redirects to
+ * /try, so a link to it is a link that goes somewhere else. It comes as a
+ * prop from the server layout rather than being read here, because this is a
+ * client component and the flag is deliberately not NEXT_PUBLIC.
  */
-export function SiteHeader() {
+export function SiteHeader({ freeWeek = false }: { freeWeek?: boolean }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   // The canvas, always — not only during the free week. Outside it this said
@@ -92,15 +92,17 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            {/* Always, free week included. It was hidden during the week
-                because /auth/* redirected to /try then; sign-in no longer
-                does, and the accounts made before the week need their door. */}
-            <Link
-              href="/auth/sign-in"
-              className="text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Sign in
-            </Link>
+            {/* Gone for the week: the screen it points at redirects straight
+                back to /try, and a link that returns you to the page you were
+                already on is worse than no link. */}
+            {!freeWeek && (
+              <Link
+                href="/auth/sign-in"
+                className="text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign in
+              </Link>
+            )}
             {/* `!` overrides beat `.marketing .pill`, which outranks a plain utility. */}
             <Link href={ctaHref} className="pill pill-primary !px-5 !py-2 !text-[0.84rem]">
               {ctaLabel}
@@ -124,7 +126,7 @@ export function SiteHeader() {
         </div>
       </header>
 
-      <MobileNav open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MobileNav open={menuOpen} onClose={() => setMenuOpen(false)} freeWeek={freeWeek} />
     </>
   );
 }
