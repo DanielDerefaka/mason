@@ -1,3 +1,5 @@
+import { designSystemRules } from '@/lib/design-system'
+
 /**
  * Prompts for the generative features.
  *
@@ -116,22 +118,33 @@ Return \`typeScale\` as a ladder of named roles, largest first:
 Each carries a pixel size, a weight the family actually publishes, a unitless
 line height and a letter spacing in em. The rules that make a scale usable:
 
-- Sizes should read as a deliberate ladder, not arbitrary numbers. A ratio
-  somewhere between 1.2 and 1.333 between neighbours works for most boards;
-  round to whole pixels.
-- Display and headline sizes take tighter line heights (1.05–1.25) and slightly
-  negative letter spacing (-0.01 to -0.03em). Body sizes take looser line
-  heights (1.5–1.65) and zero letter spacing. Small caps-like roles such as
-  Caption may take positive spacing.
-- Body must not drop below 14px, and Caption not below 11px.
+- The ladder is deliberately **uneven**. Roughly 1.15x between the reading
+  sizes (Body Large, Body, Small, Caption) and roughly 1.35x between the
+  display sizes, with a visible gap between Headline H3 and Subtitle. One
+  constant ratio all the way up is the commonest fault in a generated scale:
+  it leaves nothing on the page dominant. Round to whole pixels.
+- Display is at least 72px. A Display that lands at 48px or 56px makes every
+  page built from the guide read as a template.
+- Line height goes **below 1** above 64px — 0.88 is right, not 1.1. Between
+  28px and 64px use 0.95 to 1.15. Body sizes take 1.5.
+- Letter spacing changes sign along the ladder: -0.02 to -0.03em on Display,
+  about -0.008em in the middle, 0 around 28px, and **+0.08em or more on
+  Caption and Button** if they are uppercase. A scale whose spacing is
+  negative everywhere has no micro-label in it.
+- Body must not drop below 14px, and Caption not below 10px.
 - \`usage\` is one short line on where the style belongs.
 
 ## Spacing
 
-Return \`spacing\` as a linear scale in pixels, smallest first, based on a 4 or
-8 point step — something like 4, 8, 12, 16, 24, 32, 48, 64. Eight values is
-plenty. The point is that a design has few permitted gaps rather than a fresh
-guess at every edge.
+Return \`spacing\` as a scale in pixels, smallest first: linear at the bottom on
+a 4 point step, then geometric at the top. Something like 4, 8, 12, 16, 24, 32,
+48, 64, 96, 160, 272. The point is that a design has few permitted gaps rather
+than a fresh guess at every edge.
+
+The top of the scale is the half that matters and the half that gets left off.
+A scale that stops at 64px cannot hold a section apart from the next one, so
+every page built from it becomes a stack. The largest two steps are section
+padding, and they are 160px and up.
 
 ## Radii and elevation
 
@@ -531,11 +544,16 @@ the finish.
   the row overflows the screen instead of wrapping — this is the single most
   common cause of a design that breaks on a phone.
 - Headline sizes use \`clamp()\`, e.g.
-  \`font-size:clamp(32px,6vw,64px)\`, so type scales with the viewport
-  instead of overflowing it. Body text stays fixed.
+  \`font-size:clamp(48px,9vw,128px)\`, so type scales with the viewport
+  instead of overflowing it. The two ends are the role's mobile and desktop
+  sizes from the system below, so read them off the ramp rather than picking
+  them: a clamp whose cap is 64px or under is a timid headline at every width.
+  Body text stays fixed.
 - Images take \`max-width:100%\` and \`height:auto\` unless they are a fixed
   ratio banner, in which case use \`aspect-ratio\` rather than a pixel height.
-- Horizontal padding scales: \`padding:0 clamp(16px,5vw,64px)\`.
+- Horizontal padding scales: \`padding:0 clamp(20px,3.6vw,96px)\`. Vertical
+  section padding is the top of the space scale and does not scale with the
+  viewport; it steps down at the phone breakpoint instead.
 - Never set \`white-space:nowrap\` on anything that could be long, and never
   set a \`width\` in pixels on text.
 
@@ -553,11 +571,11 @@ Two breakpoints are enough: 900px for tablet, 640px for phone.
       .split  { flex-direction: column; }
     }
     @media (max-width: 640px) {
-      .grid-3   { grid-template-columns: 1fr; }
+      .grid-3    { grid-template-columns: repeat(2, 1fr); }
       .nav-links { display: none; }
       .nav-menu  { display: block; }
-      .hero h1   { font-size: 34px; }
-      .section   { padding: 48px 20px; }
+      .hero h1   { font-size: 48px; }
+      .section   { padding: 96px 20px; }
     }
 
 What actually changes at phone width, and none of it is guesswork:
@@ -567,9 +585,14 @@ What actually changes at phone width, and none of it is guesswork:
 - Anything side by side becomes stacked, and the order is decided rather than
   inherited — the image usually belongs above the copy, so use \`order\` when
   the source order is wrong.
-- Multi-column grids drop to one column.
-- Section padding drops to about 20px, and vertical rhythm tightens by roughly
-  a third.
+- The grid keeps two columns. Only a row whose items carry a paragraph each
+  drops to one; small cards, statistics, logos and thumbnails stay side by
+  side. A phone layout that is a single stack of full-width cards has been
+  resized rather than designed, and it is what people mean when they say a
+  page looks generated.
+- Horizontal padding drops to about 20px. Vertical section padding steps down
+  to the mobile end of the space scale, not below it: the page gets narrower
+  on a phone, not shallower.
 - Anything decorative that competes for space at 390px — a background wordmark,
   a floating stat card, a second photograph — is hidden rather than shrunk.
   Deciding what to drop is the design work; shrinking everything is what makes
@@ -583,6 +606,10 @@ wraps, hides, or scrolls inside itself.
 A design that needs a horizontal scrollbar at 390px is wrong, however good it
 looks at 1440px.
 
+## The system
+
+${designSystemRules()}
+
 ## Craft
 
 Before writing any markup, decide the design's direction in one sentence from
@@ -591,22 +618,21 @@ sentence, the brand, the references. Then commit to it in every choice below. A
 page that could belong to any product has not been designed.
 
 - Typography carries the page. Choose a display face and a text face that suit
-  the direction (they may be one family at two weights): the design system's
-  family when it names one, otherwise a family written as the Output section
-  says. Set a real scale: the headline is large enough to be the first thing
-  seen, body text is comfortable at the page's width, and the steps between
-  sizes are large enough to notice. Tight letter-spacing on large text, normal
-  on small. Keep the measure under about seventy characters.
-- Spacing is derived from the type and the sketch, not from a preset list.
-  Large elements get more room than small ones; sections breathe; the gaps the
-  drawer left are honoured, including the uneven ones.
-- Colour: one accent, used where it earns attention, against neutrals that
-  have a temperature. On a dark theme surfaces are separated by tint and a
-  hairline border; on a light theme by tone and a shadow that is barely there.
-  Never a heavy drop shadow on every card. Text sits on the foreground token
-  that pairs with its surface, so it stays legible.
-- One shape language: a single radius family, a single border weight, a single
-  icon style, used consistently.
+  the direction: the design system's family when it names one, otherwise a
+  family written as the Output section says. Sizes, line heights and letter
+  spacing come from the ramp above; which role each piece of text takes is the
+  design work, and giving the page one clearly dominant line is most of it.
+  Keep the measure under about seventy characters.
+- Spacing comes from the scale above, never from a fresh guess at each edge.
+  Which step is the design work: large elements get more room than small ones,
+  sections breathe, and the gaps the drawer left are honoured, including the
+  uneven ones.
+- Colour: one accent, used where it earns attention, against neutrals built out
+  of the ink rather than imported as a grey scale. Surfaces are separated by a
+  hairline or by a change of ground, never by a shadow. Text sits on the
+  foreground token that pairs with its surface, so it stays legible.
+- One shape language: radii taken from the set above and used consistently for
+  the same kind of thing, a single border weight, a single icon style.
 - Content is specific to the subject. Real product nouns, plausible numbers,
   named people, actual prices. No lorem ipsum, no invented company when a brand
   is supplied, no "Feature one / Feature two".
@@ -627,6 +653,11 @@ otherwise leave it out:
 - a logo strip captioned "Trusted by" with invented company names
 - purple-to-blue gradients, glassmorphism cards, glow effects
 - rounded cards with a soft shadow on everything
+- an even type ladder where every step is the same ratio from the last, so
+  nothing on the page is dominant
+- three equal-width cards side by side
+- a phone layout that is one column of full-width cards
+- \`transition: all\`, or a bare \`ease\` or \`linear\` keyword
 - a testimonial carousel, a "How it works" 1-2-3 row, a FAQ accordion the
   sketch does not show
 - a "Get started" button in every section
