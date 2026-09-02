@@ -7,15 +7,17 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
+// Dark, unless a caller says otherwise. shadcn's version asked next-themes
+// for the theme, and that was the only thing the site mounted next-themes
+// for: there is no switch, nothing ever called setTheme, and the class on
+// <html> is the whole theme. So the provider is gone and the default is
+// written here.
+const Toaster = ({ theme = "dark", ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

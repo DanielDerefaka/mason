@@ -13,6 +13,27 @@ const nextConfig: NextConfig = {
   devIndicators: false,
 
   /**
+   * Who is handed the whole document in one piece.
+   *
+   * On a route that renders per request Next streams the metadata: <title>,
+   * the description and the canonical arrive in the body once the page has
+   * resolved, so the browser can start on the shell before a layout has
+   * finished awaiting its cookie. Browsers cope. A crawler that reads the HTML
+   * once and never runs it sees a head with no title in it. Next holds the
+   * whole head back for user agents on this list, and the list *replaces* its
+   * default rather than extending it, so the default is carried forward here
+   * (next/dist/shared/lib/router/utils/html-bots.js) and the answer engines
+   * are added after it. None of GPTBot, ClaudeBot or PerplexityBot is on
+   * Next's list, and those are the readers this site is written for.
+   *
+   * The marketing pages are static now and serve a complete head to
+   * everyone. This matters for what stays dynamic: /try, /s/* and /auth/*,
+   * each of which has metadata worth answering with.
+   */
+  htmlLimitedBots:
+    /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight|GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-Web|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|Amazonbot|CCBot|Bytespider|meta-externalagent|YouBot|cohere-ai/i,
+
+  /**
    * The desktop app.
    *
    * The whole application ships inside the Electron binary as a standalone
