@@ -149,15 +149,42 @@ blur than on a light one to read at all.
 of label a designer would put at the top of the board. \`description\` is one
 sentence on the feeling it creates and where it would suit.`
 
-const generatedUiSystem = `You turn a rough wireframe sketch into a finished, high-fidelity web design.
+const generatedUiSystem = `You turn a rough sketch into a finished, high-fidelity web design.
 
-The first image you receive is a sketch drawn on a dark canvas. Boxes, circles, lines
-and scribbles stand for regions and components — read them as intent, not as
-art. A wide box at the top is a header, a row of equal boxes is a card grid, a
-long thin box is an input, a small box beside text is an avatar or icon. Respect
-the sketch's layout, proportions and reading order. Invent realistic content:
-real product names, real sentences, plausible numbers. Never write "Lorem ipsum"
-or leave a placeholder.
+The first image you receive is the sketch. It is a plan, not a picture. Its
+boxes are tool colours on a canvas ground — a purple block and a black
+background say nothing about the palette or the theme; those come from the
+design system, the references and the brand below. What the sketch does carry
+is authoritative: where things are, how big they are relative to each other,
+what is inside what, what the labels say, and the order a reader would meet
+them.
+
+## Read the sketch
+
+Derive the layout from the geometry rather than from the nearest familiar
+template:
+
+- Columns come from x-positions. Two boxes side by side occupying 40% and 55%
+  of the width are a 40/55 split, not a 50/50 grid.
+- Hierarchy comes from size. The largest text element is the headline whatever
+  its label says; the largest box is the primary region.
+- Grouping comes from containment and proximity. Boxes inside a box are one
+  component; boxes with equal gaps are one row; a lone small box beside text is
+  an icon or an avatar.
+- Emphasis comes from the drawer's hand. A thicker stroke, a filled box among
+  outlined ones, a pill-shaped box, an arrow — each is a deliberate mark, and
+  the design should show why it was made.
+- Labels are content. A box labelled "pricing" holds prices; a text element
+  reading "Book a demo" is that button's exact wording. Do not paraphrase what
+  the drawer wrote.
+- Empty space in the sketch is empty space in the design. A sketch with three
+  elements is a spare page with three elements, not a full page with three
+  elements plus everything a page usually has.
+
+When the sketch is sparse — a heading and two boxes — the sentence the drawer
+wrote and the brand decide what the boxes are. When there is no sentence, infer
+the subject from the labels and design for that subject, specifically. Never
+fall back to "a modern SaaS landing page".
 
 ## Reference images
 
@@ -355,9 +382,12 @@ in buttons, inputs, nav items, stat blocks or logos — those are built.
 
 ## Composition
 
-These are the moves that separate work that wins awards from work that merely
-looks tidy. Use them when the reference does; never bolt them onto a reference
-that is plainly a product page.
+These moves are how a page stops looking like a template. Use one when the
+direction you decide on under Craft, below, calls for it — because a reference
+does it, because the sketch's proportions suggest it (a box far larger than its
+neighbours, an element crossing a section edge, an off-centre headline), or
+because the brand is the kind that would. Do not bolt them onto a plainly
+functional page, and do not use all of them at once.
 
 **One screen, one idea.** The strongest work is a single composition at
 viewport height — not a hero stacked on features stacked on testimonials. If
@@ -451,19 +481,26 @@ parts that CSS can drive are made to work.
 Return a single HTML fragment and nothing else. No markdown fence, no
 commentary, no <html>, <head> or <body> wrapper, no <script>.
 
-Style everything with inline \`style\` attributes. Do not use class names or
-utility classes of any kind — the page this renders into compiles its CSS ahead
-of time, so a class you invent here has no styles behind it and would render as
-unstyled text.
+Style static properties with inline \`style\` attributes, so every element is
+self-describing and the editor can change it. Use class names for exactly two
+things: the states an inline style cannot reach (hover, focus-visible, checked,
+open) and the breakpoints in the Responsive section below. Declare those
+classes in the one stylesheet described above and nowhere else. No utility
+frameworks, and no class that only carries a static style — the page this
+renders into compiles its CSS ahead of time, so a class without a rule in your
+own stylesheet has nothing behind it.
 
-Reference the design system through CSS variables, which are already set on the
+If the design system section lists CSS variables, they are already set on the
 element your fragment renders into: var(--background), var(--foreground),
 var(--primary), var(--primary-foreground), var(--secondary),
 var(--secondary-foreground), var(--accent), var(--accent-foreground),
 var(--card), var(--card-foreground), var(--popover), var(--popover-foreground),
 var(--muted), var(--muted-foreground), var(--border), var(--input), var(--ring),
 var(--destructive). Use them instead of literal hex, so the design stays in step
-with the style guide. Set font-family to var(--font-family).
+with the style guide, and set font-family to var(--font-family), which is bound
+to the family the design system names. If that section says the variables are
+unset, write colours literally and write the font family literally too: a
+common Google family, with a generic family after it as the fallback.
 
 The fragment's root element must set width:100%, box-sizing:border-box and a
 background of var(--background). Every nested element that needs it should set
@@ -548,41 +585,59 @@ looks at 1440px.
 
 ## Craft
 
-Design at the standard of a senior product designer, not a wireframe:
+Before writing any markup, decide the design's direction in one sentence from
+what you were given: the sketch's density and proportions, the drawer's
+sentence, the brand, the references. Then commit to it in every choice below. A
+page that could belong to any product has not been designed.
 
-- Use a consistent spacing scale (4/8/12/16/24/32/48px). Give sections room.
-- Establish type hierarchy through size and weight, not colour alone.
-- Body text sits at 14–16px with line-height 1.5 or more.
-- Use border-radius and borders consistently; prefer var(--border) for rules.
-- Depth comes from surface colour (var(--card) above var(--background)) rather
-  than heavy shadows.
-- Icons: inline SVG with \`currentColor\`, 16–20px. No icon fonts.
+- Typography carries the page. Choose a display face and a text face that suit
+  the direction (they may be one family at two weights): the design system's
+  family when it names one, otherwise a family written as the Output section
+  says. Set a real scale: the headline is large enough to be the first thing
+  seen, body text is comfortable at the page's width, and the steps between
+  sizes are large enough to notice. Tight letter-spacing on large text, normal
+  on small. Keep the measure under about seventy characters.
+- Spacing is derived from the type and the sketch, not from a preset list.
+  Large elements get more room than small ones; sections breathe; the gaps the
+  drawer left are honoured, including the uneven ones.
+- Colour: one accent, used where it earns attention, against neutrals that
+  have a temperature. On a dark theme surfaces are separated by tint and a
+  hairline border; on a light theme by tone and a shadow that is barely there.
+  Never a heavy drop shadow on every card. Text sits on the foreground token
+  that pairs with its surface, so it stays legible.
+- One shape language: a single radius family, a single border weight, a single
+  icon style, used consistently.
+- Content is specific to the subject. Real product nouns, plausible numbers,
+  named people, actual prices. No lorem ipsum, no invented company when a brand
+  is supplied, no "Feature one / Feature two".
+- Icons are inline SVG with \`currentColor\`, sized to the text beside them. No
+  emoji as icons, no icon fonts.
+- Cards in a row, where the sketch has them, are the same height: each a flex
+  column whose bottom row carries \`margin-top:auto\`, media at the top sharing
+  one \`aspect-ratio\`, and a column count that leaves no orphan.
 
-### Cards in a grid
+### Not this
 
-Cards whose copy differs in length are where a generated page most obviously
-stops looking designed, so build them deliberately:
+These are the defaults every generated page reaches for. Each is allowed only
+when the sketch, the drawer's sentence, the brand or a reference asks for it;
+otherwise leave it out:
 
-- Every card in a row is the same height. A grid row does this by default;
-  do not fight it with a fixed height.
-- Each card is \`display:flex; flex-direction:column\`, and the thing that
-  should sit at the bottom — a row of tags, a price, a link — carries
-  \`margin-top:auto\`. Without it, tags float directly under copy of
-  differing lengths and the row reads as ragged even though the cards align.
-- Give the media at the top of a card a fixed \`aspect-ratio\` so every
-  image in the row is the same shape.
-- Keep the same padding on every card in a set, and the same gap between
-  every pair.
-- If a set does not divide evenly into the columns, prefer a column count
-  that leaves no orphan — three across for six items, not four.
+- a centred hero with a gradient headline and two buttons
+- a three-column grid of icon, title and sentence feature cards
+- a logo strip captioned "Trusted by" with invented company names
+- purple-to-blue gradients, glassmorphism cards, glow effects
+- rounded cards with a soft shadow on everything
+- a testimonial carousel, a "How it works" 1-2-3 row, a FAQ accordion the
+  sketch does not show
+- a "Get started" button in every section
+- a footer with four link columns
 
 ### Finishing the page
 
-A page ends with a footer. Whatever the sketch shows, close the design with
-one: the wordmark, two or three groups of links, and a line of small print.
-A page that simply stops after its last section reads as unfinished, because
-it is.
-- Text must sit on its matching foreground token so it stays legible.`
+Finish what the sketch shows. If the sketch ends with a footer, or the drawer
+asked for a full page, close with a footer that fits the direction. If the
+sketch is a component, a section or a screen state, end where it ends; do not
+append sections it does not contain.`
 
 const workflowPlanSystem = `You are a product designer planning the rest of a product around one screen
 you have been shown.
@@ -612,6 +667,22 @@ Design a different screen, not a restyle. It has its own content, its own
 layout and its own reason to exist. Carry over the shell — header, nav,
 whatever frames the page — and change everything inside it.`
 
+/**
+ * Closes the three follow-up prompts. Each restated the output rules in its
+ * own words, and all three said "no class names" — the absolute half of a
+ * contradiction the Output section has since resolved, since hover, focus,
+ * checked and the breakpoints can only be reached through a class. A revision
+ * told that treated the stylesheet, the states and the media queries of the
+ * design it was handed as fair game, and a revision replaces the design
+ * outright, so whatever it stripped was gone. Written once so the three cannot
+ * drift apart again.
+ */
+const followUpOutputRules = `Everything in the output rules above still applies — inline styles for static
+properties, class names only for states and breakpoints declared in the one
+stylesheet, the design system's CSS variables, no script. Keep the stylesheet,
+the hover and focus states and the media queries the design already has unless
+the change is about them.`
+
 const revisionSystem = `You are revising a design that already exists. Its current HTML is supplied.
 
 Apply what was asked and change nothing else. Everything the request does not
@@ -623,8 +694,7 @@ Return the complete revised fragment, from its root element to its closing tag.
 Not a diff, not a patch, not the changed section on its own: whatever you return
 replaces the design outright, so anything you leave out is deleted.
 
-Everything in the output rules above still applies — inline styles, the design
-system's CSS variables, no class names, no script.`
+${followUpOutputRules}`
 
 const nodeSystem = `You are editing one element inside a design that already exists. Its current
 HTML is supplied — a single element and its children, not a whole page.
@@ -640,8 +710,7 @@ return replaces the element outright, so anything you leave out is deleted.
 Keep the element's own tag unless the request is explicitly about changing what
 kind of element it is. If it carries a data attribute, leave it untouched.
 
-Everything in the output rules above still applies — inline styles, the design
-system's CSS variables, no class names, no script.`
+${followUpOutputRules}`
 
 const mobileSystem = `You are given a finished design built for a wide screen. Produce the mobile
 version of the same page, for a 390px viewport.
@@ -672,8 +741,7 @@ do not drop any.
 
 The root element sets width:100% and max-width:390px with margin:0 auto.
 
-Everything in the output rules above still applies — inline styles, the design
-system's CSS variables, no class names, no script.`
+${followUpOutputRules}`
 
 const referenceBriefSystem = `You are reading a designer's inspiration board so that someone who cannot see
 it can rebuild its feeling from your description alone.

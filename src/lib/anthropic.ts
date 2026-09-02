@@ -1,4 +1,4 @@
-import { createAnthropic } from '@ai-sdk/anthropic'
+import { createAnthropic, type AnthropicProviderOptions } from '@ai-sdk/anthropic'
 import Anthropic from '@anthropic-ai/sdk'
 
 /**
@@ -43,6 +43,54 @@ export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5'
  * not silently change the other.
  */
 export const UI_MODEL = process.env.ANTHROPIC_UI_MODEL ?? MODEL
+
+type Effort = NonNullable<AnthropicProviderOptions['effort']>
+
+/**
+ * The values the installed provider accepts. `satisfies` ties the list to the
+ * provider's own union, so an SDK upgrade that renames a level fails here at
+ * type-check rather than at the first generation.
+ */
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const satisfies readonly Effort[]
+
+/**
+ * Blank is unset, as with every other variable in this file: `.env.example`
+ * lists the name with no value, and an empty string handed to the provider
+ * fails its validation on every generation. A value the provider does not
+ * accept is treated the same way rather than taking generation down, and says
+ * so once at startup.
+ */
+export const uiEffortFrom = (value: string | undefined): Effort => {
+  const trimmed = value?.trim()
+  if (!trimmed) return 'high'
+  if ((EFFORTS as readonly string[]).includes(trimmed)) return trimmed as Effort
+  console.warn(
+    `[anthropic] ANTHROPIC_UI_EFFORT is "${trimmed}", not one of ${EFFORTS.join(', ')}; using high`,
+  )
+  return 'high'
+}
+
+/**
+ * How hard the model thinks when it writes a page.
+ *
+ * Every route that reached a model ran at `effort: 'low'`, copied line for
+ * line from the style route, whose comment gives a reason that only holds
+ * there: a forced-tool extraction drifts toward a generic palette the longer
+ * it deliberates. Writing the page is the opposite case. It is the hardest
+ * call in the product — a sketch read against four hundred lines of rules, a
+ * design system, a reference brief and up to six images, then composed into
+ * one fragment — and at low effort the model spends least on exactly the
+ * deliberation that makes a page specific instead of the median one. The
+ * SDK's own guidance is `high` as the floor for work whose quality is the
+ * point and `low` for subagents and simple tasks.
+ *
+ * A revision, the mobile version and each screen of a flow are page-writing
+ * calls too, so they read this. Continue and the per-element edit stay low,
+ * and say why where they set it. Whether the setting survives the gateway is
+ * a separate question: the generate route logs the usage it gets back, and
+ * reasoning tokens move with effort.
+ */
+export const UI_EFFORT: Effort = uiEffortFrom(process.env.ANTHROPIC_UI_EFFORT)
 
 /**
  * Thinking is on by default on Opus 5, and its raw reasoning is never returned —

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { streamText } from 'ai'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
 import type { Id } from '../../../../../convex/_generated/dataModel'
+import { UI_EFFORT } from '@/lib/anthropic'
 import {
   describeGenerationFailure,
   failedBeforeStreaming,
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
-      providerOptions: { anthropic: { effort: 'low' } },
+      providerOptions: { anthropic: { effort: UI_EFFORT } },
       // One page of a flow, same budget as a first generation — six cards of copy plus their styles ran
       // past 16k and the stream simply stopped, leaving a half-written
       // element and no footer. Truncation is reported below rather

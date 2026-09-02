@@ -70,6 +70,9 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
+      // Low on purpose, unlike the page-writing routes: the design and its
+      // direction already exist, and this call only writes the part the ceiling
+      // cut off, in the manner of what came before.
       providerOptions: { anthropic: { effort: 'low' } },
       // A revision returns the whole design — six cards of copy plus their styles ran
       // past 16k and the stream simply stopped, leaving a half-written

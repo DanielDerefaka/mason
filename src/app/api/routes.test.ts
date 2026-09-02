@@ -155,4 +155,70 @@ describe('the API surface', () => {
       )
     }
   })
+
+  /**
+   * Which calls think hard, pinned from the filesystem.
+   *
+   * The regression this exists for: every route that reached a model ran at
+   * `effort: 'low'`, copied line for line from the style route, whose comment
+   * gives a reason that only holds for a forced-tool extraction. The call that
+   * writes the page — the hardest one in the product — was thinking least, and
+   * it was that way for as long as the routes existed because nothing read
+   * the line. The page-writing routes read UI_EFFORT now; the extraction
+   * calls, continue and the per-element edit stay low, and each says why.
+   */
+  describe('effort', () => {
+    const PAGE_WRITING = [
+      '/api/generate',
+      '/api/generate/mobile',
+      '/api/generate/workflow',
+      '/api/generate/revise',
+    ]
+    const STAYS_LOW = [
+      '/api/generate/continue',
+      '/api/generate/node',
+      '/api/generate/workflow/plan',
+      '/api/generate/style',
+    ]
+    const byName = (name: string) => {
+      const route = routes.find((candidate) => candidate.name === name)
+      expect(route, `${name} no longer exists`).toBeDefined()
+      return route!
+    }
+
+    it.each(PAGE_WRITING)('%s writes the page at UI_EFFORT', (name) => {
+      const { source } = byName(name)
+      expect(source).toMatch(/effort: UI_EFFORT/)
+      expect(source).toMatch(/import \{[^}]*\bUI_EFFORT\b[^}]*\} from '@\/lib\/anthropic'/)
+      expect(source).not.toMatch(/effort: 'low'/)
+    })
+
+    it.each(STAYS_LOW)('%s still extracts or edits at low', (name) => {
+      expect(byName(name).source).toMatch(/effort: 'low'/)
+    })
+
+    it('reads the reference board at low', () => {
+      const brief = readFileSync(join(process.cwd(), 'src/lib/reference-brief.ts'), 'utf8')
+      expect(brief).toMatch(/effort: 'low'/)
+    })
+
+    it.each(generationRoutes.map((route) => [route.name, route]))(
+      '%s decides its effort rather than inheriting the default',
+      (_name, route) => {
+        // A new route has to pick a side. The default is fine for the API
+        // but not for this file, whose point is that the choice was never
+        // made on purpose before.
+        expect(route.source).toMatch(/effort: (UI_EFFORT|'low')/)
+      },
+    )
+
+    it('covers every generation route', () => {
+      // Guards the lists above: a route added to the API and to neither list
+      // would otherwise pass the per-route check and be pinned to nothing.
+      const named = new Set([...PAGE_WRITING, ...STAYS_LOW])
+      for (const route of generationRoutes) {
+        expect(named.has(route.name), `${route.name} is in neither effort list`).toBe(true)
+      }
+    })
+  })
 })
