@@ -82,6 +82,7 @@ import {
   type InsertKind,
   type StyleWrite,
 } from './node'
+import { SNAP_PX, sameGuides, snapDelta, type Guide, type Rect } from './snapping'
 import { AiPanel } from './ai'
 import { nodeAnswer } from './answer'
 import { Layers } from './layers'
@@ -131,6 +132,14 @@ export const DesignEditor = () => {
   const [dropLine, setDropLine] = useState<
     { left: number; top: number; width: number; height: number } | null
   >(null)
+  const [guides, setGuides] = useState<Guide[]>([])
+  const guidesRef = useRef<Guide[]>([])
+  /** Writes only when the drawing would change; see `sameGuides`. */
+  const putGuides = (next: Guide[]) => {
+    if (sameGuides(next, guidesRef.current)) return
+    guidesRef.current = next
+    setGuides(next)
+  }
 
   const generateUploadUrl = useMutation(api.moodboard.generateUploadUrl)
   const resolveStorageUrl = useMutation(api.moodboard.resolveStorageUrl)
@@ -204,9 +213,6 @@ export const DesignEditor = () => {
     const root = stage.current
     if (!root || painted.current || !design?.html) return
     painted.current = true
-    // The design's own stylesheet is confined beneath this class, so the
-    // editing surface has to carry it or every scoped rule misses.
-    root.classList.add(DESIGN_SCOPE)
     root.innerHTML = sanitiseHtml(design.html)
     // Designs saved before the ring was stripped on the way out still carry
     // one; clear it on the way in so it is gone after the next save.
@@ -353,6 +359,39 @@ export const DesignEditor = () => {
     snapshot()
     if (!moveNode(selected, direction)) return
     restamp(selected)
+  }
+
+  const lastNudge = useRef(0)
+
+  /**
+   * The keyboard half of moving something.
+   *
+   * A free element moves by its offsets. A flow element has no offsets to move,
+   * so the honest equivalent is its place among its siblings, and which arrow
+   * does that depends on how the container lays them out: left and right in a
+   * row, up and down in a column. Nudging the cross axis is refused rather than
+   * quietly reordering, because in a row an element that jumps left when you
+   * press up has not done what you asked.
+   */
+  const onNudge = (dx: number, dy: number) => {
+    if (!selected || selectionLocked) return
+
+    if (!['absolute', 'fixed'].includes(readStyle(selected, 'position'))) {
+      const along = selected.parentElement && isRowLayout(selected.parentElement) ? dx : dy
+      if (along !== 0) onMove(along < 0 ? -1 : 1)
+      return
+    }
+
+    const now = Date.now()
+    if (now - lastNudge.current > NUDGE_BURST_MS) snapshot()
+    lastNudge.current = now
+
+    const left = Number.parseFloat(readStyle(selected, 'left')) || 0
+    const top = Number.parseFloat(readStyle(selected, 'top')) || 0
+    selected.style.left = `${Math.round(left + dx)}px`
+    selected.style.top = `${Math.round(top + dy)}px`
+    setBox(measureNode(selected))
+    commit()
   }
 
   /** Adds an element after the selection, then selects what it made. */
@@ -625,15 +664,54 @@ export const DesignEditor = () => {
   }
 
   /**
+   * Every node the dragged one could line up with, measured once.
+   *
+   * Once rather than per pointermove because a free element is out of flow, so
+   * nothing else on the page moves while it is dragged and a second measurement
+   * would return the same numbers at sixty times the cost. Ancestors are
+   * deliberately included: aligning to the centre of the section you are inside
+   * is the most wanted guide of the lot, and it is an ancestor's box.
+   */
+  const snapTargetsFor = (node: HTMLElement): Rect[] => {
+    const root = stage.current
+    const wrap = artboard.current
+    if (!root || !wrap) return []
+    const w = wrap.getBoundingClientRect()
+
+    const targets: Rect[] = []
+    for (const element of Array.from(root.querySelectorAll<HTMLElement>(`[${NODE_ATTR}]`))) {
+      if (element === node || node.contains(element)) continue
+      const rect = element.getBoundingClientRect()
+      if (rect.width < 1 || rect.height < 1) continue
+      targets.push({
+        left: (rect.left - w.left) / zoom,
+        top: (rect.top - w.top) / zoom,
+        width: rect.width / zoom,
+        height: rect.height / zoom,
+      })
+      // A design deep enough to need more than this has boxes closer together
+      // than the snap threshold anyway, and the inner loop is quadratic.
+      if (targets.length >= 400) break
+    }
+    return targets
+  }
+
+  /**
    * Drags the selection.
    *
    * Two modes, because a generated design is a flow layout and "move this
    * anywhere" means two different things in one. An element that is
-   * absolutely positioned gets its offsets moved — genuinely free placement.
-   * Everything else is reordered into a new place in the flow, with a line
-   * showing where it will land, because setting `left` on a flow element does
-   * nothing and setting `position:absolute` behind the user's back collapses
-   * the space it was holding open.
+   * absolutely positioned gets its offsets moved — genuinely free placement,
+   * pulled onto the edges and centres of what is around it. Everything else is
+   * reordered into a new place in the flow, with a line showing where it will
+   * land, because setting `left` on a flow element does nothing and setting
+   * `position:absolute` behind the user's back collapses the space it was
+   * holding open.
+   *
+   * In both modes the element follows the pointer. It used to sit still through
+   * a flow drag while a 2px line moved somewhere else on the page, which is
+   * most of why moving things in here did not feel like moving things: you had
+   * grabbed something and nothing you had grabbed responded.
    */
   const onMoveStart = (event: React.PointerEvent, node: HTMLElement) => {
     const root = stage.current
@@ -647,17 +725,64 @@ export const DesignEditor = () => {
       left: Number.parseFloat(readStyle(node, 'left')) || 0,
       top: Number.parseFloat(readStyle(node, 'top')) || 0,
     }
+    const startRect = measureNode(node)
+    const targets = free ? snapTargetsFor(node) : []
+
+    /**
+     * What the ghost borrows, so it can be handed back exactly.
+     *
+     * `translate` rather than `transform`: it is a separate property, so a
+     * design that already transforms this element keeps its rotation or scale
+     * for the length of the drag instead of having it wiped by an inline
+     * override. `pointerEvents` has to go, or `elementFromPoint` would return
+     * the ghost on every frame — it is directly under the pointer, which is the
+     * whole point of it — and the drop target would never be anything else.
+     */
+    const borrowed = {
+      translate: node.style.translate,
+      opacity: node.style.opacity,
+      pointerEvents: node.style.pointerEvents,
+    }
+    const returnBorrowed = () => {
+      node.style.translate = borrowed.translate
+      node.style.opacity = borrowed.opacity
+      node.style.pointerEvents = borrowed.pointerEvents
+    }
 
     let target: { node: HTMLElement; before: boolean } | null = null
     setDraggingNode(true)
 
     const onMove = (move: PointerEvent) => {
       if (free) {
-        node.style.left = `${Math.round(start.left + (move.clientX - start.x) / zoom)}px`
-        node.style.top = `${Math.round(start.top + (move.clientY - start.y) / zoom)}px`
+        const raw = {
+          left: start.left + (move.clientX - start.x) / zoom,
+          top: start.top + (move.clientY - start.y) / zoom,
+        }
+
+        /**
+         * Snapping is judged on where the element would *appear*, not on its
+         * `left`/`top`. Those are offsets from the containing block, so
+         * comparing them against another element's page position lines things
+         * up with whatever happens to share the number, which is nothing.
+         */
+        const proposed: Rect = startRect
+          ? { ...startRect, left: startRect.left + (raw.left - start.left), top: startRect.top + (raw.top - start.top) }
+          : { left: raw.left, top: raw.top, width: 0, height: 0 }
+        const snap =
+          startRect && !move.altKey
+            ? snapDelta(proposed, targets, SNAP_PX / zoom)
+            : { dx: 0, dy: 0, guides: [] }
+
+        node.style.left = `${Math.round(raw.left + snap.dx)}px`
+        node.style.top = `${Math.round(raw.top + snap.dy)}px`
+        putGuides(snap.guides)
         setBox(measure(selectedId))
         return
       }
+
+      node.style.translate = `${(move.clientX - start.x) / zoom}px ${(move.clientY - start.y) / zoom}px`
+      node.style.opacity = '0.7'
+      node.style.pointerEvents = 'none'
 
       // Hit-test through the overlay, which is why it is pointer-events-none.
       let under = document.elementFromPoint(move.clientX, move.clientY) as HTMLElement | null
@@ -735,13 +860,21 @@ export const DesignEditor = () => {
       window.removeEventListener('pointerup', onUp)
       setDropLine(null)
       setDraggingNode(false)
+      putGuides([])
+
+      // Before anything is serialised, or the ghost ships to storage as part of
+      // the design and the element arrives translated and half transparent.
+      returnBorrowed()
 
       if (free) {
         commit()
         setBox(measure(selectedId))
         return
       }
-      if (!target) return
+      if (!target) {
+        setBox(measure(selectedId))
+        return
+      }
       target.node.parentElement?.insertBefore(
         node,
         target.before ? target.node : target.node.nextSibling,
@@ -1132,13 +1265,10 @@ export const DesignEditor = () => {
    * The artboard is transformed, so screen rectangles have to be divided by
    * the zoom to land in the same coordinate space the overlay is drawn in.
    */
-  const measure = useCallback(
-    (id: string | null): Box | null => {
-      const root = stage.current
+  const measureNode = useCallback(
+    (node: HTMLElement | null): Box | null => {
       const wrap = artboard.current
-      if (!root || !wrap || !id) return null
-      const node = findNode(root, id)
-      if (!node) return null
+      if (!wrap || !node) return null
 
       const n = node.getBoundingClientRect()
       const w = wrap.getBoundingClientRect()
@@ -1150,6 +1280,15 @@ export const DesignEditor = () => {
       }
     },
     [zoom],
+  )
+
+  const measure = useCallback(
+    (id: string | null): Box | null => {
+      const root = stage.current
+      if (!root || !id) return null
+      return measureNode(findNode(root, id))
+    },
+    [measureNode],
   )
 
   useEffect(() => {
@@ -1233,6 +1372,14 @@ export const DesignEditor = () => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && selected) {
         event.preventDefault()
         onDuplicate()
+      }
+      const arrow = ARROWS[event.key]
+      // Only with something selected: with nothing selected the arrows still
+      // scroll the viewport, which is what they are for on a canvas.
+      if (arrow && selected && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault()
+        const step = event.shiftKey ? NUDGE_SHIFT : NUDGE
+        onNudge(arrow[0] * step, arrow[1] * step)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -1404,6 +1551,13 @@ export const DesignEditor = () => {
               onMouseLeave={() => setHoverId(null)}
               style={cssVars}
               className={cn(
+                // The design's own stylesheet is confined beneath this class,
+                // so the editing surface has to carry it or every scoped rule
+                // misses. It belongs in the className React writes, never in a
+                // `classList.add` from the paint effect: `draggingNode` below
+                // changes this string, React writes the attribute whole, and an
+                // imperatively added class is gone from the first drag onwards.
+                DESIGN_SCOPE,
                 // Dragging an element otherwise paints a text selection right
                 // across the design. Selection is re-enabled on the node that
                 // is actually open for typing.
@@ -1432,6 +1586,33 @@ export const DesignEditor = () => {
                 }}
               />
             )}
+
+            {/* Alignment guides, drawn as the segment between the element and
+                whatever it matched rather than a rule across the artboard. A
+                design is nested boxes, and a full-height line through twelve of
+                them says nothing about which two just lined up. */}
+            {guides.map((guide) => (
+              <div
+                key={`${guide.axis}-${guide.at}`}
+                aria-hidden
+                className="pointer-events-none absolute bg-fuchsia-400"
+                style={
+                  guide.axis === 'x'
+                    ? {
+                        left: guide.at,
+                        top: guide.from,
+                        width: 1 / zoom,
+                        height: guide.to - guide.from,
+                      }
+                    : {
+                        top: guide.at,
+                        left: guide.from,
+                        height: 1 / zoom,
+                        width: guide.to - guide.from,
+                      }
+                }
+              />
+            ))}
 
             {box && (
               <div
@@ -1727,6 +1908,26 @@ export const DesignEditor = () => {
 }
 
 type Box = { left: number; top: number; width: number; height: number }
+
+const ARROWS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+}
+
+/** One press is a pixel, with shift held it is eight. Figma's numbers. */
+const NUDGE = 1
+const NUDGE_SHIFT = 8
+
+/**
+ * How long a gap ends a run of arrow presses.
+ *
+ * Holding an arrow key repeats at about 30Hz, and a snapshot per repeat would
+ * fill the whole 60-step history with one gesture and leave nothing to undo
+ * back to. One snapshot per run is what a person means by "undo that nudge".
+ */
+const NUDGE_BURST_MS = 500
 
 const HANDLE_STYLES: Record<'e' | 's' | 'se', React.CSSProperties> = {
   e: { right: 0, top: '50%', cursor: 'ew-resize' },
