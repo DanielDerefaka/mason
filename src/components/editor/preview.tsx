@@ -5,9 +5,8 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useDesignEditor } from '@/hooks/use-design-editor'
-import { useGoogleFont } from '@/hooks/use-google-font'
 import { useWorkspacePath } from '@/hooks/use-workspace-path'
-import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
+import { buildDesignHtml } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
 /**
@@ -20,56 +19,108 @@ import { cn } from '@/lib/utils'
  * Everything of ours fades out until the pointer comes near it, so a
  * screenshot of this page is a screenshot of the design.
  */
-const WIDTHS = [
-  { key: 'full', label: 'Full width', width: null, Icon: Monitor },
-  { key: 'tablet', label: 'Tablet', width: 834, Icon: Tablet },
-  { key: 'phone', label: 'Phone', width: 390, Icon: Smartphone },
+
+/**
+ * A device is a viewport, and a viewport has two dimensions.
+ *
+ * The heights are the logical screens, not decoration: `100vh`, `100dvh` and
+ * a sticky header all resolve against the height, and a preview that gave the
+ * design a width and left the height to the window was lying about half of
+ * what a phone is.
+ */
+const DEVICES = [
+  { key: 'full', label: 'Full width', width: null, height: null, Icon: Monitor },
+  { key: 'tablet', label: 'Tablet', width: 834, height: 1112, Icon: Tablet },
+  { key: 'phone', label: 'Phone', width: 390, height: 844, Icon: Smartphone },
 ] as const
 
 export const DesignPreview = () => {
   const { projectId, design, styleGuide, loading } = useDesignEditor()
   const workspace = useWorkspacePath()
-  const [width, setWidth] = useState<(typeof WIDTHS)[number]['key']>('full')
-  const column = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState<(typeof DEVICES)[number]['key']>('full')
+  const viewport = useRef<HTMLIFrameElement>(null)
   const [overflowing, setOverflowing] = useState(false)
 
-  useGoogleFont(styleGuide?.typography.fontFamily, [300, 400, 500, 600, 700, 800])
-
-  const cssVars = useMemo(() => {
-    const vars: Record<string, string> = {}
-    for (const section of styleGuide?.colorSections ?? []) {
-      for (const swatch of section.swatches) vars[swatch.token] = swatch.color
-    }
-    if (styleGuide) vars['--font-family'] = styleGuide.typography.fontFamily
-    return vars as React.CSSProperties
-  }, [styleGuide])
-
   const back = `${workspace}/editor?project=${projectId ?? ''}&design=${design?.id ?? ''}`
+  const device = DEVICES.find((option) => option.key === size)
 
   /**
-   * Does the design actually fit the chosen width?
+   * The design as a whole document, not a fragment on this page.
    *
-   * Measured rather than assumed, and re-measured as images decode and fonts
-   * swap — a design can fit until a webfont makes its headline wider.
+   * Phone and Tablet used to narrow a `<div>`, and a narrow div is not a
+   * narrow screen: `@media (max-width: 768px)` and every `vw` unit resolve
+   * against the window and nothing else. So the responsive CSS the model wrote
+   * never ran, and the phone view showed a desktop layout crushed into 390px,
+   * over a warning that blamed the design for it. The one view that decides
+   * whether somebody believes the output was the one view that could not be
+   * right.
+   *
+   * An iframe has a viewport of its own, so 390 by 844 here is 390 by 844 to
+   * the CSS. `srcdoc` keeps it on this origin, which is what leaves the
+   * document readable from out here and makes the fit measurable.
+   *
+   * `buildDesignHtml` is the same document the export writes, so this page and
+   * the downloaded file can no longer disagree about what the design is.
+   */
+  const document_ = useMemo(() => {
+    if (!design?.html) return ''
+    return buildDesignHtml(design, styleGuide ?? null, {
+      // Relative paths resolve against this page inside a srcdoc frame, so an
+      // empty origin is a no-op rather than a broken URL.
+      origin: typeof window === 'undefined' ? '' : window.location.origin,
+    })
+  }, [design, styleGuide])
+
+  /**
+   * Does the design fit the screen it is being shown on?
+   *
+   * A poll rather than a ResizeObserver, and the sandbox is why. Refusing the
+   * frame `allow-scripts` suspends scripting for that document, and with it
+   * every observer and listener bound to it: an observer created out here and
+   * pointed at the frame's body is never called, not once, and nothing says
+   * so. Reading from this side is what still works.
+   *
+   * It has to keep reading for a while either way. Images decode and fonts
+   * swap for seconds after the load event, and a headline in the design's own
+   * face is wider than the fallback that stood in for it, which is exactly
+   * when a design stops fitting.
    */
   useEffect(() => {
-    const node = column.current
-    if (!node) return
-    const check = () => setOverflowing(node.scrollWidth > node.clientWidth + 1)
-    check()
+    const frame = viewport.current
+    if (!frame || !document_) return
 
-    const observer = new ResizeObserver(check)
-    observer.observe(node)
-    const images = Array.from(node.querySelectorAll('img'))
-    for (const image of images) image.addEventListener('load', check)
-    const timer = setTimeout(check, 1200)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let last = -1
+    let still = 0
+
+    const read = () => {
+      const root = frame.contentDocument?.documentElement
+      if (root) {
+        const width = root.scrollWidth
+        setOverflowing(width > root.clientWidth + 1)
+        still = width === last ? still + 1 : 0
+        last = width
+      }
+      // Four seconds of an unchanging page is the end of the loading, not a
+      // pause in it.
+      if (still < 20) timer = setTimeout(read, 200)
+    }
+
+    const restart = () => {
+      clearTimeout(timer)
+      last = -1
+      still = 0
+      read()
+    }
+
+    restart()
+    frame.addEventListener('load', restart)
 
     return () => {
-      observer.disconnect()
-      for (const image of images) image.removeEventListener('load', check)
+      frame.removeEventListener('load', restart)
       clearTimeout(timer)
     }
-  }, [width, design?.html])
+  }, [document_, size])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -100,47 +151,54 @@ export const DesignPreview = () => {
     )
   }
 
-  const frame = WIDTHS.find((option) => option.key === width)
+  /**
+   * The surround, in the design's own background.
+   *
+   * The document inside paints itself; this is only what sits around a device,
+   * and the app's grey behind a dark design is the tell that you are looking
+   * at a preview rather than at a site.
+   */
+  const background =
+    (styleGuide?.colorSections ?? [])
+      .flatMap((section) => section.swatches)
+      .find((swatch) => swatch.token === '--background')?.color ?? undefined
 
   return (
     <div
-      className="min-h-screen overflow-x-hidden"
-      // The design paints its own root, but only inside its column. Without
-      // this the page shows the app's background either side of it.
-      style={{ ...cssVars, background: 'var(--background)' }}
+      className={cn(
+        'flex h-screen w-screen items-center justify-center overflow-hidden',
+        device?.width && 'p-6',
+      )}
+      style={{ background }}
     >
-      {/* Scrolls rather than clips. Clipping cut headlines in half, which
-          reads as the preview being broken; a real phone scrolls sideways,
-          and the scrollbar is the honest signal. The warning below says what
-          the scrollbar means. */}
-      <div
-        ref={column}
-        className={cn('mx-auto', frame?.width && 'shadow-2xl', frame?.width && 'overflow-x-auto')}
-        style={{ width: frame?.width ?? '100%', maxWidth: '100%' }}
-      >
-        <div
-          className={DESIGN_SCOPE}
-          dangerouslySetInnerHTML={{ __html: sanitiseHtml(design.html) }}
-        />
-
-        {/* Pexels asks that photographs be credited wherever they are shown.
-            Set in the design's own colours and at the foot of the page, so it
-            reads as part of the site rather than as a badge we stuck on. */}
-        {design.html.includes('/api/image/') && (
-          <p className="px-4 py-4 text-center text-[12px] opacity-55">
-            Photographs via{' '}
-            <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline">
-              Pexels
-            </a>
-            .
-          </p>
+      <iframe
+        ref={viewport}
+        title={design.label ?? 'Design preview'}
+        srcDoc={document_}
+        // No `allow-scripts`: a design is static markup, and the sanitiser
+        // already refuses script. `allow-same-origin` is what keeps the
+        // document readable from here, which is how the fit above is known.
+        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+        className={cn(
+          'block border-0',
+          // A device has edges. Twelve pixels of radius sits under any real
+          // content, so nothing of the design is lost to it.
+          device?.width && 'rounded-xl shadow-2xl ring-1 ring-black/10',
         )}
-      </div>
+        style={{
+          width: device?.width ?? '100%',
+          height: device?.height ?? '100%',
+          // A window shorter than an iPad is a shorter iPad, not a clipped
+          // one: the frame stays a real viewport, and the design reflows.
+          maxWidth: '100%',
+          maxHeight: '100%',
+        }}
+      />
 
       {overflowing && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
           <p className="pointer-events-auto rounded-full bg-amber-500/90 px-3.5 py-2 text-[11px] font-medium text-black shadow-lg">
-            This design is wider than {frame?.width}px. Open it in the editor, select the
+            This design does not fit a {device?.width}px screen. Open it in the editor, select the
             outermost group and press <span className="font-semibold">Make responsive</span>.
           </p>
         </div>
@@ -158,17 +216,17 @@ export const DesignPreview = () => {
         </Link>
 
         <div className="flex items-center gap-0.5 rounded-full bg-black/70 p-1 backdrop-blur">
-          {WIDTHS.map((option) => (
+          {DEVICES.map((option) => (
             <button
               key={option.key}
               type="button"
               aria-label={option.label}
-              aria-pressed={width === option.key}
+              aria-pressed={size === option.key}
               title={option.label}
-              onClick={() => setWidth(option.key)}
+              onClick={() => setSize(option.key)}
               className={cn(
                 'grid size-7 place-items-center rounded-full transition-colors',
-                width === option.key
+                size === option.key
                   ? 'bg-white/20 text-white'
                   : 'text-white/60 hover:bg-white/10 hover:text-white',
               )}
