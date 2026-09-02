@@ -2,7 +2,7 @@ import { internalQuery, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import { dayKey } from '../src/lib/try/pool-day'
-import { SIGNAL_KINDS, bump, signalKind, type SignalKind } from './lib/signals'
+import { SUMMARISED_KINDS, bump, signalKind, type SummarisedKind } from './lib/signals'
 
 /**
  * How the counters in `lib/signals.ts` are reached from outside a mutation.
@@ -46,6 +46,9 @@ export const recordShareOpen = mutation({
  *   npx convex run signals:summary
  *
  * internalQuery so it is unreachable from the browser.
+ *
+ * Reads the retired kinds too: a counter that was renamed mid-week still has
+ * its earlier days on disk, and the summary is the only place they are seen.
  */
 export const summary = internalQuery({
   args: {},
@@ -55,15 +58,15 @@ export const summary = internalQuery({
       dayKey(now - (DAYS_SUMMARISED - 1 - offset) * 24 * 60 * 60 * 1000),
     )
 
-    const totals = Object.fromEntries(SIGNAL_KINDS.map((kind) => [kind, 0])) as Record<
-      SignalKind,
+    const totals = Object.fromEntries(SUMMARISED_KINDS.map((kind) => [kind, 0])) as Record<
+      SummarisedKind,
       number
     >
-    const byDay: Array<{ day: string; counts: Partial<Record<SignalKind, number>> }> = []
+    const byDay: Array<{ day: string; counts: Partial<Record<SummarisedKind, number>> }> = []
 
     for (const day of days) {
-      const counts: Partial<Record<SignalKind, number>> = {}
-      for (const kind of SIGNAL_KINDS) {
+      const counts: Partial<Record<SummarisedKind, number>> = {}
+      for (const kind of SUMMARISED_KINDS) {
         const row = await ctx.db
           .query('signals')
           .withIndex('by_kind_day', (q) => q.eq('kind', kind).eq('day', day))

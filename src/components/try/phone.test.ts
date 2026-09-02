@@ -95,7 +95,9 @@ describe('the shell', () => {
     expect(shell).toContain('const phone = usePhone()')
     const unknown = shell.indexOf('if (phone === undefined)')
     const screen = shell.indexOf('if (phone) return <PhoneScreen />')
-    const gate = shell.indexOf('<TryGuestGate>')
+    // The tag, not the whole opening: what is pinned is where the gate sits,
+    // and a prop added to it later is not this test's business.
+    const gate = shell.indexOf('<TryGuestGate')
     expect(unknown).toBeGreaterThan(-1)
     expect(screen).toBeGreaterThan(unknown)
     expect(gate).toBeGreaterThan(screen)

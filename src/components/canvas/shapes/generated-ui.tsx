@@ -7,6 +7,7 @@ import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { DESIGN_SCOPE, designScope, sanitisePartialHtml } from '@/lib/sanitise'
 import { cn } from '@/lib/utils'
 import { useStyles } from '@/hooks/use-styles'
+import { useDesignFonts } from '@/hooks/use-design-fonts'
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { useGuest } from '@/components/try/guest-context'
 import { ExploreSwitch } from '@/components/try/explore-switch'
@@ -87,6 +88,11 @@ export const GeneratedUI = ({
     styleGuide?.typography.fontFamily,
     styleGuide?.typography.styles.map((style) => style.weight) ?? [],
   )
+
+  // And this fetches the faces the design named itself. On /try there is no
+  // guide, so the line above is fed undefined and every generation rendered in
+  // a fallback stack: the typography the model chose was never once seen.
+  useDesignFonts(shape.html)
 
   // One scope per shape. A canvas holds as many designs as you draw frames
   // for, each with a stylesheet written as if it were the only page in the

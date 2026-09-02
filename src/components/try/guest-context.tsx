@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 export type GuestContextValue = {
   /** True for an anonymous /try session. */
@@ -18,6 +19,23 @@ export type GuestContextValue = {
    * brief. The Next.js project is not one of them; it is not offered on /try.
    */
   requireExport: () => Promise<boolean>
+  /**
+   * True while the free week is on and accounts are not on offer.
+   *
+   * Read by the exits from /try — the cap screen, the out-of-credits sheet,
+   * "Keep this canvas" — which offer an account outside the week and say
+   * "accounts open soon" during it. It changes nothing about what a download
+   * costs. A prop from the server page rather than a read of the environment,
+   * because the switch is server-side.
+   */
+  freeWeek: boolean
+  /**
+   * Asks for an address so the visitor can be told when accounts open, and
+   * resolves true once one is on the list. The same gate as a download,
+   * opened for a different reason — and answered at once for a guest who has
+   * already given one, since the list has them.
+   */
+  requestNotice: () => Promise<boolean>
 }
 
 /**
@@ -29,32 +47,61 @@ export type GuestContextValue = {
 const DEFAULT_GUEST: GuestContextValue = {
   isGuest: false,
   requireExport: async () => true,
+  freeWeek: false,
+  requestNotice: async () => true,
 }
 
 const GuestContext = createContext<GuestContextValue>(DEFAULT_GUEST)
 
 /**
- * Accepts the value whole or as two props, so the shell can pass whichever
- * it has to hand. Anything not given falls back to the dashboard default.
+ * Accepts the value whole or as separate props, so the shell can pass
+ * whichever it has to hand. Anything not given falls back to the dashboard
+ * default.
  */
 export const GuestProvider = ({
   value,
   isGuest,
   requireExport,
+  freeWeek,
+  requestNotice,
   children,
 }: {
   value?: Partial<GuestContextValue>
   isGuest?: boolean
   requireExport?: GuestContextValue['requireExport']
+  freeWeek?: boolean
+  requestNotice?: GuestContextValue['requestNotice']
   children: ReactNode
 }) => {
   const resolvedIsGuest = isGuest ?? value?.isGuest ?? DEFAULT_GUEST.isGuest
   const resolvedRequire = requireExport ?? value?.requireExport ?? DEFAULT_GUEST.requireExport
+  const resolvedFreeWeek = freeWeek ?? value?.freeWeek ?? DEFAULT_GUEST.freeWeek
+  const resolvedNotice = requestNotice ?? value?.requestNotice ?? DEFAULT_GUEST.requestNotice
   const merged = useMemo<GuestContextValue>(
-    () => ({ isGuest: resolvedIsGuest, requireExport: resolvedRequire }),
-    [resolvedIsGuest, resolvedRequire],
+    () => ({
+      isGuest: resolvedIsGuest,
+      requireExport: resolvedRequire,
+      freeWeek: resolvedFreeWeek,
+      requestNotice: resolvedNotice,
+    }),
+    [resolvedIsGuest, resolvedRequire, resolvedFreeWeek, resolvedNotice],
   )
   return <GuestContext.Provider value={merged}>{children}</GuestContext.Provider>
 }
 
 export const useGuest = (): GuestContextValue => useContext(GuestContext)
+
+/**
+ * The "tell me when" action, for the two places that offer it during the
+ * week. Both say the same thing once the address is down, so the sentence
+ * lives here rather than twice; a guest already on the list hears it too,
+ * because it is just as true for them.
+ */
+export const useAccountNotice = () => {
+  const { requestNotice } = useGuest()
+  return useCallback(() => {
+    void requestNotice().then((ok) => {
+      if (ok) toast.success('We will email you when accounts open')
+    })
+  }, [requestNotice])
+}

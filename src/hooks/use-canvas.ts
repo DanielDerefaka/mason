@@ -35,6 +35,7 @@ import {
   type ShapeKind,
   type Tool,
 } from '@/redux/slice/shapes'
+import { track } from '@/lib/analytics'
 import type { FramePreset } from '@/lib/frame-presets'
 import type { RootState } from '@/redux/store'
 
@@ -518,6 +519,7 @@ export const useInfiniteCanvas = () => {
         : isText || (draft.width > 4 && draft.height > 4)
 
       if (meaningful) {
+        if (shapes.length === 0) track('first_shape_placed', { kind: draft.kind })
         const id = crypto.randomUUID()
         dispatch(
           addShape({
@@ -554,6 +556,7 @@ export const useInfiniteCanvas = () => {
     const view = { width: rect?.width ?? 0, height: rect?.height ?? 0 }
     const centre = screenToWorld({ x: view.width / 2, y: view.height / 2 })
 
+    if (shapes.length === 0) track('first_shape_placed', { kind: 'frame' })
     const id = crypto.randomUUID()
     dispatch(
       addShape({

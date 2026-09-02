@@ -231,7 +231,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
             await patchUser(ctx, current, { ...userData, isAnonymous: false })
             const guest = await guestRow(ctx.db, current)
             if (guest) await ctx.db.patch(guest._id, { convertedAt: now })
-            await bump(ctx.db, 'email_given', now)
+            await bump(ctx.db, 'guest_converted', now)
             return current
           }
         }

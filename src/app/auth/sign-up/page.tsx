@@ -1,16 +1,21 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AtSign, Lock, Mail, User } from 'lucide-react'
 
 import { AuthShell, Field } from '@/components/auth/AuthShell'
 import { useAuthentication } from '@/hooks/use-auth'
+import { track } from '@/lib/analytics'
 
 export default function SignUpPage() {
   const { handleSignUp, pending } = useAuthentication()
   // Carried over from the landing page's email field, so the address is typed once.
   const presetEmail = useSearchParams().get('email') ?? ''
+
+  // The top of the sign-up funnel; `signup_submitted` is the next step down.
+  useEffect(() => track('signup_viewed'), [])
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()

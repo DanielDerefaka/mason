@@ -5,6 +5,7 @@ import { Check, Copy, Link2, Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { track } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -43,6 +44,7 @@ export const ShareButton = ({
     setBusy(true)
     try {
       const next = await createShare({ projectId, designId })
+      track('share_created', { via: 'editor' })
       await navigator.clipboard
         .writeText(`${window.location.origin}/s/${next}`)
         .catch(() => {})

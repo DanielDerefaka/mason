@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE, designScope, sanitiseHtml } from '@/lib/sanitise'
 import { remixHref } from '@/lib/try/remix'
 import type { ExploreItem } from './use-explore-list'
@@ -173,6 +174,7 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
           </span>
           <Link
             href={remixHref(item.id)}
+            onClick={() => track('explore_remix_clicked')}
             className="pill pill-primary px-4 py-1.5 text-[13px]"
             aria-label={`Remix ${item.label}`}
           >

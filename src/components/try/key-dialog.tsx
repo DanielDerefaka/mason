@@ -2,7 +2,7 @@
 
 import { useMutation } from 'convex/react'
 import { KeyRound } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { track } from '@/lib/analytics'
 import {
   clearByokKey,
   getByokWorkspace,
@@ -43,6 +44,12 @@ export const KeyDialog = ({ open, onOpenChange, stored }: Props) => {
   const [workspace, setWorkspace] = useState(() => getByokWorkspace() ?? '')
   const [error, setError] = useState<string | null>(null)
   const markKeyAdded = useMutation(api.guest.markKeyAdded)
+
+  // Counted on open rather than on save: `key_pasted` already counts the
+  // saves, and the gap between the two is who looked at the form and left.
+  useEffect(() => {
+    if (open) track('byok_dialog_opened')
+  }, [open])
 
   const save = async () => {
     const key = value.trim()

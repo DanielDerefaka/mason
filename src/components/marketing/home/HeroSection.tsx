@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 
 import { POSITIONING } from "@/lib/brand";
 import { HERO } from "@/lib/marketing-content";
-import { ctaHref } from "@/lib/try/free-week";
+import { heroSecondaryCta } from "@/lib/try/free-week";
 
 /**
  * HeroSection
@@ -27,13 +27,12 @@ import { ctaHref } from "@/lib/try/free-week";
  * first paint of the site, so it should ship as HTML.
  */
 export function HeroSection() {
-  // During the free week /auth/* redirects to the canvas, so the secondary
-  // pill would be a link that bounces. It reads the switch directly because
-  // this is a server component. Not belt and braces: `/` used to redirect to
-  // /try during the week, which would have kept anyone off this page, but that
-  // redirect took the whole landing page off the internet and was removed —
-  // the hero is now rendered during the week like any other.
-  const signUpHref = ctaHref();
+  // Label and href as one value: during the free week sign-up is closed, and
+  // the pill used to keep the words "Create an account" while its link was
+  // bent to the guest canvas. It reads the switch directly because this is a
+  // server component, and the hero is rendered during the week like any
+  // other page (`/` no longer redirects).
+  const secondary = heroSecondaryCta();
 
   return (
     <section
@@ -92,13 +91,19 @@ export function HeroSection() {
                 {HERO.cta.primary.label}
               </Link>
               <Link
-                href={signUpHref}
+                href={secondary.href}
                 className="pill pill-secondary !px-6 !py-2.5 !text-[0.9rem]"
               >
-                {HERO.cta.secondary.label}
+                {secondary.label}
               </Link>
             </div>
           </div>
+          {/* What the primary pill does, said before it is pressed: a visitor
+              who expects a sign-up form or a new tab is the one who does not
+              press it. "One a day" is `poolAvailableFor` in convex/lib/pool.ts. */}
+          <p className="mt-3 text-[0.8rem] text-muted-foreground">
+            Opens the canvas in this tab. One free generation a day, no card, no account.
+          </p>
         </div>
 
         {/* Product capture. The glow pools beneath the frame rather than

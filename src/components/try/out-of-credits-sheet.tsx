@@ -1,6 +1,7 @@
 'use client'
 
 import { KeyRound } from 'lucide-react'
+import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/sheet'
 
 import { formatRoughCountdown } from './countdown'
+import { useAccountNotice, useGuest } from './guest-context'
 import type { ShareOnX } from './use-share-on-x'
 
 type Props = {
@@ -24,50 +26,87 @@ type Props = {
 }
 
 /**
- * Rises when a generation is refused for want of credits. It offers the two
- * ways forward that work right now and says when the free one returns, so
- * nobody has to guess whether "tomorrow" means their midnight or ours.
+ * Rises when a generation is refused for want of credits. It offers what
+ * works right now, the account that would have, and says when the free one
+ * returns, so nobody has to guess whether "tomorrow" means their midnight or
+ * ours.
+ *
+ * The account row is the exit this sheet never had: a guest out of
+ * generations was shown two more ways to stay a guest and a countdown, on the
+ * one screen where an account is the plain answer. "Ten generations to
+ * start" is `STARTING_CREDITS` in convex/credits.ts, held to the word by
+ * copy.test.ts; `BILLING_ENFORCED` gates the dashboard, not the starting
+ * balance, so the number holds in both of its states. During the free week
+ * the form is closed, so the row asks for an address instead.
  */
-export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsAt }: Props) => (
-  <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent side="bottom" className="dark border-white/10 bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 pb-4">
-        <SheetHeader className="px-0">
-          <SheetTitle>Out of free generations</SheetTitle>
-          <SheetDescription>
-            The community pool and your credits are spent for today. Two ways to keep going
-            now, or the pool refills on its own.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {share.earnsBonus && (
+export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsAt }: Props) => {
+  const { isGuest, freeWeek } = useGuest()
+  const notify = useAccountNotice()
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="dark border-white/10 bg-background text-foreground">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-4 pb-4">
+          <SheetHeader className="px-0">
+            <SheetTitle>Out of free generations</SheetTitle>
+            <SheetDescription>
+              The community pool and your credits are spent for today. Keep going now, or the
+              pool refills on its own.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {share.earnsBonus && (
+              <Button
+                className="rounded-full"
+                disabled={Boolean(share.disabledReason) || share.busy}
+                onClick={() => {
+                  onOpenChange(false)
+                  void share.share()
+                }}
+              >
+                Share on X (+2)
+              </Button>
+            )}
             <Button
+              variant={share.earnsBonus ? 'outline' : 'default'}
               className="rounded-full"
-              disabled={Boolean(share.disabledReason) || share.busy}
               onClick={() => {
                 onOpenChange(false)
-                void share.share()
+                onAddKey()
               }}
             >
-              Share on X (+2)
+              <KeyRound className="size-4" />
+              Add your key
             </Button>
+          </div>
+          {isGuest && (
+            <p className="text-sm text-muted-foreground">
+              {freeWeek ? (
+                <>
+                  Accounts open soon.{' '}
+                  <button
+                    type="button"
+                    className="underline underline-offset-4 hover:text-foreground"
+                    onClick={() => {
+                      onOpenChange(false)
+                      notify()
+                    }}
+                  >
+                    Leave an email and we will tell you.
+                  </button>
+                </>
+              ) : (
+                <Link href="/auth/sign-up" className="underline underline-offset-4 hover:text-foreground">
+                  Make an account: ten generations to start, no card.
+                </Link>
+              )}
+            </p>
           )}
-          <Button
-            variant={share.earnsBonus ? 'outline' : 'default'}
-            className="rounded-full"
-            onClick={() => {
-              onOpenChange(false)
-              onAddKey()
-            }}
-          >
-            <KeyRound className="size-4" />
-            Add your key
-          </Button>
+          <p className="text-xs text-muted-foreground">
+            Comes back at 00:00 UTC (in {formatRoughCountdown(resetsAt - Date.now())})
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Comes back at 00:00 UTC (in {formatRoughCountdown(resetsAt - Date.now())})
-        </p>
-      </div>
-    </SheetContent>
-  </Sheet>
-)
+      </SheetContent>
+    </Sheet>
+  )
+}

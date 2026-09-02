@@ -8,16 +8,7 @@ import { HEADER_NAV } from "@/lib/marketing-nav";
 import { cn } from "@/lib/utils";
 
 /** Slide-in menu used below the `lg` desktop breakpoint. */
-export function MobileNav({
-  open,
-  onClose,
-  freeWeek = false,
-}: {
-  open: boolean;
-  onClose: () => void;
-  /** Threaded from the server layout via the header; see SiteHeader. */
-  freeWeek?: boolean;
-}) {
+export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     document.documentElement.style.overflow = open ? "hidden" : "";
     return () => {
@@ -78,13 +69,11 @@ export function MobileNav({
         </nav>
 
         <div className="mt-auto flex flex-col gap-3 p-6">
-          {/* Hidden during the free week for the same reason as the desktop
-              header's: /auth/* redirects to /try while the week is on. */}
-          {!freeWeek && (
-            <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
-              Sign in
-            </Link>
-          )}
+          {/* Always, free week included, for the reason the desktop header
+              gives: sign-in stays open for the accounts that already exist. */}
+          <Link href="/auth/sign-in" onClick={onClose} className="pill pill-secondary w-full">
+            Sign in
+          </Link>
           {/* The canvas whether or not the week is on, matching the header and
               the hero. Full copy here: the pill is w-full, so there is room. */}
           <Link href="/try" onClick={onClose} className="pill pill-primary w-full">

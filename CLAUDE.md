@@ -121,13 +121,26 @@ or without the week, so a link that points at `/auth/sign-up` "outside the week"
 sign-up wall on a site whose header and /faq both say no account is needed. `CtaSection`
 closes all seven marketing pages and did exactly that whenever the flag was unset — the
 half nobody was looking at, because the flag was on. It reads no flag now, and
-`free-week.test.ts` pins the absence. The switch's only job is `/auth/*`.
+`free-week.test.ts` pins the absence. The switch's only job is `/auth/sign-up`.
 
 **`FREE_WEEK` must never gate `/`.** It did: `(marketing)/page.tsx` called `redirect('/try')`
 whenever the flag was on, so setting it in production took the whole landing page off the
 internet — `/` answered 307 and every campaign link resolved to the canvas instead of the
 pitch. The header, footer and hero all offer /try on their own now. The flag still redirects
-`/auth/*`, which is the half that is meant to.
+sign-up, which is the half that is meant to.
+
+**The free week closes sign-up, and only sign-up.** `isFreeWeek()` sat in
+`src/app/auth/layout.tsx`, the layout all three auth screens share, so during the week
+sign-in and the password reset redirected to /try as well — on the theory that half a
+door is worse than none. What that shut was every account made *before* the week: a
+subscriber who pressed "Sign in" landed on the guest canvas with no way back to their own
+work, for seven days, while the header still showed the link. The week's promise is that
+nothing *needs* an account, which is a fact about /try and not a reason to lock out the
+people who already have one. The redirect lives in `sign-up/layout.tsx` now, because a
+shared layout cannot see which of its children is rendering. `free-week.test.ts` sweeps
+`src/app/auth` and fails if any layout but that one reads the flag, and pins the other
+direction too: a `!freeWeek &&` around the header's or the mobile menu's "Sign in" is the
+regression coming back.
 
 **`state.shapes.entities` is the entity adapter's state, not the table of shapes.** The
 table is one level further in, at `state.shapes.entities.entities`, so `state.shapes.ids`

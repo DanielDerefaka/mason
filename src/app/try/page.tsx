@@ -5,6 +5,7 @@ import { JsonLd } from '@/components/marketing/JsonLd'
 import { TryShell } from '@/components/try/shell'
 import { ORGANIZATION, POSITIONING } from '@/lib/brand'
 import { SITE_URL } from '@/lib/site'
+import { isFreeWeek } from '@/lib/try/free-week'
 
 /**
  * Visible to a crawler that never runs the canvas. The page is a client
@@ -32,6 +33,11 @@ const TRY_APPLICATION = {
 }
 
 export default function TryPage() {
+  // Read here, on the server, and handed down: the shell is a client
+  // component and the switch is not in its bundle. It decides only what the
+  // exits from /try say, never whether the canvas opens.
+  const freeWeek = isFreeWeek()
+
   return (
     <>
       <JsonLd data={TRY_APPLICATION} />
@@ -42,7 +48,7 @@ export default function TryPage() {
         ))}
       </section>
       <Suspense fallback={<div className="flex-1 bg-background" />}>
-        <TryShell>
+        <TryShell freeWeek={freeWeek}>
           <div className="relative flex-1">
             <Canvas />
           </div>
