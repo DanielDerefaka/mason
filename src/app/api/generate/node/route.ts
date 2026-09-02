@@ -10,6 +10,7 @@ import {
   StyleGuideQuery,
 } from '@/convex/query.config'
 import { prompts } from '@/prompts'
+import { EMPTY_MARKER, TRUNCATION_MARKER, isUnusable } from '@/lib/truncation'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 import { describeImagery } from '@/lib/imagery-brief'
@@ -35,10 +36,11 @@ export async function POST(request: NextRequest) {
     if (!ok) return NextResponse.json({ message: 'Could not read your credit balance' }, { status: 401 })
     if (!byok && balance <= 0) return NextResponse.json({ message: 'You are out of credits' }, { status: 402 })
 
-    const { projectId, html, instruction } = (await request.json()) as {
+    const { projectId, html, instruction, context } = (await request.json()) as {
       projectId?: string
       html?: string
       instruction?: string
+      context?: { stylesheet?: unknown; ancestors?: unknown }
     }
 
     if (!projectId || !html?.trim() || !instruction?.trim()) {
@@ -56,19 +58,33 @@ export async function POST(request: NextRequest) {
     const token = await convexAuthNextjsToken()
     const { refundCredit } = await chargeForGeneration({ byok, token })
 
+    // Reference only, so a stray shape in the body cannot reach the prompt.
+    const nodeContext = {
+      stylesheet: typeof context?.stylesheet === 'string' ? context.stylesheet : undefined,
+      ancestors: typeof context?.ancestors === 'string' ? context.ancestors : undefined,
+    }
+
     const result = streamText({
       model,
       providerOptions: { anthropic: { effort: 'low' } },
-      // One element, not a page — a fraction of the room a full revision
-      // needs, and it comes back in a couple of seconds rather than a minute.
-      maxOutputTokens: 4000,
+      // The ceiling follows the input. It was a flat 4000 on the reasoning
+      // that one element is a fraction of a page — but the editor's own
+      // "Make responsive" chip is meant to be run on the outermost group, and
+      // the preview banner sends people to do exactly that, so this route is
+      // routinely asked to return the whole design. 4000 tokens is roughly
+      // 12-16 KB of HTML; a page with its stylesheet is 25-60 KB. The answer
+      // came back ending a third of the way down and nothing noticed. Half
+      // the input's length in tokens is generous for a rewrite of it, floored
+      // where a small element still has room to grow and capped where a full
+      // revision is.
+      maxOutputTokens: Math.min(32000, Math.max(4000, Math.ceil(html.length / 2))),
       system: [
         prompts.generatedUi.system,
         `## Editing one element\n\n${prompts.node.system}`,
         `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
         `## Reference image URLs\n\n${describeImagery(inspirationUrls.length)}`,
       ].join('\n\n'),
-      messages: [{ role: 'user', content: prompts.node.user(instruction, html) }],
+      messages: [{ role: 'user', content: prompts.node.user(instruction, html, nodeContext) }],
     })
 
     // Answered before any header goes out: a refused key comes back from
@@ -83,8 +99,31 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        let produced = ''
         try {
-          for await (const chunk of result.textStream) controller.enqueue(encoder.encode(chunk))
+          for await (const chunk of result.textStream) {
+            produced += chunk
+            controller.enqueue(encoder.encode(chunk))
+          }
+
+          // Finished cleanly with nothing in it. The stream never errored, so
+          // the refund path below never ran — without this the credit is spent
+          // on silence and the editor swaps the element for nothing. Both
+          // markers are HTML comments, which the sanitiser drops anyway, so
+          // neither can reach the rendered design.
+          if (isUnusable(produced)) {
+            await refundCredit()
+            controller.enqueue(encoder.encode(EMPTY_MARKER))
+            controller.close()
+            return
+          }
+
+          if ((await result.finishReason) === 'length') {
+            // Cut off at the ceiling: the element is incomplete, so the credit
+            // goes back. The marker tells the editor to leave the tree alone.
+            await refundCredit()
+            controller.enqueue(encoder.encode(TRUNCATION_MARKER))
+          }
         } catch (error) {
           // The stream died part-way. Nothing usable came back, so neither
           // should the charge.

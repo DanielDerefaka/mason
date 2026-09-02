@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
   NODE_ATTR,
   assignNodeIds,
   canEditInline,
+  describeAncestors,
   sectionScope,
   duplicateNode,
   moveNode,
@@ -120,6 +123,67 @@ describe('sectionScope', () => {
       'STYLE',
       'SECTION',
     ])
+  })
+})
+
+describe('describeAncestors', () => {
+  /**
+   * A node edit sent the element and nothing around it, so the model had no
+   * way to know a card was one of three in a grid or that the section behind
+   * it was dark, and answered with the page root's rules on a card.
+   */
+  it('reads the chain from the element up to the design root, outermost first', () => {
+    const root = mount(
+      '<section class="dark" style="padding:80px;background:#111"><div class="grid-3" style="display:grid;gap:24px"><article>One</article></div></section>',
+    )
+    const card = root.querySelector('article') as HTMLElement
+
+    expect(describeAncestors(card, root)).toBe(
+      'section.dark (background:#111) > div.grid-3 (display:grid; gap:24px) > [this]',
+    )
+  })
+
+  it('stops short of the editor stage, which is not part of the design', () => {
+    const root = mount('<section><p>Body</p></section>')
+    root.className = 'mason-design relative'
+    const body = root.querySelector('p') as HTMLElement
+
+    expect(describeAncestors(body, root)).toBe('section > [this]')
+  })
+
+  it('has nothing to say for the design root itself', () => {
+    const root = mount('<div><section>A</section></div>')
+    const wrapper = root.firstElementChild as HTMLElement
+
+    expect(describeAncestors(wrapper, root)).toBe('[this]')
+  })
+
+  it('reads what the design authored, not what the browser computed', () => {
+    // A display the editor's own stylesheet imposes is not a hint about the
+    // design; only an inline declaration counts.
+    const root = mount('<div style="color:red"><p>Body</p></div>')
+    const body = root.querySelector('p') as HTMLElement
+
+    expect(describeAncestors(body, root)).toBe('div > [this]')
+  })
+})
+
+describe('what the model is sent', () => {
+  /**
+   * The editor posted `target.outerHTML`, which carries `data-mason-id` on
+   * every descendant, and told the model to leave data attributes alone. The
+   * ids are positional and restamped on the way back in, so the model was
+   * preserving bookkeeping it should never have seen. `nodeMarkup` exists to
+   * strip exactly that and was used only by the code view.
+   */
+  it('is the node without its positional ids', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/components/editor/index.tsx'),
+      'utf8',
+    )
+
+    expect(source).not.toContain('html: target.outerHTML')
+    expect(source).toContain('html: nodeMarkup(target)')
   })
 })
 

@@ -144,6 +144,29 @@ describe('the API surface', () => {
     },
   )
 
+  /**
+   * A route that streams the model's text straight to the client has no
+   * status code left to say the answer was cut short, so it says so in the
+   * body: `finishReason === 'length'` appends the truncation marker and the
+   * client reads it. Five routes did; the node route did not, at a flat 4000
+   * tokens, while the editor's own "Make responsive" chip sent whole pages
+   * through it. The answer came back ending a third of the way down, parsed
+   * to one valid element, replaced the design and said Applied.
+   */
+  const streamingRoutes = generationRoutes.filter(({ source }) => /\.textStream\b/.test(source))
+
+  it('has streaming routes to check at all', () => {
+    expect(streamingRoutes.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it.each(streamingRoutes.map((route) => [route.name, route]))(
+    '%s marks an answer that hit the output ceiling instead of streaming it as whole',
+    (_name, route) => {
+      expect(route.source).toMatch(/finishReason/)
+      expect(route.source).toMatch(/TRUNCATION_MARKER|<!--mason:truncated-->/)
+    },
+  )
+
   it('lists every generation route in the smoke script', () => {
     // The smoke script asserts each of these refuses an anonymous POST. A
     // route missing from it is a route nobody checks.

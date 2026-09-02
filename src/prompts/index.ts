@@ -733,8 +733,34 @@ export const prompts = {
   },
   node: {
     system: nodeSystem,
-    user: (instruction: string, html: string) =>
-      [`Requested change: ${instruction}`, '', 'Current element:', '', html].join('\n'),
+    /**
+     * The element on its own was not enough to edit it well. Its hover and
+     * breakpoint rules live in the page's one stylesheet and select by class,
+     * and its width, gap and background are decided by the container it sits
+     * in — none of which the model could see, so it dropped the class the
+     * breakpoints hung off and styled the element as if it were the page. Both
+     * travel as reference now, and the attributes are asked for by name.
+     */
+    user: (
+      instruction: string,
+      html: string,
+      context?: { stylesheet?: string; ancestors?: string },
+    ) =>
+      [
+        `Requested change: ${instruction}`,
+        '',
+        ...(context?.ancestors?.trim()
+          ? [`Where the element sits: ${context.ancestors.trim()}`, '']
+          : []),
+        ...(context?.stylesheet?.trim()
+          ? ["The page's stylesheet, for reference only, do not return it:", '', context.stylesheet.trim(), '']
+          : []),
+        'Current element:',
+        '',
+        html,
+        '',
+        'Keep every class, id, for and name attribute the element and its descendants already carry.',
+      ].join('\n'),
   },
   /**
    * Picking a design back up where the model stopped writing.
