@@ -56,6 +56,7 @@ import {
   pushToInstances,
   setComponentName,
   defaultExpanded,
+  describeAncestors,
   dropLayer,
   stripRings,
   duplicateNode,
@@ -66,6 +67,7 @@ import {
   isRowLayout,
   lockedAncestor,
   moveNode,
+  nodeMarkup,
   readStyle,
   renameNode,
   sectionScope,
@@ -79,6 +81,7 @@ import {
   type StyleWrite,
 } from './node'
 import { AiPanel } from './ai'
+import { nodeAnswer } from './answer'
 import { Layers } from './layers'
 import { ShareButton } from './share'
 import { Properties } from './properties'
@@ -425,12 +428,28 @@ export const DesignEditor = () => {
     }
     setAsking(true)
     const target = selected
+    const root = stage.current
 
     try {
       const response = await generateFetch('/api/generate/node', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, instruction, html: target.outerHTML }),
+        body: JSON.stringify({
+          projectId,
+          instruction,
+          // Without the positional ids: they are restamped on the way back in,
+          // and the model was being told to preserve a data attribute it
+          // should never have seen.
+          html: nodeMarkup(target),
+          // The element's states and breakpoints live in the page's one
+          // stylesheet and select by class, and its width and background are
+          // the container's call. Sent as reference so the model stops
+          // dropping the class and styling a card as if it were the page.
+          context: {
+            stylesheet: root?.querySelector('style')?.textContent ?? undefined,
+            ancestors: root ? describeAncestors(target, root) : undefined,
+          },
+        }),
       })
 
       if (!response.ok) {
@@ -439,7 +458,24 @@ export const DesignEditor = () => {
         return
       }
 
-      const markup = sanitiseHtml((await response.text()).replace(/^```html\s*|```\s*$/g, ''))
+      // Decided before anything is snapshotted or replaced. A response the
+      // route marked as cut off still parses to one valid element, so it used
+      // to replace a whole page with the top third of it and say Applied.
+      const answer = nodeAnswer(await response.text())
+      if (answer.kind === 'truncated') {
+        toast.error('The model ran out of room', {
+          description: 'Nothing was changed. Try a smaller selection or a shorter instruction.',
+        })
+        return
+      }
+      if (answer.kind === 'empty') {
+        toast.error('The model returned nothing', {
+          description: 'Nothing was changed. Try again, or say more about what you want.',
+        })
+        return
+      }
+
+      const markup = sanitiseHtml(answer.html)
       const holder = document.createElement('div')
       holder.innerHTML = markup
       const replacement = holder.firstElementChild as HTMLElement | null

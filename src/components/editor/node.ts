@@ -100,6 +100,41 @@ export const nodeMarkup = (element: HTMLElement): string => {
   return clone.outerHTML
 }
 
+/**
+ * Where a node sits, in one line the model can read.
+ *
+ * `section.dark (background:#111) > div.grid-3 (display:grid; gap:24px) > [this]`
+ *
+ * A node edit sends one element, and the model has to guess what surrounds
+ * it: whether it is one card of three in a grid, whether the section behind it
+ * is dark, whether it is the page root. Guessing wrong is what put
+ * `width:100%` and the page background on a card. The chain is read from the
+ * `style` attribute rather than the computed style, so it says what the design
+ * authored and nothing the editor's own stylesheet added.
+ */
+export const describeAncestors = (element: HTMLElement, root: HTMLElement): string => {
+  const HINTS = ['display', 'gap', 'background', 'background-color']
+  const chain: string[] = []
+
+  for (let node = element.parentElement; node && node !== root; node = node.parentElement) {
+    const classes = Array.from(node.classList)
+      .map((name) => `.${name}`)
+      .join('')
+    const style = node.getAttribute('style') ?? ''
+    const hints = HINTS.flatMap((property) => {
+      const match = style.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i'))
+      const value = match?.[1]?.trim()
+      // A gradient or a data URL runs to hundreds of characters; the model
+      // only needs to know the surface is painted.
+      return value ? [`${property}:${value.length > 60 ? `${value.slice(0, 60)}…` : value}`] : []
+    })
+    const tag = node.tagName.toLowerCase()
+    chain.unshift(hints.length ? `${tag}${classes} (${hints.join('; ')})` : `${tag}${classes}`)
+  }
+
+  return [...chain, '[this]'].join(' > ')
+}
+
 /** Clears rings from a design that was saved with them before this was fixed. */
 export const stripRings = (root: HTMLElement) => {
   for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style*="outline"]'))) {
