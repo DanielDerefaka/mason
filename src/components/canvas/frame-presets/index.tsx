@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { track } from '@/lib/analytics'
 import { DEFAULT_OPEN_GROUP, FRAME_PRESET_GROUPS } from '@/lib/frame-presets'
 import type { FramePreset } from '@/lib/frame-presets'
 import { cn } from '@/lib/utils'
@@ -79,7 +80,10 @@ export const FramePresetDialog = ({
                     <button
                       key={preset.name}
                       type="button"
-                      onClick={() => onPick(preset)}
+                      onClick={() => {
+                        track('frame_preset_picked', { name: preset.name })
+                        onPick(preset)
+                      }}
                       className={cn(
                         'flex w-full items-center justify-between gap-4 py-2.5 pr-5 pl-11 text-left text-sm',
                         'transition-colors hover:bg-white/[0.07] focus-visible:bg-white/[0.07] focus-visible:outline-none',

@@ -228,7 +228,7 @@ export const recordEmail = mutation({
       if (guest.emailAt === undefined) await ctx.db.patch(guest._id, { emailAt: now })
     }
 
-    await bump(ctx.db, 'email_given', now)
+    await bump(ctx.db, 'gate_email_given', now)
     return { ok: true }
   },
 })
@@ -307,7 +307,7 @@ export const redeemClaim = mutation({
       if (item.projectId === project._id) await ctx.db.patch(item._id, { userId })
     }
 
-    await bump(ctx.db, 'email_given', now)
+    await bump(ctx.db, 'claim_redeemed', now)
     return { projectId: project._id }
   },
 })

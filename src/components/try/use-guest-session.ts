@@ -4,6 +4,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 
+import { track } from '@/lib/analytics'
 import { refusalFrom, refusalFromSignIn, type GuestRefusal } from '@/lib/try/guest-refusal'
 
 /**
@@ -50,9 +51,14 @@ export const useGuestSession = ({ admit = true }: { admit?: boolean } = {}) => {
         // as a throw: the /api/auth proxy flattens a ConvexError into its
         // masked message, so nothing thrown can carry a reason. See
         // `src/lib/try/guest-refusal.ts`.
-        setRefusal(refusalFromSignIn(await signIn('anonymous', admission ? { admission } : {})))
+        const refused = refusalFromSignIn(await signIn('anonymous', admission ? { admission } : {}))
+        setRefusal(refused)
+        if (refused) track('guest_refused', { reason: refused })
+        else track('guest_admitted')
       } catch (error) {
-        setRefusal(refusalFrom(error))
+        const refused = refusalFrom(error)
+        setRefusal(refused)
+        track('guest_refused', { reason: refused })
       }
     }
     void openSession()

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { track } from '@/lib/analytics'
 import type { Shape } from '@/redux/slice/shapes'
 import { StyleGuideSchema } from '@/types/style-guide'
 
@@ -60,6 +61,7 @@ export const useDesignEditor = () => {
     if (!projectId || !designId || !design?.html?.trim()) return
     if (marked.current === designId) return
     marked.current = designId
+    track('design_opened')
     void setThumbnail({ projectId, designId, pinned: false }).catch(() => {
       // A thumbnail is decoration; failing to set one must not interrupt
       // editing the design it came from.

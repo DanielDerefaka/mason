@@ -31,6 +31,7 @@ import { useGuest } from '@/components/try/guest-context'
 import { useDesignEditor } from '@/hooks/use-design-editor'
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { canvasPathOf, useWorkspacePath } from '@/hooks/use-workspace-path'
+import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { generateFetch } from '@/lib/try/generate-fetch'
 import { cn } from '@/lib/utils'
@@ -1029,6 +1030,7 @@ export const DesignEditor = () => {
 
   const onExport = async (kind: 'html' | 'brief' | 'project') => {
     if (!design) return
+    track('export_clicked', { kind })
     // Every download asks the gate first — during the free week that is one
     // email address, once per session; outside /try it resolves true at once.
     // Asked before the DOM is serialised so a closed dialog costs nothing.
