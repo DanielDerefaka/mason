@@ -79,6 +79,13 @@ import {
   writeFillLayers,
   writeShadows,
 } from './node'
+import {
+  PLACEMENT_COPY,
+  PLACEMENT_LABEL,
+  placementOf,
+  placementWrites,
+  type Placement,
+} from './placement'
 
 /**
  * The property panel.
@@ -162,7 +169,7 @@ export const Properties = ({
    * except where it is.
    */
   const key = element.getAttribute(NODE_ATTR) ?? ''
-  const isFree = ['absolute', 'fixed'].includes(readStyle(element, 'position'))
+  const placement = placementOf(readStyle(element, 'position'))
   const arranges = canAcceptDrop(element)
   const hasText = (element.textContent ?? '').trim().length > 0
 
@@ -195,7 +202,7 @@ export const Properties = ({
       />
 
       <Alignment element={element} onStyles={onStyles} />
-      <Position element={element} isFree={isFree} onStyle={onStyle} onStyles={onStyles} />
+      <Position element={element} placement={placement} onStyle={onStyle} onStyles={onStyles} />
       {arranges && (
         <Layout element={element} spacing={spacing} onStyle={onStyle} onStyles={onStyles} />
       )}
@@ -395,30 +402,34 @@ const Alignment = ({
 
 const Position = ({
   element,
-  isFree,
+  placement,
   onStyle,
   onStyles,
 }: {
   element: HTMLElement
-  isFree: boolean
+  placement: Placement
   onStyle: (property: string, value: string) => void
   onStyles: (writes: StyleWrite[]) => void
 }) => {
   const rotation = readRotation(element)
+  // In the flow there is nothing to type into: the numbers are the layout's
+  // answer, shown because they are worth knowing and disabled because changing
+  // them is what the modes below are for.
+  const placed = placement !== 'flow'
 
   return (
     <Group label="Position">
       <div className="grid grid-cols-3 gap-1.5">
         <NumberBox
           label="X"
-          value={isFree ? Math.round(Number.parseFloat(readStyle(element, 'left')) || 0) : Math.round(element.offsetLeft)}
-          disabled={!isFree}
+          value={placed ? Math.round(Number.parseFloat(readStyle(element, 'left')) || 0) : Math.round(element.offsetLeft)}
+          disabled={!placed}
           onChange={(next) => onStyle('left', `${next}px`)}
         />
         <NumberBox
           label="Y"
-          value={isFree ? Math.round(Number.parseFloat(readStyle(element, 'top')) || 0) : Math.round(element.offsetTop)}
-          disabled={!isFree}
+          value={placed ? Math.round(Number.parseFloat(readStyle(element, 'top')) || 0) : Math.round(element.offsetTop)}
+          disabled={!placed}
           onChange={(next) => onStyle('top', `${next}px`)}
         />
         <NumberBox
@@ -432,38 +443,24 @@ const Position = ({
       </div>
 
       <div className="flex gap-1">
-        <Segment
-          on={!isFree}
-          onClick={() =>
-            onStyles([
-              ['position', 'static'],
-              ['left', ''],
-              ['top', ''],
-            ])
-          }
-        >
-          In flow
-        </Segment>
-        <Segment
-          on={isFree}
-          onClick={() =>
-            // Seeded from where it already sits, so switching does not
-            // teleport it to the corner of its container.
-            onStyles([
-              ['position', 'absolute'],
-              ['left', `${Math.round(element.offsetLeft)}px`],
-              ['top', `${Math.round(element.offsetTop)}px`],
-            ])
-          }
-        >
-          Free
-        </Segment>
+        {(['flow', 'offset', 'free'] as Placement[]).map((mode) => (
+          <Segment
+            key={mode}
+            on={placement === mode}
+            onClick={() =>
+              onStyles(
+                placementWrites(mode, {
+                  offsetLeft: element.offsetLeft,
+                  offsetTop: element.offsetTop,
+                }),
+              )
+            }
+          >
+            {PLACEMENT_LABEL[mode]}
+          </Segment>
+        ))}
       </div>
-      <p className="text-[10px] leading-relaxed text-white/40">
-        {isFree
-          ? 'Free placement: X and Y move it, and it no longer holds space in the layout.'
-          : 'In flow: X and Y are where the layout has put it. Dragging drops it between other elements.'}
-      </p>
+      <p className="text-[10px] leading-relaxed text-white/40">{PLACEMENT_COPY[placement]}</p>
     </Group>
   )
 }

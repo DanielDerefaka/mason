@@ -82,6 +82,11 @@ import {
   type InsertKind,
   type StyleWrite,
 } from './node'
+import {
+  movesByOffset,
+  placementOf,
+  placementWrites,
+} from './placement'
 import { SNAP_PX, sameGuides, snapDelta, type Guide, type Rect } from './snapping'
 import { AiPanel } from './ai'
 import { nodeAnswer } from './answer'
@@ -128,6 +133,14 @@ export const DesignEditor = () => {
   const [hoverBox, setHoverBox] = useState<Box | null>(null)
   const [resizing, setResizing] = useState(false)
   const [draggingNode, setDraggingNode] = useState(false)
+  /**
+   * Whether the drag under way could be a free move but is not one yet.
+   *
+   * The modifier is the only route to free movement that does not go through a
+   * panel, so the moment it is useful is the moment somebody has grabbed
+   * something and is watching a drop line they did not want.
+   */
+  const [dragHint, setDragHint] = useState(false)
   /** The dock is dismissible: it sits over the design and is not always wanted. */
   const [aiOpen, setAiOpen] = useState(false)
   const [dropLine, setDropLine] = useState<
@@ -395,17 +408,18 @@ export const DesignEditor = () => {
   /**
    * The keyboard half of moving something.
    *
-   * A free element moves by its offsets. A flow element has no offsets to move,
-   * so the honest equivalent is its place among its siblings, and which arrow
-   * does that depends on how the container lays them out: left and right in a
-   * row, up and down in a column. Nudging the cross axis is refused rather than
-   * quietly reordering, because in a row an element that jumps left when you
-   * press up has not done what you asked.
+   * Anything carrying offsets moves by them, which since `offset` exists means
+   * an ordinary element somebody has dragged, not only an out-of-flow one. A
+   * flow element has no offsets to move, so the honest equivalent is its place
+   * among its siblings, and which arrow does that depends on how the container
+   * lays them out: left and right in a row, up and down in a column. Nudging
+   * the cross axis is refused rather than quietly reordering, because in a row
+   * an element that jumps left when you press up has not done what you asked.
    */
   const onNudge = (dx: number, dy: number) => {
     if (!selected || selectionLocked) return
 
-    if (!['absolute', 'fixed'].includes(readStyle(selected, 'position'))) {
+    if (!movesByOffset(placementOf(readStyle(selected, 'position')))) {
       const along = selected.parentElement && isRowLayout(selected.parentElement) ? dx : dy
       if (along !== 0) onMove(along < 0 ? -1 : 1)
       return
@@ -747,15 +761,14 @@ export const DesignEditor = () => {
     if (!root) return
     snapshot()
 
-    const free = ['absolute', 'fixed'].includes(readStyle(node, 'position'))
-    const start = {
-      x: event.clientX,
-      y: event.clientY,
-      left: Number.parseFloat(readStyle(node, 'left')) || 0,
-      top: Number.parseFloat(readStyle(node, 'top')) || 0,
-    }
-    const startRect = measureNode(node)
-    const targets = free ? snapTargetsFor(node) : []
+    const started = placementOf(readStyle(node, 'position'))
+    /**
+     * Only something the layout is currently placing has an order to change,
+     * so only something in the flow has two modes to switch between. An
+     * element already carrying offsets is dragged, always.
+     */
+    const canReorder = !movesByOffset(started)
+    const start = { x: event.clientX, y: event.clientY }
 
     /**
      * What the ghost borrows, so it can be handed back exactly.
@@ -779,14 +792,77 @@ export const DesignEditor = () => {
     }
 
     let target: { node: HTMLElement; before: boolean } | null = null
+
+    /**
+     * The state a free move needs, measured on the frame it starts rather than
+     * at pointer-down, because it can start part way through a reorder.
+     */
+    let moving: {
+      left: number
+      top: number
+      rect: Rect | null
+      targets: Rect[]
+    } | null = null
+
+    /**
+     * Lifts the element out of the reorder and into a free move.
+     *
+     * `relative` rather than `absolute`, which is the whole point: the element
+     * moves by its offsets while the space it was holding stays exactly where
+     * it is, so the rest of the design does not shift underneath the drag. The
+     * ghost is handed back first, so the offsets are measured from where the
+     * layout actually puts it rather than from a translated copy of it.
+     */
+    const beginMoving = () => {
+      if (moving) return
+      returnBorrowed()
+      setDropLine(null)
+      target = null
+      if (!movesByOffset(placementOf(readStyle(node, 'position')))) {
+        applyWrites(
+          node,
+          placementWrites('offset', {
+            offsetLeft: node.offsetLeft,
+            offsetTop: node.offsetTop,
+          }),
+        )
+      }
+      moving = {
+        left: Number.parseFloat(readStyle(node, 'left')) || 0,
+        top: Number.parseFloat(readStyle(node, 'top')) || 0,
+        rect: measureNode(node),
+        targets: snapTargetsFor(node),
+      }
+      track('design_moved_freely')
+    }
+
+    /** Puts it back where the layout wanted it, for a drag that changed its mind. */
+    const endMoving = () => {
+      if (!moving) return
+      moving = null
+      putGuides([])
+      applyWrites(node, placementWrites('flow', { offsetLeft: 0, offsetTop: 0 }))
+      setBox(measureNode(node))
+    }
+
     setDraggingNode(true)
+    setDragHint(canReorder)
 
     const onMove = (move: PointerEvent) => {
-      if (free) {
+      // Live, not latched at pointer-down: the hint that appears during a
+      // reorder invites pressing this while the drag is already under way.
+      const wantsMove = !canReorder || move.metaKey || move.ctrlKey
+      if (wantsMove) beginMoving()
+      else endMoving()
+      setDragHint(canReorder && !wantsMove)
+
+      if (moving) {
         const raw = {
-          left: start.left + (move.clientX - start.x) / zoom,
-          top: start.top + (move.clientY - start.y) / zoom,
+          left: moving.left + (move.clientX - start.x) / zoom,
+          top: moving.top + (move.clientY - start.y) / zoom,
         }
+        const startRect = moving.rect
+        const origin = { left: moving.left, top: moving.top }
 
         /**
          * Snapping is judged on where the element would *appear*, not on its
@@ -795,11 +871,15 @@ export const DesignEditor = () => {
          * up with whatever happens to share the number, which is nothing.
          */
         const proposed: Rect = startRect
-          ? { ...startRect, left: startRect.left + (raw.left - start.left), top: startRect.top + (raw.top - start.top) }
+          ? {
+              ...startRect,
+              left: startRect.left + (raw.left - origin.left),
+              top: startRect.top + (raw.top - origin.top),
+            }
           : { left: raw.left, top: raw.top, width: 0, height: 0 }
         const snap =
           startRect && !move.altKey
-            ? snapDelta(proposed, targets, SNAP_PX / zoom)
+            ? snapDelta(proposed, moving.targets, SNAP_PX / zoom)
             : { dx: 0, dy: 0, guides: [] }
 
         node.style.left = `${Math.round(raw.left + snap.dx)}px`
@@ -889,13 +969,14 @@ export const DesignEditor = () => {
       window.removeEventListener('pointerup', onUp)
       setDropLine(null)
       setDraggingNode(false)
+      setDragHint(false)
       putGuides([])
 
       // Before anything is serialised, or the ghost ships to storage as part of
       // the design and the element arrives translated and half transparent.
       returnBorrowed()
 
-      if (free) {
+      if (moving) {
         commit()
         setBox(measure(selectedId))
         return
@@ -1671,6 +1752,19 @@ export const DesignEditor = () => {
                   </>
                 )}
 
+                {/* Taught at the moment it is wanted. Somebody who has grabbed
+                    an element and is watching a drop line appear is exactly the
+                    person who wants to know the drop line is optional, and a
+                    modifier with no button on screen is otherwise unfindable. */}
+                {dragHint && (
+                  <span
+                    className="absolute bottom-full left-0 mb-1 rounded bg-white/95 px-1.5 py-0.5 text-[10px] whitespace-nowrap text-black"
+                    style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
+                  >
+                    Hold {MOVE_KEY} to move it freely
+                  </span>
+                )}
+
                 {/* Only while dragging. A permanent badge sits on top of any
                     element smaller than the badge itself. */}
                 {resizing && (
@@ -1946,6 +2040,19 @@ export const DesignEditor = () => {
 }
 
 type Box = { left: number; top: number; width: number; height: number }
+
+/**
+ * The key the hint names, spelled the way the reader's own keyboard does.
+ *
+ * Both modifiers work everywhere, because a drag reads either. Printing "Ctrl"
+ * to somebody holding a Mac keyboard is the sort of small wrongness that makes
+ * a person stop trusting the instruction, and ctrl-drag on macOS is a
+ * secondary click, so it is also the one that would not work.
+ */
+const MOVE_KEY =
+  typeof navigator !== 'undefined' && /mac|iphone|ipad/i.test(navigator.userAgent)
+    ? '⌘'
+    : 'Ctrl'
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
