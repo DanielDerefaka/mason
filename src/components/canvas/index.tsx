@@ -33,6 +33,7 @@ import { Inspector, ShapeInspector } from './inspector'
 import { ArrangeBar } from './arrange'
 import { LayersPanel } from './layers'
 import { FramePresetDialog } from './frame-presets'
+import { ExploreNotice } from '@/components/try/explore-notice'
 import { useCanvasFonts } from '@/hooks/use-canvas-fonts'
 import {
   boxShadowFor,
@@ -1037,16 +1038,20 @@ export const Canvas = () => {
       />
 
       {/* First-run hint. The canvas is where the product happens and it used
-          to open as an empty dotted field with no indication of the move. */}
+          to open as an empty dotted field with no indication of the move.
+          The toolbar is named before the keys: it opened with "press F", which
+          on a first visit is a shortcut to something not yet found. Every
+          name here is checked against its control in hint.test.ts. */}
       {shapes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
           <div className="max-w-sm text-center">
             <p className="text-sm font-medium">Draw a frame, then press Generate.</p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Press <Key>F</Key> for a frame or <Key>R</Key> for a rectangle, and label the
-              boxes with <Key>T</Key>. A labelled sketch is an instruction, an unlabelled
-              one is a guess. <Key>New Frame</Key> above picks a device size for you.
+              Frame, Rectangle and Text are in the toolbar below, or press <Key>F</Key>,{' '}
+              <Key>R</Key> and <Key>T</Key>. A labelled box is an instruction, an unlabelled
+              one is a guess. <Key>New frame</Key> above picks a device size for you.
             </p>
+            <ExploreNotice />
           </div>
         </div>
       )}

@@ -25,7 +25,9 @@ import { TryHeader } from './header'
 import { InstructionBar } from './instruction-bar'
 import { KeyDialog } from './key-dialog'
 import { OutOfCreditsSheet } from './out-of-credits-sheet'
+import { PhoneScreen } from './phone-screen'
 import { uploadBlob } from './upload'
+import { usePhone } from './use-phone'
 import { useShareOnX } from './use-share-on-x'
 
 const STORAGE_KEY = 'mason-try-project'
@@ -368,9 +370,31 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
  * canvas beneath. Whatever renders the canvas must sit inside the gate,
  * because the gate is the GuestProvider the export gate asks.
  *
+ * The device is settled first, and nothing is mounted until it is. The gate
+ * opens a guest session in its first effect, and a child's effects run
+ * before its parent's, so a gate mounted "meanwhile" had already spent one of
+ * the network's daily sessions by the time the width arrived. The server
+ * cannot see a viewport at all, which is why this is not decided in the
+ * page: the choice was a CSS-only screen that hides the canvas and still
+ * mints, or a beat of spinner and no session. The spinner is the one the gate
+ * shows while a session opens, so a desktop sees nothing new; a phone sees
+ * it for a frame and then its screen. The crawler copy in
+ * `src/app/try/page.tsx` sits outside this and renders on the server as
+ * before.
  */
-export const TryShell = ({ children }: { children: ReactNode }) => (
-  <TryGuestGate>
-    <TryWorkspace>{children}</TryWorkspace>
-  </TryGuestGate>
-)
+export const TryShell = ({ children }: { children: ReactNode }) => {
+  const phone = usePhone()
+  if (phone === undefined) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+  if (phone) return <PhoneScreen />
+  return (
+    <TryGuestGate>
+      <TryWorkspace>{children}</TryWorkspace>
+    </TryGuestGate>
+  )
+}
