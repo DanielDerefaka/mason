@@ -137,11 +137,25 @@ describe('what /try says when the network is capped', () => {
   })
 
   /**
-   * During the free week `src/app/auth/layout.tsx` redirects every /auth
-   * screen to /try, so a "make an account" link on this page would bounce a
-   * refused visitor straight back to the page refusing them.
+   * The account is the answer to this refusal: the cap counts guest sessions,
+   * and an account is not one. It could not be offered while the free week
+   * redirected every /auth screen to /try, because the link would have bounced
+   * a refused visitor back to the page refusing them. Only sign-up closes for
+   * the week now, so sign-in is offered in both states and sign-up in the one
+   * where it opens.
    */
-  it('offers no account, which during the free week is a loop', () => {
-    expect(capScreen).not.toMatch(/\/auth\//)
+  it('offers sign-in whether or not the week is on', () => {
+    expect(capScreen).toMatch(/href="\/auth\/sign-in"/)
+  })
+
+  it('offers sign-up only outside the week, and Explore inside it', () => {
+    const week = capScreen.slice(capScreen.indexOf('freeWeek ? ('), capScreen.indexOf(') : ('))
+    expect(week).not.toMatch(/\/auth\/sign-up/)
+    expect(week).toMatch(/href="\/explore"/)
+    expect(capScreen).toMatch(/\/auth\/sign-up/)
+  })
+
+  it('never sends a refused visitor to the page that refused them', () => {
+    expect(capScreen).not.toMatch(/href="\/try/)
   })
 })

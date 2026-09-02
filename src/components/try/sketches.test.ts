@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { GUEST_PROJECT_LIMIT, PROJECT_CAP_REFUSAL, inWords } from '@/lib/try/project-cap'
+
 /**
  * /try can hold more than one sketch, and the two ways that goes wrong are
  * both invisible until a visitor has already lost something. Enforced from
@@ -60,8 +62,21 @@ describe('a guest cannot make sketches without end', () => {
     expect(source).toMatch(/>= GUEST_PROJECT_LIMIT/)
   })
 
-  it('says what to do about the refusal', () => {
-    expect(source).toMatch(/Keep your work with an account/)
+  /**
+   * It used to throw the sentence. Convex masks anything that is not a
+   * `ConvexError` as "[Request ID: …] Server Error", so at the cap a guest saw
+   * a fault and a "Try again" that could not work. The mutation throws the
+   * code and the wording lives in `project-cap.ts`, beside the number it
+   * quotes.
+   */
+  it('throws a code rather than a sentence, which Convex would mask', () => {
+    expect(source).toMatch(/throw new ConvexError\(GUEST_PROJECT_CAP\)/)
+    expect(source).not.toMatch(/Keep your work with an account/)
+  })
+
+  it('says the number the cap actually is, from the constant that enforces it', () => {
+    expect(PROJECT_CAP_REFUSAL.title).toContain(inWords(GUEST_PROJECT_LIMIT))
+    expect(PROJECT_CAP_REFUSAL.description.toLowerCase()).toContain('account')
   })
 })
 

@@ -1,8 +1,9 @@
 'use client'
 
 import { useQuery } from 'convex/react'
-import { Compass, KeyRound, LayoutDashboard, Plus } from 'lucide-react'
+import { Bookmark, Compass, KeyRound, LayoutDashboard, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 import { LogoMark } from '@/components/logo-mark'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,9 @@ import { setFrameDialogOpen } from '@/redux/slice/shapes'
 
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
+import { KeepCanvasDialog } from './keep-canvas-dialog'
 import { PoolBanner } from './pool-banner'
+import { RetentionNote } from './retention-note'
 import { ShareOnXButton } from './share-on-x-button'
 import { SketchMenu } from './sketch-menu'
 import { asGuest, isAccount, type GuestMe } from './types'
@@ -45,7 +48,7 @@ const CreditsPill = ({ me }: { me: GuestMe | null | undefined }) => {
     if (guest.bonus > 0 || parts.length === 0) parts.push(plural(guest.bonus))
     label = parts.join(' + ')
   } else {
-    label = balance == null ? '—' : plural(balance)
+    label = balance == null ? '…' : plural(balance)
   }
 
   return (
@@ -69,6 +72,12 @@ export const TryHeader = ({
 }: Props) => {
   const dispatch = useAppDispatch()
   const isRealUser = isAccount(me)
+  const guest = asGuest(me)
+  const [keepOpen, setKeepOpen] = useState(false)
+  // The same gate as Share on X: a canvas worth keeping is one with a
+  // finished design on it, and an empty one has nothing an account would
+  // preserve. Offering it earlier is a sign-up button on a blank page.
+  const canKeep = guest !== null && share.disabledReason === null
 
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/[0.08] bg-background px-4 py-2.5">
@@ -79,11 +88,18 @@ export const TryHeader = ({
 
       <div className="order-last w-full sm:order-none sm:w-auto sm:min-w-[16rem] sm:flex-1 sm:max-w-md">
         <PoolBanner me={me} />
+        {guest && <RetentionNote />}
       </div>
 
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
         <CreditsPill me={me} />
         <SketchMenu projectId={projectId} onOpen={onOpenSketch} onNew={onNewSketch} />
+        {canKeep && (
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setKeepOpen(true)}>
+            <Bookmark className="size-3.5" />
+            Keep this canvas
+          </Button>
+        )}
         <Button
           size="sm"
           variant="secondary"
@@ -113,6 +129,7 @@ export const TryHeader = ({
           </Button>
         )}
       </div>
+      <KeepCanvasDialog open={keepOpen} onOpenChange={setKeepOpen} />
     </header>
   )
 }

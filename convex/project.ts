@@ -1,7 +1,9 @@
 import { mutation, query, type MutationCtx } from './_generated/server'
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
+import { GUEST_PROJECT_CAP } from '../src/lib/try/guest-refusal'
+import { GUEST_PROJECT_LIMIT } from '../src/lib/try/project-cap'
 
 export const getProjects = query({
   args: {},
@@ -22,23 +24,6 @@ export const getProjects = query({
   },
 })
 
-/**
- * How many sketches one anonymous session may keep on /try.
- *
- * A guest gets a new project whenever they want one — a second day of the
- * free week should not mean painting over the first day's canvas — but
- * `createProject` is reachable by anyone who can open a guest session, and
- * without a bound that is an unauthenticated row-insert loop. Counted over
- * live rows rather than the numbering counter, so a guest who tidies up gets
- * the slot back; the bound that matters is how many rows exist at once.
- *
- * Ten is more than a sketch a day for the whole week, and a bill nobody
- * notices. The generation allowance is untouched by any of this: it is keyed
- * to the guest and the day, not to the project, so a new canvas buys no new
- * credits.
- */
-export const GUEST_PROJECT_LIMIT = 10
-
 export const createProject = mutation({
   args: {
     name: v.optional(v.string()),
@@ -48,6 +33,10 @@ export const createProject = mutation({
     const userId = await getAuthUserId(ctx)
     if (userId === null) throw new Error('Not authenticated')
 
+    // `GUEST_PROJECT_LIMIT` lives in src/lib/try/project-cap.ts with the
+    // reasoning, because the toast that quotes the number reads the same
+    // constant. Live rows, not the counter: a guest who tidies up gets the
+    // slot back.
     const user = await ctx.db.get(userId)
     if (user?.isAnonymous) {
       const mine = await ctx.db
@@ -55,11 +44,11 @@ export const createProject = mutation({
         .withIndex('by_user', (q) => q.eq('userId', userId))
         .collect()
       const live = mine.filter((project) => !project.archivedAt)
-      if (live.length >= GUEST_PROJECT_LIMIT) {
-        throw new Error(
-          `A guest session can hold ${GUEST_PROJECT_LIMIT} sketches. Keep your work with an account for more`,
-        )
-      }
+      // A code, not a sentence: a plain `Error` reaches the browser as
+      // "[Request ID: …] Server Error", which is what this refusal read as in
+      // production, with a "Try again" that could not work. The wording is on
+      // the screen, in `PROJECT_CAP_REFUSAL`.
+      if (live.length >= GUEST_PROJECT_LIMIT) throw new ConvexError(GUEST_PROJECT_CAP)
     }
 
     // A per-user counter rather than a count of rows, so deleting a project

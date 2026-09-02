@@ -26,8 +26,18 @@ describe('a download costs an email, never an account', () => {
     expect(gate).not.toMatch(/KeepYourWorkDialog/)
   })
 
-  it('does not let the free-week flag decide what the gate asks for', () => {
-    expect(gate).not.toMatch(/freeWeek/)
+  /**
+   * The gate reads the flag now, for the exits around it: the cap screen, the
+   * out-of-credits sheet and "Keep this canvas" say "accounts open soon"
+   * during the week and offer one outside it. What a download costs is not
+   * one of those. It is an address, in both states, and the two places that
+   * could reintroduce the old bug are the toll itself and the dialog's mount.
+   */
+  it('does not let the free-week flag decide what a download costs', () => {
+    const toll = gate.slice(gate.indexOf('const requireExport'), gate.indexOf('const settle'))
+    expect(toll).not.toMatch(/freeWeek/)
+    const mount = gate.slice(gate.indexOf('<EmailGateDialog'))
+    expect(mount.slice(0, mount.indexOf('/>'))).not.toMatch(/freeWeek/)
   })
 
   it('asks once — a guest who has given an address is never stopped again', () => {

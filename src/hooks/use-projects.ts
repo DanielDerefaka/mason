@@ -5,6 +5,8 @@ import { useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { refusalFrom } from '@/lib/try/guest-refusal'
+import { PROJECT_CAP_REFUSAL } from '@/lib/try/project-cap'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   fetchProjectsFailure,
@@ -42,9 +44,12 @@ export const useProjects = () => {
       toast.success('Project created')
       return projectId
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not create the project.'
+      // A guest at the sketch cap gets the rule; anything else is masked by
+      // Convex in production, so a fixed sentence beats echoing it.
+      const capped = refusalFrom(error) === 'project-cap'
+      const message = capped ? PROJECT_CAP_REFUSAL.title : 'Could not create the project.'
       dispatch(fetchProjectsFailure(message))
-      toast.error(message)
+      toast.error(message, capped ? { description: PROJECT_CAP_REFUSAL.description } : undefined)
       return null
     } finally {
       setCreating(false)

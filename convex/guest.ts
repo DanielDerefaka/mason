@@ -5,7 +5,11 @@ import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { dayKey } from '../src/lib/try/pool-day'
 import { looksLikeEmail, normaliseEmail } from '../src/lib/try/email'
-import { GUEST_IP_CAP } from '../src/lib/try/guest-refusal'
+import {
+  GUEST_BAD_EMAIL,
+  GUEST_IP_CAP,
+  GUEST_SHARE_BEFORE_DESIGN,
+} from '../src/lib/try/guest-refusal'
 import { DEFAULT_GUEST_SESSIONS_PER_IP_PER_DAY, limitFromEnv } from '../src/lib/try/limits'
 import { ensureGuestRow, guestRow, poolAvailableFor, poolDayRow } from './lib/pool'
 import { bump } from './lib/signals'
@@ -143,7 +147,9 @@ export const claimShare = mutation({
 
     const guest = await ensureGuestRow(ctx.db, userId, now)
     if (guest.sharedAt !== undefined) return { bonus: guest.bonus }
-    if (guest.poolUses < 1) throw new Error('Generate a design first, then share it')
+    // A code rather than a sentence, for the reason `admitIp` gives below: a
+    // plain `Error` is masked to "Server Error" before the browser sees it.
+    if (guest.poolUses < 1) throw new ConvexError(GUEST_SHARE_BEFORE_DESIGN)
 
     const bonus = guest.bonus + SHARE_BONUS
     await ctx.db.patch(guest._id, { bonus, sharedAt: now })
@@ -195,8 +201,10 @@ export const recordEmail = mutation({
 
     const address = normaliseEmail(email)
     // Validated here as well as at the box: the mutation is callable from the
-    // browser, and the table is the launch list.
-    if (!looksLikeEmail(address)) throw new Error('That does not look like an email address')
+    // browser, and the table is the launch list. A code, so the dialog can
+    // say "that is not an address" rather than the masked "Server Error" a
+    // plain throw becomes.
+    if (!looksLikeEmail(address)) throw new ConvexError(GUEST_BAD_EMAIL)
 
     const existing = await ctx.db
       .query('emails')

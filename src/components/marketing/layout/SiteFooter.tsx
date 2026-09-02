@@ -8,8 +8,14 @@ import {
   LogoMark,
   TwitterIcon,
 } from "@/components/marketing/icons";
-import { CONTACT, COPYRIGHT, FOOTER_COLUMNS, PRESS_BADGES, SOCIAL_LINKS } from "@/lib/marketing-nav";
-import { freeWeekHref } from "@/lib/try/free-week";
+import {
+  CONTACT,
+  COPYRIGHT,
+  FOOTER_COLUMNS,
+  PRESS_BADGES,
+  SOCIAL_LINKS,
+  type FooterColumn,
+} from "@/lib/marketing-nav";
 
 /**
  * Keyed by label, and the lookup returns null for anything unlisted — which is
@@ -24,8 +30,9 @@ const SOCIAL_ICONS = {
 } as const;
 
 /**
- * `freeWeek` comes from the server layout. During the week the remaining auth
- * links in the columns bend to the canvas too, since /auth/* redirects there.
+ * `freeWeek` comes from the server layout. During the week "Create account"
+ * leaves the columns, because sign-up is closed; "Sign in" stays, because the
+ * accounts made before the week are not.
  */
 export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
   // The email form goes to the canvas whether or not the week is on. It used
@@ -36,10 +43,11 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
   // canvas reads `?email=` in email-gate-dialog.tsx exactly as the sign-up page
   // did, so whatever was typed here is already filled in on arrival.
   const startHref = "/try";
-  // Every auth link, not just sign-up: /auth/* redirects to /try during the
-  // week, and "Sign in" sitting in the footer of a no-account trial was the
-  // exact contradiction this closes.
-  const linkHref = (href: string) => freeWeekHref(href, freeWeek);
+  // Dropped rather than bent: this used to rewrite every /auth link to /try,
+  // which left "Sign in" in the footer pointing at the canvas. A link with the
+  // wrong words over it is worse than no link, and sign-in is open anyway.
+  const links = (col: FooterColumn) =>
+    freeWeek ? col.links.filter((link) => link.href !== "/auth/sign-up") : col.links;
 
   return (
     <footer className="relative border-t border-hairline bg-surface px-6 py-10 md:px-8 md:py-12">
@@ -98,10 +106,10 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
                 {col.title}
               </h3>
               <ul className="space-y-2.5">
-                {col.links.map((link) => (
+                {links(col).map((link) => (
                   <li key={link.label}>
                     <Link
-                      href={linkHref(link.href)}
+                      href={link.href}
                       className="text-[0.85rem] leading-[1.6] text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}

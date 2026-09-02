@@ -124,7 +124,8 @@ export const CONTACT = {
   // someone else's portfolio, and printing that address taught crawlers the
   // wrong entity owned the product.
   email: 'hello@sketchmason.com',
-  phone: '—',
+  // No phone row: there is no number, and the placeholder that stood here was
+  // the one em dash the copy sweep had to exempt.
   whatsapp: 'Support',
   location: 'Built remotely',
 }
