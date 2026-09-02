@@ -36,6 +36,9 @@ export const EVENTS = [
   // answer, so the opening is worth as much as the restore.
   'design_history_opened',
   'design_restored',
+  // The modifier has no button, so this is the only way to tell whether the
+  // hint during a drag is teaching anybody the gesture it describes.
+  'design_moved_freely',
   'export_clicked',
   'share_created',
   'explore_remix_clicked',
