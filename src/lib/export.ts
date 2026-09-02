@@ -1,4 +1,5 @@
 import { designResetCss } from '@/lib/design-reset'
+import { familiesInDesign, googleFontHref, headFamily, weightsInDesign } from '@/lib/design-fonts'
 import { buildDesignPrompt } from '@/lib/prompt-export'
 import { buildProject, projectFilename } from '@/lib/project-export'
 import { rasteriseFrame } from '@/lib/rasterise'
@@ -83,12 +84,45 @@ export const buildDesignHtml = (
     .join('\n')
 
   const family = styleGuide?.typography.fontFamily
-  const font = family
-    ? `\n    <link rel="preconnect" href="https://fonts.googleapis.com">\n` +
-      `    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(
-        family.split(',')[0].trim().replace(/^['"]|['"]$/g, ''),
-      ).replace(/%20/g, '+')}:wght@300;400;500;600;700&display=swap">`
-    : ''
+
+  /**
+   * Every face the file needs: the guide's, and the ones the design named in
+   * its own stylesheet.
+   *
+   * Only the guide's was ever linked, so a design generated on /try — where
+   * there is no guide — downloaded with no font link at all, and one generated
+   * with a guide downloaded missing whatever the model paired against it. The
+   * file is the artefact somebody shows to somebody else, which makes it the
+   * worst place for the typography to be the browser's rather than the
+   * design's.
+   */
+  const faces: string[] = []
+  for (const name of [
+    family ? headFamily(family) : null,
+    // `includeBundled`: this file is opened outside the application, where
+    // `next/font` is not carrying Inter or Fraunces for it.
+    ...familiesInDesign(fragment, { includeBundled: true }),
+  ]) {
+    if (name && !faces.some((seen) => seen.toLowerCase() === name.toLowerCase())) faces.push(name)
+  }
+
+  // The guide's spread for the guide's family, because a guide names weights
+  // this function is not given; the design's own weights for the rest.
+  const weights = weightsInDesign(fragment)
+  const font =
+    faces.length > 0
+      ? `\n    <link rel="preconnect" href="https://fonts.googleapis.com">\n` +
+        `    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n` +
+        faces
+          .map(
+            (name, index) =>
+              `    <link rel="stylesheet" href="${googleFontHref(
+                name,
+                index === 0 && family ? [300, 400, 500, 600, 700] : weights,
+              )}">`,
+          )
+          .join('\n')
+      : ''
 
   // Indented to sit with the rules around it; the reset is written flush.
   const reset = designResetCss()
@@ -105,7 +139,7 @@ export const buildDesignHtml = (
     <style>
       :root {
 ${variables}
-        --font-family: ${family ? `'${family.split(',')[0].trim().replace(/^['"]|['"]$/g, '')}', sans-serif` : 'system-ui, sans-serif'};
+        --font-family: ${faces[0] ? `'${faces[0]}', sans-serif` : 'system-ui, sans-serif'};
       }
       * { box-sizing: border-box; }
       /* The design paints its own root, but only inside its column. Without

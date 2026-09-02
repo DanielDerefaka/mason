@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef } from 'react'
 
+import { useDesignFonts } from '@/hooks/use-design-fonts'
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
 import { remixHref } from '@/lib/try/remix'
@@ -63,6 +64,11 @@ export const SharedDesign = ({ token }: { token: string }) => {
   const styleGuide = guide.success ? guide.data : null
 
   useGoogleFont(styleGuide?.typography.fontFamily, [300, 400, 500, 600, 700, 800])
+
+  // A shared design is the one page here with no chrome around it, so a face
+  // that does not arrive is the whole impression. The guide is often null on a
+  // share, which left this rendering in Georgia on Windows.
+  useDesignFonts(shared?.html)
 
   const cssVars = useMemo(() => {
     const vars: Record<string, string> = {}

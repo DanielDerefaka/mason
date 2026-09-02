@@ -1,3 +1,4 @@
+import { familiesInDesign } from '@/lib/design-fonts'
 import { primaryFamily } from '@/lib/fonts'
 import type { Shape } from '@/redux/slice/shapes'
 import type { StyleGuide } from '@/types/style-guide'
@@ -135,10 +136,18 @@ export const readComponents = (html: string): DesignComponent[] => {
   return Array.from(found.values())
 }
 
-const readTokens = (guide: StyleGuide | null): DesignTokens => ({
+const readTokens = (guide: StyleGuide | null, html: string): DesignTokens => ({
   theme: guide?.theme ?? null,
   description: guide?.description ?? null,
-  family: guide ? primaryFamily(guide.typography.fontFamily) : null,
+
+  // The guide's family when there is a guide, and the one the design named
+  // itself when there is not. Guide-only left the generated project with no
+  // font link and `system-ui` in its globals: everything a visitor on /try
+  // exported opened in the browser's default face, which is the one thing a
+  // design cannot survive.
+  family: guide
+    ? primaryFamily(guide.typography.fontFamily)
+    : (familiesInDesign(html, { includeBundled: true })[0] ?? null),
 
   colours: (guide?.colorSections ?? []).flatMap((section) =>
     section.swatches.map((swatch) => ({
@@ -180,6 +189,6 @@ export const readDesign = (design: Shape, guide: StyleGuide | null): DesignModel
     html,
     sections: readSections(html),
     components: readComponents(html),
-    tokens: readTokens(guide),
+    tokens: readTokens(guide, html),
   }
 }
