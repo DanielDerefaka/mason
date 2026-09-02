@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
+import { AppProviders } from '@/components/app-providers'
+
 // Leads with what SketchMason is. The old sentence began at "Draw a frame" —
 // a step, with nothing before it to say what the step was for — on the one
 // result most people meet the product through. It used to end "and get real
@@ -27,14 +29,23 @@ export const metadata: Metadata = {
 /**
  * /try lives outside (marketing) on purpose: it is the app, not a landing
  * page, so it takes the app's dark tokens and a viewport-locked column the
- * canvas can fill. Nothing here is server-dynamic, which is why the pages
- * beneath wrap their client shells in <Suspense> — useSearchParams needs a
- * boundary under a static layout.
+ * canvas can fill.
+ *
+ * It is also where the app's providers mount, and that makes this layout
+ * server-dynamic: the auth provider inside `AppProviders` awaits the session
+ * cookie, so every /try route renders per request. It always did, back when
+ * the root layout mounted the same provider for the whole site; what changed
+ * is that the marketing pages stopped paying for it. The pages beneath still
+ * wrap their client shells in <Suspense>. The boundary was put there because
+ * useSearchParams needs one under a static layout, and it stays because the
+ * fallback it renders is what the server sends and what a crawler reads.
  */
 export default function TryLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="dark flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      {children}
-    </div>
+    <AppProviders>
+      <div className="dark flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+        {children}
+      </div>
+    </AppProviders>
   )
 }

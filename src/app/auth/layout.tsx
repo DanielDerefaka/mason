@@ -3,6 +3,7 @@ import { fetchQuery } from 'convex/nextjs'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
+import { AppProviders } from '@/components/app-providers'
 import { isFreeWeek } from '@/lib/try/free-week'
 
 import { api } from '../../../convex/_generated/api'
@@ -35,6 +36,10 @@ export const metadata: Metadata = {
  * send them to /dashboard, and /dashboard sends anonymous users back to /try.
  * The way out of a guest session ran in a circle. This runs after the session
  * is resolved, so it can ask the question the middleware could not.
+ *
+ * The screens sign in through `useAuthActions`, which needs the auth provider
+ * above them, so the app's providers mount here rather than in the root; the
+ * root mounts nothing, which is what lets the marketing pages prerender.
  */
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   /**
@@ -59,5 +64,5 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   const token = await convexAuthNextjsToken()
   const user = token ? await fetchQuery(api.user.getCurrentUser, {}, { token }) : null
   if (user && !user.isAnonymous) redirect('/dashboard')
-  return children
+  return <AppProviders>{children}</AppProviders>
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { fetchQuery } from 'convex/nextjs'
 
 import { ExploreGallery } from '@/components/explore/gallery'
+import { PublicConvex } from '@/components/explore/provider'
 import { CtaSection } from '@/components/marketing/home/CtaSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
 import { SITE_URL } from '@/lib/site'
@@ -12,6 +13,20 @@ export const metadata: Metadata = {
   description:
     'Designs people sketched and SketchMason built. Remix one, or draw your own.',
 }
+
+/**
+ * Rendered per request, on purpose.
+ *
+ * The rest of the marketing group prerenders at build, now that the root
+ * layout reads nothing from the request. This page fetches the day's list from
+ * Convex, and the build must never reach the backend: the production build
+ * deploys the Convex functions in the same run, so at build time the query it
+ * would call may not exist yet, and a preview build points at the dev backend,
+ * whose gallery is not the site's. `revalidate` would put the same fetch back
+ * into the build for the first render, so it is not set either. A request-time
+ * render is what this page has always been; this line keeps it so.
+ */
+export const dynamic = 'force-dynamic'
 
 type ExplorePreview = {
   id: string
@@ -82,7 +97,9 @@ export default async function ExplorePage() {
           ) : null}
 
           <div className="mt-10 md:mt-12">
-            <ExploreGallery />
+            <PublicConvex>
+              <ExploreGallery />
+            </PublicConvex>
           </div>
         </div>
       </section>

@@ -141,6 +141,8 @@ export function SiteFooter({ freeWeek = false }: { freeWeek?: boolean }) {
                   alt={badge.alt}
                   width={badge.width}
                   height={badge.height}
+                  loading="lazy"
+                  decoding="async"
                   className="h-[50px] w-[200px]"
                 />
               </a>

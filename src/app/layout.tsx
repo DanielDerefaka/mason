@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist, Geist_Mono, Manrope, Inter, Fraunces, Outfit } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Fraunces } from "next/font/google";
 import "./globals.css";
-import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
-import { ConvexClientProvider } from "@/convex/provider";
-import { ReduxProvider } from "@/redux/provider";
-import { ThemeProvider } from "@/theme/provider";
-import { Toaster } from "@/components/ui/sonner";
 import { POSITIONING } from "@/lib/brand";
 import { AHREFS_ANALYTICS_KEY, AHREFS_ANALYTICS_SRC } from "@/lib/ahrefs";
 import { DATAFAST_DOMAIN, DATAFAST_WEBSITE_ID } from "@/lib/datafast";
@@ -22,21 +17,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// The style guide specimen font.
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
-});
-
-// Marketing typography. Outfit stands in for the reference's GT Walsheim, which
-// is a trial cut and not licensed for production — its own notes call the swap a
-// one-line change, and this is that line.
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
+// Two fonts that used to load here are gone from the root on purpose. Outfit
+// was declared for the marketing pages and nothing ever set it: every family
+// on those pages resolves to Geist, so it was a preloaded font on every route
+// for zero glyphs. Manrope is the style guide's specimen face, and it loads
+// with the specimen (`components/style-guide/typography.tsx`), the one
+// component whose `font-display` resolves to it; from here it was preloaded
+// on the landing page for a panel behind a session.
 
 const inter = Inter({
   variable: "--font-inter",
@@ -44,11 +31,17 @@ const inter = Inter({
   weight: ["400", "500", "700"],
 });
 
+// The italic serif behind `.font-display-italic`: a handful of words on the
+// blog index and the about page. Not preloaded, because preloading put a
+// variable font with three axes ahead of every page's first paint for those
+// few words. The @font-face still ships in the stylesheet, so the browser
+// fetches the file when text is set in it, and only then.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   style: ["italic"],
   axes: ["SOFT", "WONK", "opsz"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -132,41 +125,44 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The server provider has to sit outside <html> so it can read the auth
-    // cookie during SSR; the client provider goes inside <body>.
-    <ConvexAuthNextjsServerProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${outfit.variable} ${inter.variable} ${fraunces.variable} antialiased`}
-        >
-          <Script
-            src="https://datafa.st/js/script.js"
-            data-website-id={DATAFAST_WEBSITE_ID}
-            data-domain={DATAFAST_DOMAIN}
-            strategy="afterInteractive"
-          />
-          <Script
-            src={AHREFS_ANALYTICS_SRC}
-            data-key={AHREFS_ANALYTICS_KEY}
-            strategy="afterInteractive"
-          />
-          <ConvexClientProvider>
-            <ReduxProvider>
-              <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem={false}
-              disableTransitionOnChange
-            >
-                {children}
-                {/* Lifted clear of the canvas toolbar, which puts zoom in the
-                    bottom-right corner sonner otherwise lands in. */}
-                <Toaster offset={{ bottom: '96px' }} />
-              </ThemeProvider>
-            </ReduxProvider>
-          </ConvexClientProvider>
-        </body>
-      </html>
-    </ConvexAuthNextjsServerProvider>
+    // Nothing here reads the request, and nothing may. A dynamic API in the
+    // root layout opts every route on the site out of static rendering, and
+    // the auth provider used to wrap <html> here so it could read the session
+    // cookie during SSR: that one await was why /pricing rendered per request
+    // with `cache-control: no-store` and streamed its <title> into the body.
+    // The providers mount in the layouts whose screens use them
+    // (`components/app-providers.tsx`), which read the same cookie from the
+    // same request. One consequence: `isFreeWeek()` in the marketing layout is
+    // read at build now, not per request. On Vercel that changes nothing,
+    // since a change to the environment takes a redeploy to reach the server
+    // either way.
+    //
+    // The theme is a class, not a provider. next-themes was mounted with the
+    // system preference disabled and nothing ever called setTheme, so it was
+    // a script in the head, a context and a hydration warning to arrive at
+    // exactly this attribute. `color-scheme` keeps form controls and
+    // scrollbars dark, which the provider used to set on the same element.
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }} suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${fraunces.variable} antialiased`}
+      >
+        <Script
+          src="https://datafa.st/js/script.js"
+          data-website-id={DATAFAST_WEBSITE_ID}
+          data-domain={DATAFAST_DOMAIN}
+          strategy="afterInteractive"
+        />
+        {/* lazyOnload: Ahrefs is a second count of a pageview DataFast has
+            already taken, so it waits for the window's load event instead of
+            contending with hydration for the main thread. DataFast stays
+            afterInteractive so that an early bounce is still a pageview. */}
+        <Script
+          src={AHREFS_ANALYTICS_SRC}
+          data-key={AHREFS_ANALYTICS_KEY}
+          strategy="lazyOnload"
+        />
+        {children}
+      </body>
+    </html>
   );
 }
