@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { AUDIT_RULES, auditDesign, declarationBlocks, hsl, pixels } from './design-audit'
-import { DISPLAY_MIN, RADII, SECTION_PADDING, SPACE, TYPE_SCALE, designSystemRules } from './design-system'
+import { DISPLAY_MIN, RADII, SECTION_PADDING, SPACE, STOCK_PHRASES, TYPE_SCALE, designSystemRules } from './design-system'
 
 /**
  * The audit's whole value is that its findings are real.
  *
  * A log line nobody trusts is a log line nobody reads, and one false positive a
- * week is enough to lose the other fourteen rules. So the first and largest
+ * week is enough to lose the other sixteen rules. So the first and largest
  * test here is a design that follows the system, which must produce **nothing**
  * — every check has to stand down on correct work before any of them is worth
  * having.
@@ -194,6 +194,40 @@ describe('each rule', () => {
     expect(fires('landscape-only', '<img width="800" height="450">')).toBe(false)
   })
 
+  /**
+   * The first design generated after the system shipped broke none of the
+   * fifteen numeric rules and still wrote "the pour in seven — then the file
+   * work", which is the one thing this project has already decided reads as
+   * machine-written. The numbers were being checked and the words were not.
+   */
+  it('catches an em dash in a sentence and leaves one in a label alone', () => {
+    expect(
+      fires(
+        'em-dash',
+        '<p>Drawings reviewed in a week, moulds in three, the pour in seven — then the file work, which is the part we will not hurry.</p>',
+      ),
+    ).toBe(true)
+    expect(fires('em-dash', '<span>Oslo — Bjørvika</span><span>Lead time — 11 weeks</span>')).toBe(false)
+  })
+
+  /** Writing the entity rather than the character is the same sentence. */
+  it('is not fooled by &mdash; and does not read the stylesheet as copy', () => {
+    expect(
+      fires(
+        'em-dash',
+        '<p>Two of us in a workshop in Oslo &mdash; casting door handles to the drawings architects send us.</p>',
+      ),
+    ).toBe(true)
+    expect(fires('em-dash', `<style>/* a long comment — with a dash in it, and plenty of words to clear the bar */</style>`)).toBe(
+      false,
+    )
+  })
+
+  it('catches filler vocabulary without catching an ordinary word that starts the same way', () => {
+    expect(fires('stock-phrase', '<p>Seamlessly elevate your workflow to the next level.</p>')).toBe(true)
+    expect(fires('stock-phrase', '<p>Empowerment Ltd casts unleashed bronze in Oslo.</p>')).toBe(false)
+  })
+
   it('catches an emoji standing in for an icon, and leaves an arrow alone', () => {
     expect(fires('emoji', '<p>🚀 Fast</p>')).toBe(true)
     expect(fires('emoji', '<a href="#">Read the thesis →</a>')).toBe(false)
@@ -249,6 +283,12 @@ describe('the system the prompt states', () => {
     expect(rules).toContain(`at least ${DISPLAY_MIN}px`)
     expect(rules).toContain(RADII.join(', '))
     expect(rules).toContain(SPACE.desktop.join(', '))
+  })
+
+  /** A phrase the audit refuses but the brief never mentions is a trap, not a rule. */
+  it('names every phrase the audit will report', () => {
+    for (const phrase of STOCK_PHRASES) expect(rules).toContain(phrase)
+    expect(rules).toContain('No em dash inside a sentence')
   })
 
   it('carries every type role with its line-height and tracking', () => {
