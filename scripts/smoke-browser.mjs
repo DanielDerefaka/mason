@@ -12,6 +12,12 @@
  * or the app's own error boundary appearing in the DOM. Same-origin only —
  * an analytics script that a firewall blocks is not this app's fault.
  *
+ * It also looks at /try the way half of paid and social traffic does, from a
+ * phone: an emulated 390x844 touch screen, which must get the screen a phone
+ * is meant to get and must not ask for a guest session. That pass runs
+ * first, on a profile with no cookie yet, so any sign-in it makes is a mint
+ * and not a refresh of one the desktop pass left behind.
+ *
  * No dependencies. It talks to Chrome's DevTools protocol over the WebSocket
  * that Node has had built in since 22, and uses whatever Chrome is already
  * installed. If there is none, it says so and exits 0: this is an extra pair
@@ -44,6 +50,29 @@ const PAGES = ['/try', '/explore', '/', '/auth/sign-in', '/s/not-a-live-token']
  * that only exists once the bundle has run and its query has answered.
  */
 const EXPECTS = { '/s/not-a-live-token': 'Try SketchMason free' }
+
+/**
+ * /try from a phone. The shell settles the device before it mounts the guest
+ * gate, so a phone is told where Mason draws best and no session is minted
+ * for it: `/api/try/admit` is the admission ticket and `/api/auth` the
+ * sign-in that spends it, and a phone must reach neither. Every desktop visit
+ * to /try in this script spends one of the network's daily sessions; this
+ * one is meant to spend nothing, and the request list is how that is known
+ * rather than believed.
+ */
+const PHONE = {
+  path: '/try',
+  label: '/try on a 390x844 touch screen',
+  phone: true,
+  expect: 'Mason draws best on a desktop',
+  forbid: ['/api/try/admit', '/api/auth'],
+}
+
+/** The phone first: its profile must hold no cookie, or nothing is proved. */
+const PASSES = [
+  PHONE,
+  ...PAGES.map((path) => ({ path, label: path, phone: false, expect: EXPECTS[path] })),
+]
 
 /** How long a page gets to load, hydrate and settle before it is judged. */
 const SETTLE_MS = Number(process.env.SMOKE_SETTLE_MS ?? 9000)
@@ -134,6 +163,8 @@ const pending = new Map()
 let problems = []
 /** The status the main document came back with, or null if it never did. */
 let documentStatus = null
+/** Every URL the page asked for, so a pass can name what it must not have. */
+let requests = []
 
 const send = (method, params = {}) =>
   new Promise((resolve) => {
@@ -170,19 +201,44 @@ socket.addEventListener('message', (event) => {
     if (message.params.type === 'Document') documentStatus = status
     if (status >= 400 && sameOrigin(url)) problems.push(`${status} ${url}`)
   }
+  if (message.method === 'Network.requestWillBeSent') {
+    requests.push(message.params.request.url)
+  }
 })
 
 await send('Runtime.enable')
 await send('Page.enable')
 await send('Network.enable')
 
+/**
+ * A phone, or the desktop every other pass assumes. The metrics make it
+ * narrow; touch emulation is what makes `(pointer: coarse)` match, which is
+ * the other half of what the shell asks.
+ */
+const emulate = async (phone) => {
+  if (!phone) {
+    await send('Emulation.clearDeviceMetricsOverride')
+    await send('Emulation.setTouchEmulationEnabled', { enabled: false })
+    return
+  }
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 3,
+    mobile: true,
+  })
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })
+}
+
 let failures = 0
 console.log(`Browser smoke against ${BASE}\n`)
 
-for (const path of PAGES) {
+for (const pass of PASSES) {
   problems = []
+  requests = []
   documentStatus = null
-  const navigation = await send('Page.navigate', { url: `${BASE}${path}` })
+  await emulate(pass.phone)
+  const navigation = await send('Page.navigate', { url: `${BASE}${pass.path}` })
   // Chrome answers a connection it cannot make with its own error page,
   // which has text in it and no error boundary — so without this the whole
   // run passed against a server that was not running at all.
@@ -197,15 +253,31 @@ for (const path of PAGES) {
   const text = body?.result?.value ?? ''
 
   if (text.includes(ERROR_BOUNDARY)) problems.push('the error boundary rendered')
-  const expected = EXPECTS[path]
-  if (expected && !text.includes(expected)) problems.push(`never drew "${expected}"`)
+  if (pass.expect && !text.includes(pass.expect)) problems.push(`never drew "${pass.expect}"`)
   if (text.trim().length === 0) problems.push('the page rendered nothing at all')
+  for (const forbidden of pass.forbid ?? []) {
+    if (requests.some((url) => url.startsWith(`${BASE}${forbidden}`))) {
+      problems.push(`asked for ${forbidden}, so a session was minted for a phone`)
+    }
+  }
+  // Which half of the shell's question the emulation reached. The width alone
+  // decides this pass, so a Chrome whose touch emulation stops matching
+  // `(pointer: coarse)` is reported, not failed.
+  if (pass.phone) {
+    const coarse = await send('Runtime.evaluate', {
+      expression: "matchMedia('(pointer: coarse)').matches",
+      returnByValue: true,
+    })
+    pass.label += coarse?.result?.value
+      ? ' (pointer: coarse)'
+      : ' (pointer: fine, width alone decided)'
+  }
 
   if (problems.length === 0) {
-    console.log(`  ok   ${path}`)
+    console.log(`  ok   ${pass.label}`)
   } else {
     failures += 1
-    console.log(`  FAIL ${path}`)
+    console.log(`  FAIL ${pass.label}`)
     // Only the first few: one React error arrives three times over.
     for (const problem of problems.slice(0, 3)) {
       console.log(`       ${problem.split('\n')[0].slice(0, 160)}`)
@@ -213,5 +285,5 @@ for (const path of PAGES) {
   }
 }
 
-console.log(`\n${PAGES.length - failures}/${PAGES.length} passed`)
+console.log(`\n${PASSES.length - failures}/${PASSES.length} passed`)
 process.exit(failures === 0 ? 0 : 1)
