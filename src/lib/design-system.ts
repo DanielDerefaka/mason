@@ -117,6 +117,32 @@ export const GRID = {
  */
 export const SLOP_HUES = { from: 232, to: 295, minSaturation: 0.35 } as const
 
+/**
+ * Phrases that are absent from the copy of every site this system is drawn
+ * from, and present in almost every generated page.
+ *
+ * Deliberately short. A vocabulary blacklist goes wrong fast: "robust",
+ * "leverage" and "craft" are ordinary English and belong in real copy. Every
+ * entry below survives only as filler, so naming it costs a design nothing.
+ */
+export const STOCK_PHRASES = [
+  'seamless',
+  'seamlessly',
+  'effortless',
+  'effortlessly',
+  'elevate your',
+  'unlock the',
+  'unleash',
+  'supercharge',
+  'empower',
+  'transform your',
+  'to the next level',
+  'cutting-edge',
+  'state-of-the-art',
+  'game-changing',
+  "in today's",
+] as const
+
 const list = (items: readonly (string | number)[]) => items.join(', ')
 
 /**
@@ -235,6 +261,25 @@ timing across a row is forbidden.
   letterbox such as 3/1. Not everything in 16/9.
 - A full-height hero is \`calc(100dvh - <header height>)\`, in \`dvh\`, never a
   bare \`100vh\` and never a fixed pixel height.
+
+### Copy
+
+The words are part of the design, and they give a page away sooner than the
+type does.
+
+- **No em dash inside a sentence.** Not one, anywhere. A comma, a colon or a
+  full stop does the same work. Between the two halves of a micro-label the
+  character is a separator and is fine: \`OSLO — BJØRVIKA\` stays. It is
+  mid-sentence that it reads as machine-written, and it is the fastest tell
+  on the page.
+- None of these words, in any form: ${list(STOCK_PHRASES)}.
+  They are filler, and a page that reaches for them has not decided what it is
+  selling.
+- Every claim carries a number or a proper noun. "Two of us in a Bjørvika
+  workshop, casting door handles to architects' drawings" is copy. "Seamlessly
+  elevate your workflow" is a placeholder that forgot it was one.
+- One paragraph is at most 40 words. Supporting copy that runs longer is a
+  paragraph the design has not been asked to hold.
 
 ### Choose four things once
 

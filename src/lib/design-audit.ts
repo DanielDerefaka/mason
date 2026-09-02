@@ -5,6 +5,7 @@ import {
   RADII,
   SECTION_PADDING,
   SLOP_HUES,
+  STOCK_PHRASES,
 } from '@/lib/design-system'
 
 /**
@@ -497,6 +498,63 @@ const emoji: Check = (html) => {
   }
 }
 
+/**
+ * The words a visitor reads, one entry per run of text between two tags.
+ *
+ * Runs rather than one flat string, because the copy checks below are about a
+ * *sentence*: an em dash between the two halves of a label is typography, the
+ * same character mid-sentence is the tic. Flattening the fragment loses the
+ * only thing that separates them. `&mdash;` is folded back to the character
+ * first, or writing the entity would step around the rule.
+ */
+const textRuns = (html: string): string[] =>
+  html
+    .replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/&mdash;|&#8212;|&#x2014;/gi, '—')
+    .split(/<[^>]*>/)
+    .map((run) => run.replace(/&[a-z]+;|&#\d+;/gi, ' ').trim())
+    .filter((run) => run.length > 0)
+
+/**
+ * This project's own tell, which the model was never told about.
+ *
+ * The founder's rule for the site's copy is that an em dash reads as
+ * machine-written, and `metadata.test.ts` enforces it across the public
+ * surface. A generated page is copy a visitor reads too, and every design this
+ * product has made carries them, because the brief said nothing.
+ *
+ * Fires only on a dash inside a sentence: twelve words or more in the run and a
+ * lowercase letter after the dash. `OSLO — BJØRVIKA` is a separator and a real
+ * device on the sites this system is drawn from, so a check that caught that
+ * too would be wrong more often than right.
+ */
+const emDash: Check = (html) => {
+  const guilty = textRuns(html).filter(
+    (run) => run.split(/\s+/).length >= 12 && /—\s*\p{Ll}/u.test(run),
+  )
+  if (guilty.length === 0) return null
+  const around = guilty[0].match(/(\S+\s+){0,3}\S*—\s*\S+(\s+\S+){0,2}/u)
+  return {
+    rule: 'em-dash',
+    title: 'An em dash is sitting inside a sentence',
+    detail: `${guilty.length} of them, first at "${(around?.[0] ?? guilty[0]).trim()}". A comma or a full stop does the same work.`,
+  }
+}
+
+/** Filler vocabulary, matched whole-word so "empowerment" in a real brief survives. */
+const stockPhrase: Check = (html) => {
+  const text = textRuns(html).join(' ')
+  const found = STOCK_PHRASES.filter((phrase) =>
+    new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text),
+  )
+  if (found.length === 0) return null
+  return {
+    rule: 'stock-phrase',
+    title: 'The copy is reaching for filler',
+    detail: `${found.join(', ')}. Every claim should carry a number or a proper noun instead.`,
+  }
+}
+
 const CHECKS: Check[] = [
   timidDisplay,
   looseDisplay,
@@ -513,6 +571,8 @@ const CHECKS: Check[] = [
   lazyMotion,
   landscapeOnly,
   emoji,
+  emDash,
+  stockPhrase,
 ]
 
 /** Every rule this file knows how to check, for a test that keeps the two in step. */
@@ -532,6 +592,8 @@ export const AUDIT_RULES = [
   'lazy-motion',
   'landscape-only',
   'emoji',
+  'em-dash',
+  'stock-phrase',
 ] as const
 
 /**
@@ -539,7 +601,7 @@ export const AUDIT_RULES = [
  *
  * An empty array is a design that broke none of them, which is not the same as
  * a good design — none of this measures whether the page is any good, only
- * whether it fell into the fifteen holes that make a page look machine-made.
+ * whether it fell into the seventeen holes that make a page look machine-made.
  */
 export const auditDesign = (html: string | null | undefined): Finding[] => {
   if (!html || html.trim().length === 0) return []
