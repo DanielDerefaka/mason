@@ -107,7 +107,7 @@ export const ProjectArchive = () => {
           className="gap-1.5 rounded-full text-xs"
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-          {confirming ? 'Delete forever — including uploads' : 'Delete forever'}
+          {confirming ? 'Delete forever, including uploads' : 'Delete forever'}
         </Button>
       </div>
 

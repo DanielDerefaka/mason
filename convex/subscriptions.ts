@@ -2,12 +2,10 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
+import { CREDITS_PER_PERIOD } from '../src/lib/plan'
 
 /** Statuses Polar reports that still mean "this person can use the product". */
 const LIVE = new Set(['active', 'trialing'])
-
-/** Credits granted each time a subscription period is paid for. */
-export const CREDITS_PER_PERIOD = 200
 
 /**
  * Writes what Polar told us.

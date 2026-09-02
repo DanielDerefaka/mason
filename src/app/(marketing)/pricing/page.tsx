@@ -1,19 +1,33 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 import { CtaSection } from '@/components/marketing/home/CtaSection'
+import { PlanCard } from '@/components/marketing/pricing/PlanCard'
 import {
   PRICING_DESCRIPTION,
   PRICING_POINTS,
   PRICING_ROWS,
 } from '@/lib/marketing-pricing'
+import { pricePhrase } from '@/lib/plan'
+import { planPrice } from '@/lib/plan-price'
+import { polarConfigured } from '@/lib/polar'
 
 export const metadata: Metadata = {
   title: 'Pricing',
   description: PRICING_DESCRIPTION,
 }
 
-export default function PricingPage() {
+/**
+ * Re-rendered at most once an hour. The figure on the card is read from
+ * Polar through a cache with the same window; a page that never revalidated
+ * would print whatever Polar said at build time until the next deploy.
+ */
+export const revalidate = 3600
+
+export default async function PricingPage() {
+  // Null when Polar is not configured, which is production until launch, and
+  // on any failure: the card renders whole either way, only without a figure.
+  const price = await planPrice()
+
   return (
     <>
       <section className="section-pad">
@@ -29,7 +43,9 @@ export default function PricingPage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-12 max-w-[720px] overflow-hidden rounded-2xl border border-white/[0.1] bg-surface">
+          <PlanCard price={price ? pricePhrase(price) : null} checkout={polarConfigured} />
+
+          <div className="mx-auto mt-8 max-w-[720px] overflow-hidden rounded-2xl border border-white/[0.1] bg-surface">
             {PRICING_ROWS.map((row) => (
               <div
                 key={row.label}
@@ -61,14 +77,6 @@ export default function PricingPage() {
               </li>
             ))}
           </ul>
-
-          <p className="mx-auto mt-10 max-w-[640px] text-center text-[0.9rem] text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/billing" className="text-foreground underline-offset-4 hover:underline">
-              Open billing
-            </Link>
-            .
-          </p>
         </div>
       </section>
       <CtaSection />

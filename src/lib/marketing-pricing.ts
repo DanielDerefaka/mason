@@ -1,21 +1,56 @@
+import { CREDITS_PER_PERIOD } from './plan'
+
 /**
  * The public pricing page.
  *
- * No dollar figures. Those live in Polar, behind POLAR_PRODUCT_ID, and a
- * number printed here would be quoted by crawlers after the product moved.
- * The page explains the credit model, what is free, and where to start
- * without an account, then points signed-in visitors at billing.
+ * No dollar figure is written here. The price lives in Polar, behind
+ * POLAR_PRODUCT_ID, and a number typed into this file would be quoted by
+ * crawlers after the product moved; `src/lib/plan-price.ts` reads it at
+ * render time instead, an hour at a time. What is written is the shape of
+ * the plan, built from the constant the webhook grants, so the page and the
+ * ledger cannot disagree about what a month buys.
  */
 
 export const PRICING_DESCRIPTION =
   'SketchMason charges for generations, not for drawing. Guests can try the canvas without an account. Signed-in plans are on the billing page.'
 
+/**
+ * The one paid tier. The lead and the pill both take their number from
+ * `CREDITS_PER_PERIOD`; `marketing-pricing.test.ts` holds the wording.
+ */
+export const PLAN = {
+  name: 'The SketchMason plan',
+  lead: `${CREDITS_PER_PERIOD} credits a month.`,
+  body: 'Style guides from your own mood board, designs, flows and mobile versions, the editor and public share links. Cancel whenever you like.',
+  // `ref`, not `utm_*`: a utm on an internal hop re-labels the session's
+  // source in analytics, and a visitor who came from X would be filed under
+  // the pricing page from this click on.
+  checkout: {
+    label: `Get ${CREDITS_PER_PERIOD} credits a month`,
+    href: '/api/polar/checkout?ref=pricing',
+  },
+  // In place of the pill while Polar is not configured, which is production
+  // until launch. The form is the footer's: a plain GET to /try, where the
+  // email gate reads `?email=` and the address goes on the launch list.
+  launch: {
+    lead: 'Plans open at launch. Leave an email and we will tell you.',
+    action: '/try',
+  },
+  billing: { lead: 'Already subscribed?', label: 'Open billing', href: '/billing' },
+}
+
+/**
+ * Shown on / and on /pricing from this one list. "Ten" is `STARTING_CREDITS`
+ * in convex/credits.ts, spelt out because the rest of the row is words; the
+ * test reads the constant and fails if they part.
+ */
 export const PRICING_ROWS: { label: string; value: string }[] = [
   { label: 'Style guide from a mood board', value: '1 credit' },
   { label: 'Screen from a sketch', value: '1 credit' },
   { label: 'Each page in a generated flow', value: '1 credit' },
   { label: 'Revision from the design chat', value: '1 credit' },
   { label: 'Canvas, references, history', value: 'Free' },
+  { label: 'A new account starts with ten generations', value: 'No card needed' },
 ]
 
 export const PRICING_POINTS: { title: string; body: string }[] = [
@@ -33,6 +68,6 @@ export const PRICING_POINTS: { title: string; body: string }[] = [
   },
   {
     title: 'Paid plans',
-    body: 'Signed-in accounts buy credits. Current prices are on the billing page after you sign in, because they are read from the payment provider rather than written into this site.',
+    body: `One plan: ${CREDITS_PER_PERIOD} credits a month. The price is read from the payment provider rather than written into this site, so it cannot drift from what you are charged. Cancel whenever you like.`,
   },
 ]

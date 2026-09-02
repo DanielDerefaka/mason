@@ -85,6 +85,22 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     answer:
       'The design exports as a standalone HTML file, a hand-off brief describing it, or a Next.js project starter. Every export is taken from the design as it stands on screen, so edits made after generating are included.',
   },
+  /**
+   * Three numbers, none of them typed twice: one a day is `poolAvailableFor`
+   * in convex/lib/pool.ts, two is `SHARE_BONUS` in convex/guest.ts, and ten
+   * is `STARTING_CREDITS` in convex/credits.ts. The pool's size is the figure
+   * left out, because `COMMUNITY_POOL_SIZE` moves without a deploy. The key
+   * clause is `src/lib/generation-charge.ts`: a generation on the visitor's
+   * own key is not charged. The last sentence is the pricing table's row
+   * about a new account, folded in here because the page is capped at
+   * twelve questions and this is the twelfth. `marketing-pricing.test.ts`
+   * reads each constant and fails if the words here stop matching it.
+   */
+  {
+    question: 'How many free generations are there?',
+    answer:
+      'The community pool gives every guest one a day, and it is shared by the whole site, so a busy day can run dry before you arrive. Sharing a design on X adds two. An account starts with ten, and your own Anthropic key removes the limit. No card needed.',
+  },
 ]
 
 /**

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
+import { remixHref } from '@/lib/try/remix'
 import { LogoMark } from '@/components/logo-mark'
 import { api } from '../../../convex/_generated/api'
 import { StyleGuideSchema } from '@/types/style-guide'
@@ -27,14 +28,16 @@ const TRY_HREF = '/try?ref=share'
  *
  * The same render path as the private preview — sanitised markup with the
  * guide's tokens bound — but reached with a token instead of a session. The
- * only thing of ours on the page is a small pill in the corner, because the
- * point of sending someone a link is that they see the design.
+ * design has the page to itself; what is ours sits under it, where a reader
+ * who has scrolled to the end of a screen is the reader who wants to know
+ * how it was made.
  *
- * The pill is also the way in. Someone looking at a shared design has just
+ * That bar is also the way in. Someone looking at a shared design has just
  * watched the thing work, which makes them the warmest visitor /try has —
  * and every link on this page used to end on the marketing home, where the
- * pitch starts again from the top. Nothing about the viewing changes: no
- * session is minted to look, and none is spent.
+ * pitch starts again from the top. It used to be an 11px pill in the corner,
+ * legible only to someone who went looking for it. Nothing about the viewing
+ * changes: no session is minted to look, and none is spent.
  */
 export const SharedDesign = ({ token }: { token: string }) => {
   const shared = useQuery(api.shares.getSharedDesign, { token })
@@ -115,25 +118,45 @@ export const SharedDesign = ({ token }: { token: string }) => {
         dangerouslySetInnerHTML={{ __html: sanitiseHtml(shared.html) }}
       />
 
-      {/* Legible at rest, where it used to sit at 40% until hovered: a way in
-          that has to be hovered to be read is not a way in. Still small, still
-          in the corner, still over the design rather than in it. */}
-      <div className="fixed bottom-4 left-4 z-50 flex items-center overflow-hidden rounded-full bg-black/75 text-[11px] text-white/80 backdrop-blur">
-        <Link
-          href="/"
-          title="Made with SketchMason"
-          className="flex items-center gap-2 py-2 pr-2.5 pl-3 transition-colors hover:text-white"
-        >
-          <LogoMark className="size-3.5" />
-          Made with SketchMason
-        </Link>
-        <Link
-          href={TRY_HREF}
-          className="border-l border-white/15 py-2 pr-3 pl-2.5 font-medium text-white transition-colors hover:bg-white/10"
-        >
-          Try SketchMason free
-        </Link>
-      </div>
+      {/* Under the design, not over it, and in colours of its own: the
+          design's tokens are bound on the root above, so `text-foreground`
+          here would be whatever the design chose, on a background the design
+          chose too. Every colour in the bar is literal. */}
+      <footer className="border-t border-white/10 bg-[#0b0b0c] px-6 py-10 text-white md:py-12">
+        <div className="mx-auto flex max-w-[720px] flex-col items-center text-center">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-[0.8rem] text-white/60 transition-colors hover:text-white"
+          >
+            <LogoMark className="size-4" />
+            Made with SketchMason
+          </Link>
+          <h2 className="mt-5 text-[1.5rem] font-medium tracking-[-0.02em] md:text-[1.75rem]">
+            This started as a rough sketch.
+          </h2>
+          <p className="mt-3 max-w-[520px] text-[0.95rem] leading-relaxed text-white/70">
+            Draw boxes, label them, and SketchMason builds the screen. No account needed.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={TRY_HREF}
+              className="rounded-full bg-white px-5 py-2.5 text-[0.9rem] font-medium text-black transition-opacity hover:opacity-90"
+            >
+              Draw your own, free
+            </Link>
+            {/* Only when the owner put the design in Explore: a remix needs
+                the sketch, which the gallery row holds and a share does not. */}
+            {shared.remixId ? (
+              <Link
+                href={remixHref(shared.remixId)}
+                className="rounded-full border border-white/20 px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-white/10"
+              >
+                Remix this design
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

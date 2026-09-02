@@ -7,6 +7,13 @@ export type RemixPayload = { frame: Shape; shapes: Shape[] }
 export const REMIX_GAP = 120
 
 /**
+ * Where a remix starts. One spelling for the Explore card and the share page,
+ * because the shell reads `?remix=` and a link built by hand in a second place
+ * is a link that drifts.
+ */
+export const remixHref = (galleryId: string) => `/try?remix=${galleryId}`
+
+/**
  * Copies somebody else's sketch onto this canvas.
  *
  * Everything gets a fresh id, because the payload's ids are whatever the

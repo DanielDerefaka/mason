@@ -121,7 +121,7 @@ export const SettingsView = () => {
                 className="bg-white/[0.03] focus-visible:ring-0"
               />
               <p className="text-muted-foreground text-xs">
-                Your email is how you sign in, so it cannot be changed here — that
+                Your email is how you sign in, so it cannot be changed here: that
                 needs a verification step this app does not have yet.
               </p>
             </div>
@@ -140,7 +140,7 @@ export const SettingsView = () => {
                   {credits == null ? '—' : credits}
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  One credit per generation — a style guide, a screen, a page in a
+                  One credit per generation: a style guide, a screen, a page in a
                   flow, or a revision. Drawing on the canvas is free.
                 </p>
               </div>

@@ -1,5 +1,7 @@
 import type { ApproachStep, FaqItem, ServiceCard } from '@/types/marketing-content'
 
+import { PRICING_ROWS } from './marketing-pricing'
+
 /* ------------------------------------------------------------------ *
  * Imagery
  *
@@ -266,21 +268,18 @@ export const CASE_IN_POINT = {
 /* ------------------------------------------------------------------ *
  * Credits
  *
- * What a credit buys, stated as rows rather than a price list; plan prices
- * live in the app, where they are read from the billing config.
+ * What a credit buys, stated as rows rather than a price list; the plan and
+ * its price are on /pricing, where the price is read from Polar.
  * ------------------------------------------------------------------ */
 
 export const CREDITS = {
   eyebrow: 'Credits',
   headline: { lead: 'Pay for generations.', emphasis: 'Everything else is free.' },
   quote: 'A credit is one generation: a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing and everything else on the canvas costs nothing.',
-  rows: [
-    { label: 'Style guide from a mood board', value: '1 credit' },
-    { label: 'Screen from a sketch', value: '1 credit' },
-    { label: 'Each page in a generated flow', value: '1 credit' },
-    { label: 'Revision from the design chat', value: '1 credit' },
-    { label: 'Canvas, references, history', value: 'Free' },
-  ],
+  // The same list /pricing renders, by reference and not by copy: the two
+  // tables were byte-identical by hand, which held until the first row was
+  // added to one of them.
+  rows: PRICING_ROWS,
   cta: { label: 'Start free', href: '/try' },
 }
 
@@ -318,7 +317,12 @@ export const FAQS: FaqItem[] = [
 
 export const CTA = {
   headline: { lead: 'Draw the shape.', emphasis: 'Get the product.' },
-  body: 'Free to start. The first style guide and screen are on us.',
+  // Three numbers, each read from the code that enforces it by
+  // `marketing-pricing.test.ts`: one a day is the pool's rule, two is
+  // `SHARE_BONUS`, ten is `STARTING_CREDITS`. The old line promised "the
+  // first style guide and screen", which was two generations to a guest who
+  // gets one.
+  body: 'Free to start. One generation a day is on us, two more if you share it, and an account starts you with ten.',
   // The canvas, not a sign-up form, and not conditionally: /try is public with
   // or without the free week, and this pill closes every marketing page. It
   // said "Start free" and went to /auth/sign-up whenever FREE_WEEK was unset,
