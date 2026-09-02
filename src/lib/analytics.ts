@@ -32,6 +32,10 @@ export const EVENTS = [
   'guest_admitted',
   'guest_refused',
   'design_opened',
+  // Whether anybody finds the history is the question the panel was built to
+  // answer, so the opening is worth as much as the restore.
+  'design_history_opened',
+  'design_restored',
   'export_clicked',
   'share_created',
   'explore_remix_clicked',

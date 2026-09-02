@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
+import type * as design_versions from "../design_versions.js";
 import type * as email from "../email.js";
 import type * as explore from "../explore.js";
 import type * as guest from "../guest.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   credits: typeof credits;
   crons: typeof crons;
+  design_versions: typeof design_versions;
   email: typeof email;
   explore: typeof explore;
   guest: typeof guest;

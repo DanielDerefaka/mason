@@ -24,6 +24,40 @@ export default defineSchema({
   }).index('by_project', ['projectId']),
 
   /**
+   * What one design's markup looked like before an editing session changed it.
+   *
+   * Separate from `versions` above, which snapshots the whole canvas when
+   * somebody presses a button. These are taken automatically and hold a single
+   * design, because both halves of that matter. The editor writes a design
+   * back over itself with no history of its own, so an afternoon's layout used
+   * to sit behind nothing but the tab's undo stack — close the tab and the only
+   * way back was to build it again. And a design lives on a canvas beside
+   * others, so reverting through `versions` would drag every one of them back
+   * with it; restoring here touches the design named on the row and nothing
+   * else.
+   *
+   * `html` is the markup as the editor serialised it, which is to say it has
+   * already been through the sanitiser once. Restoring puts it back through
+   * `sanitiseHtml` all the same, on the client, where the DOM the sanitiser
+   * needs exists: a row written before a rule was tightened has never been
+   * through the newer one, and time in the database is not a warrant.
+   */
+  design_versions: defineTable({
+    projectId: v.id('projects'),
+    /** The shape id of the design, as it appears in `sketchesData`. */
+    designId: v.string(),
+    userId: v.id('users'),
+    html: v.string(),
+    createdAt: v.number(),
+    origin: v.union(v.literal('original'), v.literal('edit'), v.literal('restore')),
+  })
+    // The list a design's history panel asks for.
+    .index('by_design', ['projectId', 'designId'])
+    // Only ever used to clear up after a project that is being deleted, which
+    // has to reach every design on it at once.
+    .index('by_project', ['projectId']),
+
+  /**
    * Public links to a single generated design.
    *
    * A row per share rather than a flag on the project: a link points at one
