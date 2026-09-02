@@ -21,6 +21,7 @@ import {
   type Shape,
 } from '@/redux/slice/shapes'
 import type { RootState } from '@/redux/store'
+import { describeFrame } from '@/lib/frame-manifest'
 import { rasteriseFrame } from '@/lib/rasterise'
 
 const selectors = shapesAdapter.getSelectors()
@@ -51,6 +52,11 @@ export const useFrame = () => {
 
     try {
       const image = await rasteriseFrame(frame, shapes)
+      // The same shapes the picture was drawn from, as words: where each
+      // element is, how big, what it holds and what points at it, so the
+      // model reads the geometry as numbers rather than estimating it from
+      // purple blocks.
+      const manifest = describeFrame(frame, shapes)
 
       const form = new FormData()
       form.append('image', image, 'frame.png')
@@ -58,6 +64,7 @@ export const useFrame = () => {
       form.append('frameLabel', frame.label ?? '')
       // Empty rather than absent, so the route sees the field either way.
       form.append('instruction', frame.instruction ?? '')
+      form.append('manifest', manifest)
 
       const response = await generateFetch('/api/generate', { method: 'POST', body: form })
 

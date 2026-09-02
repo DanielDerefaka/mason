@@ -813,17 +813,37 @@ No markdown fence, no commentary, no explanation. Markup only.`,
      * A device preset is filtered out upstream, because describing the sketch
      * as being "of" a MacBook Air is what made the model design MacBook Air
      * pages out of unrelated sketches.
+     *
+     * `manifest` is the sketch as words — every element with its position and
+     * size as a percentage of the frame, what it holds and what points at it —
+     * built from the shape data by `describeFrame`. It sits in this text part,
+     * ahead of the image, so the geometry is read from numbers and the picture
+     * only has to show what numbers cannot. Optional because a client from
+     * before it existed sends none, and a sketch alone still has to work.
      */
-    user: (screenName: string, referenceCount = 0, instruction?: string) =>
-      `Turn the first image — a sketch${screenName ? ` of a screen called "${screenName}"` : ''} — into a finished design. ` +
-      (referenceCount > 0
-        ? `The ${referenceCount === 1 ? 'image' : `${referenceCount} images`} after it ${referenceCount === 1 ? 'is a reference' : 'are references'} for the look, not the layout. `
-        : '') +
-      `Follow the sketch's layout, use the supplied design system, and return only the HTML fragment.` +
-      // A sentence from the person who drew it, when they gave one. Quoted and
-      // attributed rather than merged into the instructions, so a request
-      // that reads like a command stays a description of the sketch.
-      (instruction ? `\n\nThe person who drew this says: "${instruction}"` : ''),
+    user: (screenName: string, referenceCount = 0, instruction?: string, manifest?: string) => {
+      const references =
+        referenceCount === 0
+          ? `There are no reference images: the direction comes from the sketch, ${instruction ? 'the note below' : 'its labels'} and the brand.`
+          : referenceCount === 1
+            ? 'The image after it is a reference: borrow its look, not its layout.'
+            : `The ${referenceCount} images after it are references: borrow their look, not their layout.`
+
+      return [
+        `Turn the sketch — the first image${manifest ? ', described element by element in the manifest below' : ''} — into a finished design${screenName ? ` of a screen called "${screenName}"` : ''}. ` +
+          `${references} ` +
+          `Derive the layout from the ${manifest ? "manifest's" : "sketch's"} geometry, use the design system, and return only the HTML fragment.`,
+        ...(manifest ? [`## Manifest\n\n${manifest}`] : []),
+        // A sentence from the person who drew it, when they gave one. Quoted and
+        // attributed rather than merged into the instructions, so a request
+        // that reads like a command stays a description of the sketch. When
+        // there is none, say so: the labels are then the only brief there is,
+        // and the model should not invent a subject to fill the silence.
+        instruction
+          ? `The person who drew this says: "${instruction}"`
+          : 'The person who drew this left no note; the labels are the brief.',
+      ].join('\n\n')
+    },
   },
   styleGuide: {
     system: styleGuideSystem,

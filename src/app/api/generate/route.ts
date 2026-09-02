@@ -20,6 +20,7 @@ import {
 import { prompts } from '@/prompts'
 import { EMPTY_MARKER, TRUNCATION_MARKER, isUnusable } from '@/lib/truncation'
 import { ensureReferenceBrief } from '@/lib/reference-brief'
+import { MANIFEST_MAX_CHARS } from '@/lib/frame-manifest'
 import { isDevicePresetName } from '@/lib/frame-presets'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
@@ -58,6 +59,13 @@ export async function POST(request: NextRequest) {
     // What the person who drew the frame said it is for, if anything. Capped
     // rather than refused: a sentence too long is still a sentence.
     const instruction = ((form.get('instruction') as string | null) ?? '').trim().slice(0, 600)
+    // The sketch in words, written by the browser from the shape data. It is
+    // text a client sent, so it is cut here whatever the client claims rather
+    // than trusted: an honest manifest stops well short of the cap, and a
+    // client from before it existed sends none and still gets a design.
+    const rawManifest = form.get('manifest')
+    const manifest =
+      typeof rawManifest === 'string' ? rawManifest.trim().slice(0, MANIFEST_MAX_CHARS) : ''
 
     if (!(image instanceof File) || !image.type.startsWith('image/')) {
       return NextResponse.json({ message: 'A frame image is required' }, { status: 400 })
@@ -113,9 +121,11 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           content: [
+            // The manifest travels in this text part, ahead of the picture,
+            // so the geometry is read as numbers before the pixels are seen.
             {
               type: 'text',
-              text: prompts.generatedUi.user(frameLabel, inspirationUrls.length, instruction),
+              text: prompts.generatedUi.user(frameLabel, inspirationUrls.length, instruction, manifest),
             },
             { type: 'file', mediaType: image.type, data: sketch },
             // Order matters: the prompt tells the model the first image is the
