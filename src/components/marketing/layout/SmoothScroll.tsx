@@ -1,26 +1,30 @@
 "use client";
 
 import { useEffect } from "react";
-import Lenis from "lenis";
 
 /**
- * The reference runs Lenis (`<html class="lenis lenis-smooth">`). Native scrolling
- * feels noticeably different, so this is not optional styling — it's part of the clone.
+ * Anchor scrolling for the marketing pages, and momentum scrolling for the
+ * pointers that suit it.
+ *
+ * Two things used to be one. Lenis ran on every marketing page, on every
+ * device, turning every wheel and touch event into a JavaScript animation
+ * frame; the in-page anchor handling that lands `/#services` under the sticky
+ * header was written inside the same effect, so it existed only when Lenis
+ * did. A phone got the frame loop it has no use for, and any browser that
+ * skipped Lenis lost its anchors too.
+ *
+ * The anchor handler is now unconditional and needs no library: `scrollTo`
+ * with the element's own offset does what `lenis.scrollTo(..., -68)` did.
+ * Lenis is loaded only for a fine pointer, and only when the visitor has not
+ * asked for less motion — a mouse wheel is what it smooths, and a trackpad or
+ * a touchscreen already scrolls smoothly on its own.
  */
 export function SmoothScroll() {
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // The sticky header is 68px tall; land the section just beneath it.
+    const HEADER = 68;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
-    let frame = 0;
-
-    const raf = (time: number) => {
-      lenis.raf(time);
-      frame = requestAnimationFrame(raf);
-    };
-    frame = requestAnimationFrame(raf);
-
-    // Let in-page anchors (/#services) route through Lenis for the same easing.
     const onClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement | null)?.closest?.('a[href*="#"]');
       if (!anchor) return;
@@ -32,16 +36,33 @@ export function SmoothScroll() {
       const target = document.querySelector(hash);
       if (!target) return;
       e.preventDefault();
-      // The sticky header is 68px tall; land the section just beneath it.
-      lenis.scrollTo(target as HTMLElement, { offset: -68 });
+      const top = target.getBoundingClientRect().top + window.scrollY - HEADER;
+      window.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
       window.history.replaceState(null, "", hash);
     };
 
     document.addEventListener("click", onClick);
+
+    // Nothing below this line runs on a phone, a tablet or a reduced-motion
+    // browser, and the import is what keeps Lenis out of their bundle.
+    let stop: (() => void) | null = null;
+    if (!reduced && window.matchMedia("(pointer: fine)").matches) {
+      void import("lenis").then(({ default: Lenis }) => {
+        const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+        let frame = requestAnimationFrame(function raf(time: number) {
+          lenis.raf(time);
+          frame = requestAnimationFrame(raf);
+        });
+        stop = () => {
+          cancelAnimationFrame(frame);
+          lenis.destroy();
+        };
+      });
+    }
+
     return () => {
       document.removeEventListener("click", onClick);
-      cancelAnimationFrame(frame);
-      lenis.destroy();
+      stop?.();
     };
   }, []);
 

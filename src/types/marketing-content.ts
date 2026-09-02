@@ -38,6 +38,8 @@ export interface FaqItem {
 export interface BlogPost {
   slug: string;
   title: string;
+  /** The shorter title a search result has room for, when the heading is long. */
+  seoTitle?: string;
   /** For reading: "4 August 2026". */
   date: string;
   /** For machines: the ISO date behind it, for <time> and the structured data. */

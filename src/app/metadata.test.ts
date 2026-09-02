@@ -122,7 +122,7 @@ describe('the site tells a crawler who it is', () => {
   })
 
   it('titles child pages through one template, with the public name as the suffix', () => {
-    expect(layout).toMatch(/default: "SketchMason: draw the shape, get the product"/)
+    expect(layout).toMatch(/default: "SketchMason: from a rough sketch to a finished UI design"/)
     expect(layout).toMatch(/template: "%s \| SketchMason"/)
   })
 
@@ -493,7 +493,7 @@ describe('/llms.txt', () => {
     // Both names in the first sentence: a model that reads this is the thing
     // most likely to be asked "what is Mason?" without the prefix.
     expect(text).toMatch(/^SketchMason, or Mason for short, is an AI design tool/m)
-    expect(text).toMatch(/turns a hand-drawn\s+interface sketch into a finished, consistent UI design/)
+    expect(text).toMatch(/turns a hand-drawn\s+interface sketch into a finished UI design/)
   })
 
   it('links every public page, on the host that answers 200', async () => {
@@ -601,15 +601,17 @@ describe('what the home page tells a machine it is', () => {
   it('tells a machine that SketchMason and Mason are one entity', () => {
     expect(ORGANIZATION).toEqual({
       '@type': 'Organization',
+      '@id': 'https://www.sketchmason.com/#organization',
       name: 'SketchMason',
       alternateName: 'Mason',
       url: 'https://www.sketchmason.com',
       logo: 'https://www.sketchmason.com/apple-icon.png',
       sameAs: SOCIAL_LINKS.map((link) => link.href),
+      email: 'hello@sketchmason.com',
     })
     expect(home).toMatch(/\{ '@context': 'https:\/\/schema\.org', \.\.\.ORGANIZATION \}/)
     expect(home).toMatch(/alternateName: 'Mason'/)
-    expect(home.match(/<JsonLd data=/g)).toHaveLength(3)
+    expect(home.match(/<JsonLd data=/g)).toHaveLength(4)
     const post = read('src/app/(marketing)/blog/[slug]/page.tsx')
     expect(post).toMatch(/author: ORGANIZATION,/)
     expect(post).toMatch(/publisher: ORGANIZATION,/)
@@ -668,7 +670,7 @@ describe('/faq answers only what the code can be checked against', () => {
   const page = read('src/app/(marketing)/faq/page.tsx')
 
   it('titles and describes itself, and resolves its own canonical', () => {
-    expect(page).toMatch(/title: 'FAQ'/)
+    expect(page).toMatch(/title: 'FAQ: how a sketch becomes a UI design'/)
     expect(page).toMatch(/description:/)
     expect(page).toMatch(/alternates: \{ canonical: '\.\/' \}/)
   })
@@ -805,7 +807,13 @@ describe('the public surface stays in its category', () => {
   const surface = [
     join(APP_DIR, 'layout.tsx'),
     join(APP_DIR, 'opengraph-image.tsx'),
-    join(APP_DIR, 'try/layout.tsx'),
+    // The page a mistyped link lands on is as public as any other, and it
+    // said "Try Mason free" while every marketing page said SketchMason.
+    join(APP_DIR, 'not-found.tsx'),
+    join(APP_DIR, 'sitemap.ts'),
+    // /try's own page, not just its layout: the block a crawler reads when
+    // the canvas never runs is written here.
+    ...walk(join(APP_DIR, 'try')),
     ...walk(join(APP_DIR, '(marketing)')),
     ...walk(join(APP_DIR, 'llms.txt')),
     ...walk(join(APP_DIR, 's')),
@@ -866,8 +874,9 @@ describe('the public surface stays in its category', () => {
       ...walk(join(process.cwd(), 'src/content')),
       ...walk(join(process.cwd(), 'src/components/try')),
       ...walk(join(process.cwd(), 'src/lib/try')),
-      ...walk(join(APP_DIR, 'try')),
       join(process.cwd(), 'src/lib/byok.ts'),
+      join(process.cwd(), 'src/hooks/use-auth.ts'),
+      join(APP_DIR, 'not-found.tsx'),
       ...walk(join(process.cwd(), 'src/components/billing')),
       ...walk(join(process.cwd(), 'src/components/projects')),
       ...walk(join(process.cwd(), 'src/components/settings')),

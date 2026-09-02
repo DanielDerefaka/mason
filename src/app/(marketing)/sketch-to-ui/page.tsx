@@ -8,9 +8,10 @@ import {
   SKETCH_TO_UI_FAQ,
   SKETCH_TO_UI_STEPS,
 } from '@/lib/marketing-sketch-to-ui'
+import { breadcrumbs, webPage } from '@/lib/structured-data'
 
 export const metadata: Metadata = {
-  title: 'Sketch to UI',
+  title: 'Sketch to UI from a hand-drawn layout',
   description: SKETCH_TO_UI_DESCRIPTION,
 }
 
@@ -28,6 +29,10 @@ export default function SketchToUiPage() {
   return (
     <>
       <JsonLd data={faqPage} />
+      <JsonLd
+        data={webPage('Sketch to UI', '/sketch-to-ui', SKETCH_TO_UI_DESCRIPTION)}
+      />
+      <JsonLd data={breadcrumbs([{ name: 'Sketch to UI', path: '/sketch-to-ui' }])} />
       <section className="section-pad">
         <div className="container-home">
           <div className="mx-auto max-w-[680px] text-center">

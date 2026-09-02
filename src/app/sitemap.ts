@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 import { POSTS } from '@/content/posts'
+import { LEGAL_UPDATED } from '@/lib/marketing-legal'
 import { SITE_URL } from '@/lib/site'
 
 const SITE = SITE_URL
@@ -19,6 +20,10 @@ const SITE = SITE_URL
  * both or in neither.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
+  // Parsed as UTC: without the suffix a build west of Greenwich reads the
+  // date as local midnight and the sitemap says the day before.
+  const legal = new Date(`${LEGAL_UPDATED} UTC`)
+
   const pages: MetadataRoute.Sitemap = [
     { url: `${SITE}/`, changeFrequency: 'weekly', priority: 1 },
     // The trial is the one page the site most wants found.
@@ -40,8 +45,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/pricing`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE}/compare`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE}/sketch-to-ui`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${SITE}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
-    { url: `${SITE}/terms`, changeFrequency: 'yearly', priority: 0.2 },
+    // The only two pages with a revision date a person can check, so they
+    // are the only two that get a `lastModified`. A date invented for a page
+    // that has not changed is a claim the next crawl disproves, and a
+    // sitemap whose every entry says "today" is one Google stops reading.
+    { url: `${SITE}/privacy`, changeFrequency: 'yearly', priority: 0.2, lastModified: legal },
+    { url: `${SITE}/terms`, changeFrequency: 'yearly', priority: 0.2, lastModified: legal },
     // Not a page but a file, and the one entry a crawler written for models
     // is looking for. It answered 200 for a week while this list left it out,
     // which is the kind of omission nothing reports.

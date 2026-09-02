@@ -1,5 +1,6 @@
-import { SOCIAL_LINKS } from '@/lib/marketing-nav'
+import { CONTACT, SOCIAL_LINKS } from '@/lib/marketing-nav'
 import { SITE_URL } from '@/lib/site'
+import { ORGANIZATION_ID } from '@/lib/structured-data'
 
 /**
  * The name, and what it stands for, in one place.
@@ -26,7 +27,7 @@ import { SITE_URL } from '@/lib/site'
  * the whole public surface.
  */
 export const POSITIONING =
-  'SketchMason is an AI design tool that turns rough sketches into finished, consistent UI designs and full product flows.'
+  'SketchMason is an AI design tool that turns a hand-drawn interface sketch into a finished UI design, built on a design system and exported as HTML.'
 
 /**
  * The organisation, as structured data.
@@ -41,6 +42,11 @@ export const POSITIONING =
  */
 export const ORGANIZATION = {
   '@type': 'Organization',
+  // The identifier every other block points at. Without it the homepage
+  // declared an Organization, each post named a `publisher` with the same
+  // fields, and nothing said the two were the same node: a machine reading
+  // the site had one entity per page rather than one entity.
+  '@id': ORGANIZATION_ID,
   name: 'SketchMason',
   alternateName: 'Mason',
   url: SITE_URL,
@@ -50,4 +56,8 @@ export const ORGANIZATION = {
   // is not.
   logo: `${SITE_URL}/apple-icon.png`,
   sameAs: SOCIAL_LINKS.map((link) => link.href),
+  // The same address the footer prints. A contact point is one of the few
+  // fields a knowledge panel will show, and it was the one thing the site
+  // told visitors and never told a machine.
+  email: CONTACT.email,
 }

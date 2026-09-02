@@ -40,8 +40,17 @@ export function HeroSection() {
       className="relative overflow-x-clip px-5 pt-[clamp(80px,12vh,128px)] pb-[clamp(2.5rem,5vw,4rem)] md:px-8"
     >
       <div className="relative mx-auto w-full max-w-[1320px]">
-        {/* Copy block — left-aligned: eyebrow, headline, checklist, one link. */}
-        <div className="reveal">
+        {/* Copy block — left-aligned: eyebrow, headline, checklist, one link.
+            No `reveal` here, deliberately. The class holds an element at
+            opacity 0 until an IntersectionObserver adds `.revealed`, which
+            cannot happen before the bundle has downloaded, parsed and
+            hydrated. On the hero that meant the headline, the positioning
+            sentence and both pills were invisible for the whole of a slow
+            load: the page painted the image and an empty column beside it,
+            and the largest text block on the site was also its last. The
+            image was already kept out of the reveal for the same reason.
+            Sections below the fold still animate in; nothing above it may. */}
+        <div>
           <p className="mb-5 text-[0.82rem] font-medium tracking-[-0.01em] text-white/[0.42]">
             {HERO.eyebrow}
           </p>

@@ -38,8 +38,8 @@ describe('/about-us opens by saying what SketchMason is', () => {
    * short one the product still uses — and the name is the domain.
    */
   it('names the product under both its names, what goes in and what comes out', () => {
-    expect(ABOUT_DEFINITION).toMatch(/^SketchMason, or Mason for short, turns rough sketches/)
-    expect(ABOUT_DEFINITION).toMatch(/user interfaces, design systems, and flows\.$/)
+    expect(ABOUT_DEFINITION).toMatch(/^SketchMason, or Mason for short, is an AI design tool/)
+    expect(ABOUT_DEFINITION).toMatch(/hand-drawn interface sketch into a finished UI design\.$/)
   })
 
   it('is the sentence the page actually starts with', () => {

@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   // and the structured data that tells a machine the two are one thing, live
   // in `@/lib/brand`.
   title: {
-    default: "SketchMason: draw the shape, get the product",
+    default: "SketchMason: from a rough sketch to a finished UI design",
     template: "%s | SketchMason",
   },
   // The fallback for any page without a sentence of its own, and the one the

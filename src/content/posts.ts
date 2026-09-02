@@ -1,11 +1,16 @@
 export type Post = {
   slug: string
   title: string
+  /**
+   * The `<title>` when the H1 is too long to survive the " | SketchMason"
+   * suffix inside 60 characters. The heading on the page keeps the long form,
+   * which is the one worth reading; this is the one a result has room for.
+   */
+  seoTitle?: string
   excerpt: string
   date: string
   /** When the page last changed in a way a crawler should recrawl. */
   updated?: string
-  readingMinutes: number
   tag: string
   cover: string
   coverAlt: string
@@ -29,7 +34,6 @@ export const POSTS: Post[] = [
     excerpt:
       'You do not prompt a layout into existence. You draw the boxes, write what they are, and the screen is generated from that.',
     date: '2026-09-01',
-    readingMinutes: 5,
     tag: 'Craft',
     cover: '/images/blog/sketch-to-ui.webp',
     coverAlt:
@@ -44,7 +48,7 @@ export const POSTS: Post[] = [
       '## What comes out',
       'A design on the canvas, beside the sketch, streamed as it is made. You can revise it, grow it into a flow, or make a mobile version. Export is a standalone HTML file or a written brief. Drawing, moving and history cost nothing. Generating costs a credit.',
       '## Try it on an ugly sketch',
-      'Pretty sketches are not the point. Six rectangles and a handful of labels are. The canvas at /try runs without an account. If you want the comparison with Uizard, Stitch and prompt-to-app tools, that is /compare.',
+      'Pretty sketches are not the point. Six rectangles and a handful of labels are. The [canvas at /try](/try) runs without an account. If you want the comparison with Uizard, Stitch and prompt-to-app tools, that is [/compare](/compare).',
     ],
     faq: [
       {
@@ -62,10 +66,10 @@ export const POSTS: Post[] = [
   {
     slug: 'how-to-label-a-ui-sketch',
     title: 'How to label a UI sketch so the model stops guessing',
+    seoTitle: 'How to label a UI sketch',
     excerpt:
       'Write the component type, a piece of real copy, or a size constraint. Those three labels do more than a longer prompt.',
     date: '2026-09-01',
-    readingMinutes: 6,
     tag: 'Craft',
     cover: '/images/blog/how-to-label.webp',
     coverAlt:
@@ -81,7 +85,7 @@ export const POSTS: Post[] = [
       '## What not to label',
       'Padding, exact hex values, font files. Those belong on the mood board and the design system, not in the sketch. The sketch decides hierarchy. The board decides feel.',
       '## Fifteen seconds',
-      'A frame with six words written in it consistently produces a more intentional design than the same frame with none. Try it on /try, or read how a labelled sketch becomes a UI.',
+      'A frame with six words written in it consistently produces a more intentional design than the same frame with none. Try it on [/try](/try), or read [how a labelled sketch becomes a UI](/blog/how-a-labelled-sketch-becomes-a-ui).',
     ],
     faq: [
       {
@@ -99,10 +103,10 @@ export const POSTS: Post[] = [
   {
     slug: 'mood-board-to-design-system',
     title: 'A mood board is how the fifth screen matches the first',
+    seoTitle: 'Mood board to design system',
     excerpt:
       'A palette of eight nice colours is a mood. A palette where each colour is bound to a role is a system.',
     date: '2026-09-01',
-    readingMinutes: 6,
     tag: 'Design systems',
     cover: '/images/blog/mood-board.webp',
     coverAlt:
@@ -134,10 +138,10 @@ export const POSTS: Post[] = [
   {
     slug: 'sketchmason-and-uizard',
     title: 'Uizard scans a sketch. SketchMason uses one as a spec.',
+    seoTitle: 'SketchMason and Uizard compared',
     excerpt:
       'If you photograph a napkin, you want a scanner. If you already know the layout, you want the boxes to be the spec.',
     date: '2026-09-01',
-    readingMinutes: 5,
     tag: 'Product',
     cover: '/images/blog/uizard-jobs.webp',
     coverAlt:
@@ -149,7 +153,7 @@ export const POSTS: Post[] = [
       '## Different outputs',
       'Uizard aims at a wireframe or mid-fidelity mock you click around. Google Stitch aims at a polished screen you take into Figma. v0 aims at a running app. SketchMason aims at a finished design on an infinite canvas, exported as HTML or as a written brief.',
       '## When to use which',
-      'Scan a client\'s paper: Uizard. Prompt a screen from a paragraph: Stitch. Want something that executes: v0. Know the layout and want the fifth screen to match the first: SketchMason. The comparison table is on /compare. The canvas is on /try.',
+      'Scan a client\'s paper: Uizard. Prompt a screen from a paragraph: Stitch. Want something that executes: v0. Know the layout and want the fifth screen to match the first: SketchMason. The [comparison table is on /compare](/compare). The [canvas is on /try](/try).',
     ],
     faq: [
       {
@@ -167,10 +171,10 @@ export const POSTS: Post[] = [
   {
     slug: 'what-you-export-from-a-sketch',
     title: 'What you take away is a design, not a running app',
+    seoTitle: 'What you export from a sketch',
     excerpt:
       'Export is a standalone HTML file or a written brief. Drawing is free. Generating costs a credit.',
     date: '2026-09-01',
-    readingMinutes: 4,
     tag: 'Product',
     cover: '/images/blog/html-export.webp',
     coverAlt:
@@ -184,7 +188,7 @@ export const POSTS: Post[] = [
       '## What it is not',
       'It is not a running application and it is not a Figma file. If you need those, a different tool is the honest choice. The FAQ names the third export, there and only there.',
       '## What it costs',
-      'A credit is one generation: a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing, references and history cost nothing. How to start without an account is on /pricing. The canvas is on /try.',
+      'A credit is one generation: a style guide, a screen, a page in a flow, or a revision from the chat. Drawing, moving, resizing, references and history cost nothing. How to start without an account is on [/pricing](/pricing). The [canvas is on /try](/try).',
     ],
     faq: [
       {
@@ -206,7 +210,6 @@ export const POSTS: Post[] = [
       'The fastest way to improve a generated design is not a better model. It is three words written inside a box.',
     date: '2026-08-04',
     updated: '2026-09-01',
-    readingMinutes: 4,
     tag: 'Craft',
     cover: '/images/blog/labelled-boxes.webp',
     coverAlt:
@@ -231,7 +234,6 @@ export const POSTS: Post[] = [
       'Generating a palette is easy. Generating a palette that stays readable at every pairing is the actual work.',
     date: '2026-07-28',
     updated: '2026-09-01',
-    readingMinutes: 5,
     tag: 'Design systems',
     cover: '/images/blog/design-tokens.webp',
     coverAlt:
@@ -255,7 +257,6 @@ export const POSTS: Post[] = [
       'Watching a layout assemble itself changes how the wait feels, and it changes what you can catch early.',
     date: '2026-07-19',
     updated: '2026-09-01',
-    readingMinutes: 3,
     tag: 'Engineering',
     cover: '/images/blog/streaming-ui.webp',
     coverAlt:
@@ -274,11 +275,11 @@ export const POSTS: Post[] = [
   {
     slug: 'what-a-workflow-is-worth',
     title: 'One screen is a mock. Four screens is a product.',
+    seoTitle: 'One screen is a mock, four is a product',
     excerpt:
       'The gap between a nice hero section and something you can actually review is the rest of the flow.',
     date: '2026-07-08',
     updated: '2026-09-01',
-    readingMinutes: 4,
     tag: 'Product',
     cover: '/images/blog/four-screens.webp',
     coverAlt:

@@ -1,3 +1,4 @@
+import { BLOG_POSTS } from '@/lib/marketing-blog'
 import { SOCIAL_LINKS } from '@/lib/marketing-nav'
 import { SITE_URL } from '@/lib/site'
 
@@ -9,7 +10,9 @@ import { SITE_URL } from '@/lib/site'
  * from the same constant as metadataBase, robots.ts and sitemap.ts and cannot
  * drift from them.
  *
- * Deliberately free of pitch: no adjectives, no numbers, no pricing. A model
+ * Deliberately free of pitch: no adjectives, no numbers, no pricing. The
+ * posts are listed by title and URL and nothing else, for the same reason:
+ * a date or a reading time is a figure that goes stale in a quotation. A model
  * quoting this will quote it long after any figure in it stopped being true,
  * and the sentences below are ones that stay true. The link list is the
  * public routes only — the same set the sitemap carries.
@@ -26,10 +29,10 @@ import { SITE_URL } from '@/lib/site'
  */
 const BODY = `# SketchMason
 
-> SketchMason, or Mason for short, turns labelled boxes on a canvas into a finished UI design.
+> SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn interface sketch into a finished UI design.
 
 SketchMason, or Mason for short, is an AI design tool that turns a hand-drawn
-interface sketch into a finished, consistent UI design. You draw a rough frame
+interface sketch into a finished UI design. You draw a rough frame
 on a canvas, describe what belongs in it, and SketchMason generates the screen
 against a design system read from your own mood board. A design exports as a
 standalone HTML file or as a written brief. The layout comes from the sketch,
@@ -48,6 +51,10 @@ Official social: ${SOCIAL_LINKS.map((link) => link.href).join(', ')}
 - [FAQ](${SITE_URL}/faq): common questions
 - [About](${SITE_URL}/about-us): who it is
 - [What it costs](${SITE_URL}/pricing): guests, keys, and drawing for free
+
+## Posts
+
+${BLOG_POSTS.map((post) => `- [${post.title}](${SITE_URL}/blog/${post.slug})`).join('\n')}
 `
 
 export const dynamic = 'force-static'

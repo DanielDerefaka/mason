@@ -9,6 +9,7 @@ import { JsonLd } from "@/components/marketing/JsonLd";
 import { ORGANIZATION } from "@/lib/brand";
 import { BLOG_POSTS, getPostBySlug, relatedPosts } from "@/lib/marketing-blog";
 import { SITE_URL } from "@/lib/site";
+import { breadcrumbs } from "@/lib/structured-data";
 import type { BlogPost } from "@/types/marketing-content";
 
 /** Next 16 hands route params in as a promise. */
@@ -32,7 +33,28 @@ export async function generateMetadata({
   // description here every post inherited the site's, so four posts shared
   // one sentence in the results — and the brand query surfaced About Us and
   // Sign in ahead of any of them.
-  return { title: post.title, description: post.excerpt };
+  //
+  // `seoTitle` when the heading is too long to survive the suffix; the H1 on
+  // the page keeps the long form either way.
+  //
+  // `openGraph` here replaces the root's object outright rather than merging
+  // with it, which is why `siteName` and `url` are repeated: without them a
+  // post unfurled with no site name and the home page's URL. `type: 'article'`
+  // is what lets a reader see a date and a section on the card at all; every
+  // post was declaring itself a website.
+  return {
+    title: post.seoTitle ?? post.title,
+    description: post.excerpt,
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.excerpt,
+      siteName: "SketchMason",
+      url: "./",
+      publishedTime: post.dateTime,
+      modifiedTime: post.updated ?? post.dateTime,
+    },
+  };
 }
 
 /**
@@ -73,19 +95,6 @@ const blogPosting = (post: BlogPost) => {
   };
 };
 
-const breadcrumbs = (post: BlogPost) => {
-  const url = `${SITE_URL}/blog/${post.slug}`;
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
-      { "@type": "ListItem", position: 3, name: post.title, item: url },
-    ],
-  };
-};
-
 const faqPage = (post: BlogPost) => {
   if (!post.faq?.length) return null;
   return {
@@ -98,6 +107,40 @@ const faqPage = (post: BlogPost) => {
     })),
   };
 };
+
+/**
+ * `[text](/path)` inside a paragraph, and nothing else.
+ *
+ * Post bodies mentioned /try, /compare and /pricing as bare text, because a
+ * paragraph was rendered as a string: nine articles and not one hyperlink
+ * between them, so no post could pass a reader or any authority to the pages
+ * they were recommending. This is the smallest thing that fixes it.
+ *
+ * Internal paths only. A target that does not start with "/" is left as the
+ * literal text it was written as, so a post cannot grow an external link,
+ * a `javascript:` href or a tracking parameter by accident, and `blog.test.ts`
+ * holds every target in every body to a route the sitemap knows.
+ */
+const LINK = /\[([^\]]+)\]\((\/[^)\s]*)\)/g;
+
+function withLinks(text: string) {
+  const out: (string | React.ReactElement)[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK)) {
+    const [whole, label, href] = match;
+    const at = match.index ?? 0;
+    if (at > last) out.push(text.slice(last, at));
+    out.push(
+      <Link key={`${href}-${at}`} href={href} className="text-foreground underline underline-offset-4 hover:no-underline">
+        {label}
+      </Link>,
+    );
+    last = at + whole.length;
+  }
+  if (last === 0) return text;
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 /**
  * Renders one `body` entry. A leading "## " marks an h2 and "### " an h3;
@@ -122,7 +165,7 @@ function BodyBlock({ block }: { block: string }) {
 
   return (
     <p className="text-muted-foreground mt-[18px] font-sans text-[16px] leading-[27px] md:text-[17px] md:leading-[29px]">
-      {block}
+      {withLinks(block)}
     </p>
   );
 }
@@ -145,7 +188,14 @@ export default async function PostPage({ params }: PostPageProps) {
   return (
     <>
       <JsonLd data={blogPosting(post) as Record<string, unknown>} />
-      <JsonLd data={breadcrumbs(post) as Record<string, unknown>} />
+      <JsonLd
+        data={
+          breadcrumbs([
+            { name: "Blog", path: "/blog" },
+            { name: post.title, path: `/blog/${post.slug}` },
+          ]) as Record<string, unknown>
+        }
+      />
       {faq ? <JsonLd data={faq as Record<string, unknown>} /> : null}
       <article className="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[110px] lg:pt-[222px] lg:pb-[140px]">
         <div className="container-site">

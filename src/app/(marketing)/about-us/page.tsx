@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 
 import { AboutContent } from "@/components/marketing/AboutContent";
 import { CtaSection } from "@/components/marketing/home/CtaSection";
+import { JsonLd } from "@/components/marketing/JsonLd";
 import { ABOUT_DEFINITION } from "@/lib/marketing-about";
+import { breadcrumbs, webPage } from "@/lib/structured-data";
 
 // The description is the sentence the page opens with. It had none, so it
 // inherited the site's — the line every blog post was also falling back to —
@@ -20,6 +22,8 @@ export const metadata: Metadata = {
 export default function AboutUsPage() {
   return (
     <>
+      <JsonLd data={webPage("About SketchMason", "/about-us", ABOUT_DEFINITION)} />
+      <JsonLd data={breadcrumbs([{ name: "About", path: "/about-us" }])} />
       <AboutContent />
       <CtaSection />
     </>

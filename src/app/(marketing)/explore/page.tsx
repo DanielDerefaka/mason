@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { fetchQuery } from 'convex/nextjs'
 
 import { ExploreGallery } from '@/components/explore/gallery'
@@ -6,12 +7,15 @@ import { PublicConvex } from '@/components/explore/provider'
 import { CtaSection } from '@/components/marketing/home/CtaSection'
 import { JsonLd } from '@/components/marketing/JsonLd'
 import { SITE_URL } from '@/lib/site'
+import { breadcrumbs, webPage } from '@/lib/structured-data'
 import { api } from '../../../../convex/_generated/api'
 
+const DESCRIPTION =
+  'Designs people sketched and SketchMason built, each one from a rough drawing. Remix any of them onto your own canvas, or draw a screen and start there.'
+
 export const metadata: Metadata = {
-  title: 'Explore',
-  description:
-    'Designs people sketched and SketchMason built. Remix one, or draw your own.',
+  title: 'Explore designs made from sketches',
+  description: DESCRIPTION,
 }
 
 /**
@@ -33,6 +37,9 @@ type ExplorePreview = {
   label: string
 }
 
+/** A label as the house writes them: no em dash, whatever was published. */
+const plain = (label: string) => label.replace(/\s*[\u2014\u2013]\s*/g, ', ')
+
 /**
  * First page of the gallery, for crawlers. The cards themselves sanitise in
  * the browser and cannot be server-rendered; the labels and an ItemList are
@@ -41,7 +48,7 @@ type ExplorePreview = {
 const loadPreview = async (): Promise<ExplorePreview[]> => {
   try {
     const page = await fetchQuery(api.explore.list, { cursor: null, limit: 12 })
-    return page.items.map((item) => ({ id: item.id, label: item.label }))
+    return page.items.map((item) => ({ id: item.id, label: plain(item.label) }))
   } catch {
     return []
   }
@@ -74,6 +81,8 @@ export default async function ExplorePage() {
   return (
     <>
       {itemList ? <JsonLd data={itemList as Record<string, unknown>} /> : null}
+      <JsonLd data={webPage('Explore', '/explore', DESCRIPTION)} />
+      <JsonLd data={breadcrumbs([{ name: 'Explore', path: '/explore' }])} />
       <section className="pt-[100px] pb-[80px] md:pt-[140px] md:pb-[110px]">
         <div className="container-home">
           <div className="reveal max-w-[640px]">
@@ -83,6 +92,17 @@ export default async function ExplorePage() {
             </h1>
             <p className="text-muted-foreground mt-5 max-w-[560px] text-[clamp(1.05rem,1.5vw,1.25rem)] leading-snug">
               Every design here started as a rough drawing. Remix one, or draw your own.
+            </p>
+            <p className="text-muted-foreground mt-4 max-w-[560px] text-[0.95rem] leading-relaxed">
+              New here? Read{' '}
+              <Link href="/sketch-to-ui" className="underline underline-offset-4">
+                how a sketch becomes a UI design
+              </Link>
+              , or open{' '}
+              <Link href="/try" className="underline underline-offset-4">
+                the canvas
+              </Link>{' '}
+              and draw one. No account needed.
             </p>
           </div>
 

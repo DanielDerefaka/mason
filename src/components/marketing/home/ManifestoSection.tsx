@@ -27,7 +27,7 @@ function wordColour(t: number): string {
 /**
  * The pinned statement whose words brighten as the page scrolls past it.
  *
- * The outer section is taller than the viewport (220svh) and the content
+ * The outer section is taller than the viewport (160svh) and the content
  * sticks to the top of it, so the reader scrolls "through" the paragraph
  * while it stays put. Progress is how far the section's top has travelled
  * above the viewport, as a fraction of the room the extra height gives it.
@@ -87,7 +87,7 @@ export function ManifestoSection() {
   const front = progress * words.length;
 
   return (
-    <section ref={sectionRef} id="introduction" className="relative h-[220svh]">
+    <section ref={sectionRef} id="introduction" className="relative h-[160svh]">
       <div className="sticky top-0 flex h-[100svh] items-center">
         <div className="container-home">
           <div className="mx-auto max-w-[880px] text-center">

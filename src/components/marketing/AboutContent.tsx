@@ -104,7 +104,7 @@ export function AboutContent() {
       <div className="container-site">
         {/* 1 — Title */}
         <h1 className="text-foreground font-display text-center text-[44px] leading-[46px] font-normal tracking-[-2px] md:text-[80px] md:leading-[80px] md:tracking-[-4px] lg:text-[118px] lg:leading-[118px] lg:tracking-[-6px]">
-          About <span className="font-display-italic">Us</span>
+          About <span className="font-display-italic">SketchMason</span>
         </h1>
 
         {/* 2 — Intro */}
@@ -114,8 +114,8 @@ export function AboutContent() {
                 too; marketing-about.test.ts holds the two together. It is set
                 here by hand only so the highlights can be applied. */}
             <p className="text-muted-foreground text-center font-sans text-[17px] leading-[28px]">
-              <Hl>SketchMason</Hl>, or Mason for short, turns rough sketches of rectangles and
-              boxes into <Hl>finished user interfaces</Hl>, design systems, and flows. A frame drawn
+              <Hl>SketchMason</Hl>, or Mason for short, is an AI design tool that turns a
+              hand-drawn interface sketch into a <Hl>finished UI design</Hl>. A frame drawn
               on the canvas becomes a real screen, built from a design system read out of
               your own mood board.
             </p>

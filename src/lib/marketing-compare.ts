@@ -7,7 +7,7 @@
  */
 
 export const COMPARE_DESCRIPTION =
-  'SketchMason turns labelled boxes on a canvas into a UI design. How that differs from Uizard, Google Stitch and v0.'
+  'SketchMason turns a hand-drawn interface sketch into a finished UI design. How that differs from Uizard, Google Stitch and v0.'
 
 export const COMPARE_LEAD =
   'Most AI design tools start from a paragraph. SketchMason starts from the boxes you drew. The sketch is the spec. The mood board is the system. The export is a design, as HTML or as a written brief.'

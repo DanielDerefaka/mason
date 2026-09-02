@@ -19,6 +19,12 @@ export interface FaqEntry {
   question: string
   /** Plain sentences. This is read aloud by machines as often as by people. */
   answer: string
+  /**
+   * Where to read more, when the answer has a page of its own. Rendered after
+   * the answer and deliberately not folded into it: the FAQPage `text` a
+   * machine quotes should be the sentences, not a sentence with a URL in it.
+   */
+  more?: { label: string; href: string }
 }
 
 export const FAQ_ENTRIES: FaqEntry[] = [
@@ -71,6 +77,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     question: 'What does it cost?',
     answer:
       'Generating costs credits, and one credit is one generation: a style guide, a screen, a page in a generated flow, or a revision from the design chat. Drawing, moving, resizing, references and history cost nothing. How credits work, and how to try without an account, is on the pricing page.',
+    more: { label: 'See pricing', href: '/pricing' },
   },
   {
     question: 'What can I export?',

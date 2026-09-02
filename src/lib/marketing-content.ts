@@ -18,7 +18,7 @@ import { PRICING_ROWS } from './marketing-pricing'
  * ------------------------------------------------------------------ */
 
 export const HERO = {
-  eyebrow: 'Sketch a screen. Build a design system. Ship the interface.',
+  eyebrow: 'Sketch a screen. Build a design system. Export the design.',
   /**
    * Three runs — grey, white, grey — and short enough to sit on one line at
    * a 1320px measure. Everything after the lead used to wrap to three lines,
@@ -73,8 +73,12 @@ export const INTRODUCTION = {
   /** Read as one paragraph; the manifesto brightens it word by word on scroll. */
   statement:
     'Sketches, not prompts. Systems, not screenshots. SketchMason reads the shape you drew and builds the screen it implies, using a design system taken from your own mood board, so the fifth screen still looks like the first, and the flow around it looks like both.',
-  primaryCta: { label: 'About us', href: '/about-us' },
-  secondaryCta: { label: 'Read the blog', href: '/blog' },
+  // The section a reader has just scrolled through a pinned paragraph for,
+  // and both its pills used to lead further into the site: /about-us and
+  // /blog. The canvas is free and needs no account, so it is what the
+  // statement should hand them.
+  primaryCta: { label: 'Try it on your own sketch', href: '/try' },
+  secondaryCta: { label: 'About us', href: '/about-us' },
 }
 
 /* ------------------------------------------------------------------ *

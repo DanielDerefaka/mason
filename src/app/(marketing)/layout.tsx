@@ -1,4 +1,3 @@
-import { Preloader } from '@/components/marketing/layout/Preloader'
 import { RevealObserver } from '@/components/marketing/layout/RevealObserver'
 import { SiteFooter } from '@/components/marketing/layout/SiteFooter'
 import { SiteHeader } from '@/components/marketing/layout/SiteHeader'
@@ -37,7 +36,6 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         }}
       />
       <SmoothScroll />
-      <Preloader />
       <RevealObserver />
       <SiteHeader />
       <main>{children}</main>

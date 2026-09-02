@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fillMetadataSegment } from 'next/dist/lib/metadata/get-metadata-route'
 import { describe, expect, it } from 'vitest'
@@ -49,6 +49,53 @@ describe('every post describes itself', () => {
   })
 
   /**
+   * The regression this exists for: the H1 is written to be read, and every
+   * post's was also its <title>. With the root template's " | SketchMason"
+   * on the end, "Sketches that survive the model: how to label a UI sketch so
+   * it builds" was cut mid-clause in the result. `seoTitle` is the short form,
+   * and the 46 is what fits beside the suffix in Google's pixel budget.
+   */
+  it('has a title that survives the suffix', () => {
+    for (const post of POSTS) {
+      const shown = post.seoTitle ?? post.title
+      expect(shown.length, post.slug).toBeLessThanOrEqual(46)
+      expect(shown.trim(), post.slug).toBe(shown)
+    }
+  })
+
+  /**
+   * Every link written into a post body, held to a page that exists. The
+   * bodies carry a markdown subset the template renders, and it accepts
+   * internal paths only: an href a rename broke is a 404 inside the one part
+   * of the site written to be linked to.
+   */
+  it('links only to pages that exist', () => {
+    const routes = new Set([
+      '/',
+      '/try',
+      '/explore',
+      '/llms.txt',
+      ...POSTS.map((post) => `/blog/${post.slug}`),
+      ...readdirSync(join(process.cwd(), 'src/app/(marketing)'), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `/${entry.name}`),
+    ])
+    const found: string[] = []
+    for (const post of POSTS) {
+      for (const block of post.body) {
+        for (const match of block.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)) {
+          found.push(match[1])
+        }
+      }
+    }
+    expect(found.length).toBeGreaterThan(4)
+    for (const href of found) {
+      expect(href.startsWith('/'), href).toBe(true)
+      expect(routes, href).toContain(href.split('#')[0])
+    }
+  })
+
+  /**
    * The regression this exists for: generateMetadata returned only a title,
    * so every post's description was the root layout's — one sentence under
    * four titles, in the results and on every share card.
@@ -66,7 +113,12 @@ describe('every post tells a machine what it is', () => {
     expect(post).toMatch(/headline: post\.title/)
     expect(post).toMatch(/datePublished: post\.dateTime/)
     expect(post).toMatch(/<JsonLd data=\{blogPosting\(post\) as Record<string, unknown>\} \/>/)
-    expect(post).toMatch(/BreadcrumbList/)
+    // The trail comes from the shared helper now, which numbers the positions
+    // itself: the page hand-wrote three ListItems and was the only page on the
+    // site with a trail at all.
+    expect(post).toMatch(/breadcrumbs\(\[/)
+    expect(post).toMatch(/name: "Blog", path: "\/blog"/)
+    expect(post).toMatch(/name: post\.title/)
   })
 
   it('writes a modified date only when the post actually changed', () => {

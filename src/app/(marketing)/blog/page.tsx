@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/marketing/JsonLd";
 import { ORGANIZATION } from "@/lib/brand";
 import { BLOG_POSTS } from "@/lib/marketing-blog";
 import { SITE_URL } from "@/lib/site";
+import { breadcrumbs, webPage } from "@/lib/structured-data";
 
 // The description is the card's subtitle as well as the search snippet, and
 // without one it fell back to the site's — so /blog, /explore and /download all
@@ -17,7 +18,7 @@ const DESCRIPTION =
   "Notes on sketching, design systems and generating interfaces. How SketchMason is built, and what it is for.";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "Blog: notes on sketch to UI design",
   description: DESCRIPTION,
 };
 
@@ -48,6 +49,8 @@ export default function BlogPage() {
   return (
     <>
       <JsonLd data={blogIndex as Record<string, unknown>} />
+      <JsonLd data={webPage("The SketchMason blog", "/blog", DESCRIPTION)} />
+      <JsonLd data={breadcrumbs([{ name: "Blog", path: "/blog" }])} />
       <section className="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[110px] lg:pt-[222px] lg:pb-[140px]">
         <div className="container-site">
           {/* Named, not labelled. "Our Blogs" gave a machine nothing to attach

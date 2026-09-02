@@ -15,7 +15,7 @@ import { AppProviders } from '@/components/app-providers'
 export const metadata: Metadata = {
   title: 'Try SketchMason free',
   description:
-    'SketchMason turns a rough sketch into a finished interface: draw a frame, describe what goes in it, and export the design as HTML. No account needed.',
+    'SketchMason turns a hand-drawn interface sketch into a finished UI design: draw a frame, say what goes in it, export as HTML. No account needed.',
   // No `openGraph` block here on purpose, though there was one.
   //
   // It existed to override the root's og:url, which used to be the hardcoded
