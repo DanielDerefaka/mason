@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { prompts } from '@/prompts'
+import { DISPLAY_MIN, MOTION, SECTION_PADDING, designSystemRules } from '@/lib/design-system'
 import { describeStyleGuide } from '@/lib/style-guide-brief'
 
 /**
@@ -62,6 +63,48 @@ describe('the design prompt', () => {
     expect(composition).toContain('Metadata at the corners')
   })
 
+  describe('The system', () => {
+    it('is generated from the values the audit measures, not transcribed beside them', () => {
+      // The whole point of `design-system.ts` is that one file feeds both the
+      // prompt and `auditDesign`. Pasting the numbers into the prompt would
+      // work on the day it was done and rot silently on the next change, and
+      // the first symptom would be an audit that reports findings against a
+      // rule the model was never told.
+      expect(system).toContain(designSystemRules())
+    })
+
+    it('comes before Craft, which points back at it', () => {
+      // Craft says "the scale above" and "the ramp above". If the system moved
+      // below it those two bullets would refer to nothing.
+      expect(system.indexOf('\n## The system\n')).toBeGreaterThan(-1)
+      expect(system.indexOf('\n## The system\n')).toBeLessThan(system.indexOf('\n## Craft\n'))
+    })
+
+    it('carries the numbers rather than the adjectives they replaced', () => {
+      const rules = flat(section('The system'))
+      expect(rules).toContain(`at least ${DISPLAY_MIN}px at 1440px`)
+      expect(rules).toContain('below 1** above 64px')
+      expect(rules).toContain(`${SECTION_PADDING.desktop}px or more on desktop`)
+      expect(rules).toContain(MOTION.easings.out)
+      expect(rules).toContain('2 on mobile')
+    })
+  })
+
+  it('does not contradict the system in the examples it shows', () => {
+    // Every one of these was in the prompt when the system landed, and each
+    // would have taught the model the thing the audit then flagged: a hero
+    // capped at 64px, a 34px mobile headline, 48px section padding and a
+    // one-column phone grid. A prompt that argues with itself teaches the
+    // half that comes with a code sample.
+    const responsive = section('Responsive')
+    expect(responsive).not.toContain('clamp(32px,6vw,64px)')
+    expect(responsive).toContain('clamp(48px,9vw,128px)')
+    expect(responsive).not.toMatch(/font-size: 34px/)
+    expect(responsive).not.toMatch(/padding: 48px/)
+    expect(responsive).toMatch(/padding: 96px/)
+    expect(responsive).not.toContain('grid-template-columns: 1fr;')
+  })
+
   describe('Craft', () => {
     const craft = flat(section('Craft'))
 
@@ -70,14 +113,21 @@ describe('the design prompt', () => {
       expect(craft).toContain('A page that could belong to any product has not been designed')
     })
 
-    it('carries no preset spacing scale, body size or icon size', () => {
+    it('states no sizes of its own, and defers to the system for them', () => {
       // The regression this exists for: "4/8/12/16/24/32/48px", "14–16px" and
       // "16–20px" were the rhythm every generated page shared.
       expect(craft).not.toContain('4/8/12/16/24/32/48')
       expect(craft).not.toMatch(/14[–-]16px/)
       expect(craft).not.toMatch(/16[–-]20px/)
       expect(craft).not.toMatch(/\d+px/)
-      expect(craft).toContain('not from a preset list')
+      // Craft used to answer this with "not from a preset list", which was the
+      // right instinct against the wrong target: the fault in that scale was
+      // that it stopped at 48px, not that it was written down. A scale that
+      // cannot express a 272px section produces a stack whether it was preset
+      // or improvised. So the values are preset now, in one place, and Craft's
+      // job is which step to reach for rather than what the steps are.
+      expect(craft).toContain('Spacing comes from the scale above')
+      expect(craft).toContain('Which step is the design work')
     })
 
     it('names the defaults to leave out', () => {

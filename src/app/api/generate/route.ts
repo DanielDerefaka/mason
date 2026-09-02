@@ -9,6 +9,7 @@ import {
   modelForRequest,
   modelForRequestText,
 } from '@/lib/byok'
+import { auditDesign } from '@/lib/design-audit'
 import { chargeForGeneration } from '@/lib/generation-charge'
 import {
   CreditsBalanceQuery,
@@ -230,6 +231,33 @@ export async function POST(request: NextRequest) {
             cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens ?? null,
             bytes: produced.length,
             elapsedMs: Date.now() - startedAt,
+          }),
+        )
+
+        /**
+         * Did the page it just wrote obey the system it was just given?
+         *
+         * "The output still looks like AI slop" has been an opinion for the
+         * life of this project, which is why three separate attempts to fix it
+         * could not be told apart. `auditDesign` reads the same values the
+         * prompt states, so this line turns that opinion into a count: the
+         * rules a generation broke, by id, one line per design. It is string
+         * work on a fragment we already hold, so it costs no model call and no
+         * measurable time, and it runs after the stream has drained so a slow
+         * rule could never stall a byte reaching the canvas.
+         *
+         * Rule ids only. The fragment is the user's design and never goes in a
+         * log, and the detail strings quote it.
+         */
+        const findings = auditDesign(produced)
+        console.info(
+          '[generate] audit',
+          JSON.stringify({
+            model: UI_MODEL,
+            hadStyleGuide: Boolean(styleGuide),
+            referenceCount: inspirationUrls.length,
+            broke: findings.length,
+            rules: findings.map((finding) => finding.rule),
           }),
         )
 
