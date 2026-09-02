@@ -56,7 +56,7 @@ describe('the routes that only display something', () => {
    */
   it('leaves the canvas itself minting, or nobody can start at all', () => {
     const shell = read('src/components/try/shell.tsx')
-    expect(shell).toContain('<TryGuestGate>')
+    expect(shell).toMatch(/<TryGuestGate(\s[^>]*)?>/)
     expect(shell).not.toContain('admit={false}')
   })
 })
@@ -131,7 +131,13 @@ describe('the cap screen', () => {
     expect(copy).not.toMatch(/\d/)
   })
 
-  it('still offers no account, which during the week would be a loop', () => {
-    expect(screen).not.toMatch(/\/auth/)
+  /**
+   * It offered no account at all while the free week redirected every /auth
+   * screen to /try: the link would have walked a refused visitor into a
+   * circle. Sign-in stays open now, so the screen can answer the refusal.
+   * `guest-refusal.test.ts` holds the two branches to their destinations.
+   */
+  it('offers the account that is the way past this cap', () => {
+    expect(screen).toMatch(/href="\/auth\/sign-in"/)
   })
 })

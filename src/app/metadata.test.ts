@@ -413,16 +413,18 @@ describe('the chrome offers the canvas on every page, not just the home page', (
   })
 
   /**
-   * Sign-in stays in the header outside the free week. The guard around it is
-   * deliberate and stays: while the week is on, `src/app/auth/layout.tsx`
-   * redirects every auth screen to /try, and a link that bounces is worse than
-   * no link. Removing the guard would put a dead link in the header on the one
-   * week of the year the most people see it.
+   * Sign-in stays in the header in both states, and the guard that used to sit
+   * around it is the regression: while the week was on, the shared auth layout
+   * redirected every screen to /try, so the header hid the link rather than
+   * leave one that bounced. Both halves were wrong. Sign-up is what the week
+   * closes; the accounts made before it still need their door, on the one week
+   * of the year the most people see the page. `free-week.test.ts` holds the
+   * rest of that rule.
    */
   it('keeps a way in for people who already have an account', () => {
     const header = read('src/components/marketing/layout/SiteHeader.tsx')
     expect(header).toMatch(/href="\/auth\/sign-in"/)
-    expect(header).toMatch(/!freeWeek &&/)
+    expect(header).not.toMatch(/!freeWeek &&/)
   })
 })
 

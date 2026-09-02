@@ -10,11 +10,12 @@ import { LogoMark } from '@/components/logo-mark'
 import { Button } from '@/components/ui/button'
 
 import { api } from '../../../convex/_generated/api'
-import { EmailGateDialog } from './email-gate-dialog'
+import { EmailGateDialog, type EmailGatePurpose } from './email-gate-dialog'
 import { GuestProvider } from './guest-context'
 import { useGuestSession } from './use-guest-session'
 
 type Resolver = (ok: boolean) => void
+type Pending = { purpose: EmailGatePurpose; resolve: Resolver }
 
 /**
  * Everything under /try sits inside this: it signs a fresh visitor in as a
@@ -28,6 +29,11 @@ type Resolver = (ok: boolean) => void
  * "Create account" dialog in front of the export contradicted it every day of
  * the year the flag happened to be off, which is most of them.
  *
+ * `freeWeek` is the server's switch, handed down by `src/app/try/page.tsx`.
+ * It changes what the exits say — the cap screen below, the out-of-credits
+ * sheet and "Keep this canvas" offer an account outside the week and say
+ * "accounts open soon" during it — and nothing about what a download costs.
+ *
  * `admit` is what separates the canvas from the two routes that only display
  * something. /try starts work, so it opens a session; /try/editor and
  * /try/preview open a project named in their own URL, which no new session
@@ -37,9 +43,11 @@ type Resolver = (ok: boolean) => void
 export const TryGuestGate = ({
   children,
   admit = true,
+  freeWeek = false,
 }: {
   children: ReactNode
   admit?: boolean
+  freeWeek?: boolean
 }) => {
   const { ready, refusal, sessionless } = useGuestSession({ admit })
   const me = useQuery(api.guest.me, ready ? {} : 'skip')
@@ -64,22 +72,33 @@ export const TryGuestGate = ({
     if (ready) setEverReady(true)
   }, [ready])
 
-  const [pending, setPending] = useState<Resolver | null>(null)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const ask = useCallback(
+    (purpose: EmailGatePurpose) =>
+      new Promise<boolean>((resolve) => {
+        setPending((current: Pending | null) => {
+          current?.resolve(false)
+          return { purpose, resolve }
+        })
+      }),
+    [],
+  )
   const requireExport = useCallback(() => {
     if (!isGuestRef.current) return Promise.resolve(true)
     // The toll is one address, for ever. Paid already, every later export
     // goes straight through — which is the whole difference between a gate
     // and a nag.
     if (emailGivenRef.current) return Promise.resolve(true)
-    return new Promise<boolean>((resolve) => {
-      setPending((current: Resolver | null) => {
-        current?.(false)
-        return resolve
-      })
-    })
-  }, [])
+    return ask('export')
+  }, [ask])
+  // The same address for a different reason. A guest who has given one is
+  // on the list already, so there is nothing to ask and the answer is yes.
+  const requestNotice = useCallback(() => {
+    if (!isGuestRef.current || emailGivenRef.current) return Promise.resolve(true)
+    return ask('notify')
+  }, [ask])
   const settle = (ok: boolean) => {
-    pending?.(ok)
+    pending?.resolve(ok)
     setPending(null)
   }
 
@@ -122,13 +141,18 @@ export const TryGuestGate = ({
    *
    * No figure is quoted, for the reason `src/lib/marketing-faq.ts` gives:
    * `GUEST_SESSIONS_PER_IP_PER_DAY` is configuration, and a sentence naming it
-   * is wrong the moment someone tunes it. No account is offered either —
-   * during the free week `src/app/auth/layout.tsx` sends every /auth screen
-   * back to /try, so a "make an account" link here would walk a refused
-   * visitor into a circle.
+   * is wrong the moment someone tunes it.
    *
-   * What it does say is the one thing that is still true: a shared design
-   * opens anyway. `/s/<token>` is bypassed by the middleware and
+   * An account is offered, because it is the answer: the cap counts guest
+   * sessions, and an account is not one. It was not offered before, when
+   * `src/app/auth/layout.tsx` sent every /auth screen back to /try during the
+   * week and the link would have walked a refused visitor into a circle.
+   * Sign-in is open in both states now, and sign-up only outside the week —
+   * so during it the primary goes to Explore, and the body says accounts open
+   * soon rather than pointing at a form that redirects here.
+   *
+   * What it says either way is the one thing that is still true: a shared
+   * design opens anyway. `/s/<token>` is bypassed by the middleware and
    * `getSharedDesign` is the only unauthenticated function in convex/shares.ts,
    * so it needs no session and the cap cannot touch it. Without that line the
    * screen reads as "Mason is shut", and somebody who followed a friend's link
@@ -136,19 +160,37 @@ export const TryGuestGate = ({
    * would in fact have opened.
    */
   if (refusal === 'network-cap') {
+    const shared =
+      "Guest sessions are shared by everyone on this network, most likely an office or a campus, and today's are used. The count starts again at midnight UTC, so come back tomorrow"
+    const body = freeWeek
+      ? `${shared}. Sign in if you already have an account, or come back when accounts open.`
+      : `${shared}, or make an account, which is not capped.`
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <LogoMark className="size-8 text-muted-foreground" />
         <p className="text-base font-medium">This network has used its guest sessions for today</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Guest sessions are counted per network, and this one, most likely an office or a
-          campus, has used its share for the day. It starts again at midnight UTC, so come back
-          tomorrow and the canvas is yours.
-        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">{body}</p>
         <p className="max-w-sm text-sm text-muted-foreground">
           A design someone has shared with you is unaffected: a shared link needs no session, so it
           opens now.
         </p>
+        <div className="flex flex-col items-center gap-3">
+          {freeWeek ? (
+            <Button asChild size="sm" className="rounded-full px-4">
+              <Link href="/explore">Browse Explore</Link>
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="rounded-full px-4">
+              <Link href="/auth/sign-up">Create an account</Link>
+            </Button>
+          )}
+          <Link
+            href="/auth/sign-in"
+            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
     )
   }
@@ -162,9 +204,19 @@ export const TryGuestGate = ({
           Something went wrong opening a guest session. Nothing you do here needs an account, so a
           refresh in a moment is usually all it takes.
         </p>
-        <Button size="sm" className="rounded-full px-4" onClick={() => window.location.reload()}>
-          Try again
-        </Button>
+        <div className="flex flex-col items-center gap-3">
+          <Button size="sm" className="rounded-full px-4" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+          {/* Somewhere to go that needs no session, so the screen is not a
+              dead end while the moment passes. */}
+          <Link
+            href="/explore"
+            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Browse Explore meanwhile
+          </Link>
+        </div>
       </div>
     )
   }
@@ -178,9 +230,18 @@ export const TryGuestGate = ({
   }
 
   return (
-    <GuestProvider isGuest={isGuest} requireExport={requireExport}>
+    <GuestProvider
+      isGuest={isGuest}
+      requireExport={requireExport}
+      freeWeek={freeWeek}
+      requestNotice={requestNotice}
+    >
       {children}
-      <EmailGateDialog open={pending !== null} onDone={settle} />
+      <EmailGateDialog
+        open={pending !== null}
+        purpose={pending?.purpose ?? 'export'}
+        onDone={settle}
+      />
     </GuestProvider>
   )
 }

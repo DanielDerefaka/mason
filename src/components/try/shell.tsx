@@ -13,7 +13,9 @@ import {
   OUT_OF_CREDITS_EVENT,
   type DesignGeneratedDetail,
 } from '@/lib/try/generate-fetch'
+import { refusalFrom } from '@/lib/try/guest-refusal'
 import { nextResetAt } from '@/lib/try/pool-day'
+import { PROJECT_CAP_REFUSAL } from '@/lib/try/project-cap'
 import { remixSketch, type RemixPayload } from '@/lib/try/remix'
 import { useAppDispatch, useAppStore } from '@/redux/hooks'
 import { addShape, focusOnRect, selectShape, shapesAdapter, type Shape } from '@/redux/slice/shapes'
@@ -103,9 +105,20 @@ const useTryProject = () => {
       if (!found) {
         try {
           found = await createProject({ name: 'My sketch' })
-        } catch {
-          setFailed(true)
-          return
+        } catch (error) {
+          // At the cap with nothing remembered (storage cleared, or a new
+          // tab in a browser whose session already holds ten sketches): the
+          // session still owns them, so open the newest rather than refuse
+          // a canvas and offer a "Try again" that could not work.
+          const newest =
+            refusalFrom(error) === 'project-cap'
+              ? ((await convex.query(api.project.getProjects, {})).projects[0]?._id ?? null)
+              : null
+          if (!newest) {
+            setFailed(true)
+            return
+          }
+          found = newest
         }
       }
       writeStored(found)
@@ -151,10 +164,15 @@ const useTryProject = () => {
     try {
       open(await createProject({ name: 'My sketch' }))
     } catch (error) {
-      // The cap is the expected refusal and says what to do about it; Convex
-      // redacts anything else in production, so that is the only message
-      // worth showing.
-      toast.error(error instanceof Error ? error.message : 'Could not start a new sketch')
+      // The cap is the expected refusal, and it arrives as a code because
+      // Convex masks a thrown sentence as "Server Error" in production —
+      // which is what `error.message` used to put in this toast. Anything
+      // else is a fault with no message worth echoing.
+      if (refusalFrom(error) === 'project-cap') {
+        toast.error(PROJECT_CAP_REFUSAL.title, { description: PROJECT_CAP_REFUSAL.description })
+      } else {
+        toast.error('Could not start a new sketch')
+      }
     }
   }, [createProject, open])
 
@@ -381,8 +399,17 @@ const TryWorkspace = ({ children }: { children: ReactNode }) => {
  * it for a frame and then its screen. The crawler copy in
  * `src/app/try/page.tsx` sits outside this and renders on the server as
  * before.
+ *
+ * `freeWeek` comes from the server page: the switch is not in this bundle,
+ * and the gate hands it to everything below through the same provider.
  */
-export const TryShell = ({ children }: { children: ReactNode }) => {
+export const TryShell = ({
+  children,
+  freeWeek = false,
+}: {
+  children: ReactNode
+  freeWeek?: boolean
+}) => {
   const phone = usePhone()
   if (phone === undefined) {
     return (
@@ -393,7 +420,7 @@ export const TryShell = ({ children }: { children: ReactNode }) => {
   }
   if (phone) return <PhoneScreen />
   return (
-    <TryGuestGate>
+    <TryGuestGate freeWeek={freeWeek}>
       <TryWorkspace>{children}</TryWorkspace>
     </TryGuestGate>
   )

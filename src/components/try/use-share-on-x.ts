@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE } from '@/lib/sanitise'
 import { captureDesignPng } from '@/lib/try/capture'
+import { refusalFrom } from '@/lib/try/guest-refusal'
 import { latestFinishedDesign } from '@/lib/try/latest-design'
 import { useAppSelector } from '@/redux/hooks'
 import { shapesAdapter } from '@/redux/slice/shapes'
@@ -20,6 +21,8 @@ import { uploadBlob } from './upload'
 // site: the post body is read by people who have never seen the product, and
 // "Mason" on its own is a bricklayer and a jar.
 const SHARE_TEXT = 'I sketched this and SketchMason turned it into a real page 👇'
+/** Said on the disabled button, and again if the server is the one to refuse. */
+const NEEDS_DESIGN = 'Generate a design first, then share it'
 
 const selectors = shapesAdapter.getSelectors()
 
@@ -69,11 +72,7 @@ export const useShareOnX = ({
 
   const guest = asGuest(me)
   const earnsBonus = guest?.canClaimShare ?? false
-  const disabledReason = !projectId
-    ? 'Your canvas is still opening'
-    : !latest
-      ? 'Generate a design first, then share it'
-      : null
+  const disabledReason = !projectId ? 'Your canvas is still opening' : !latest ? NEEDS_DESIGN : null
 
   const attachPreview = async (token: string, designId: string) => {
     const node = document.querySelector<HTMLElement>(
@@ -118,7 +117,13 @@ export const useShareOnX = ({
         toast.success('+2 credits added')
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not share that design')
+      // `claimShare` refuses with a code when the guest has not generated
+      // yet; the button is already off in that state, so this is the server
+      // disagreeing with the canvas. Anything else is masked by Convex in
+      // production, so its message is never the one to show.
+      toast.error(
+        refusalFrom(error) === 'share-before-design' ? NEEDS_DESIGN : 'Could not share that design',
+      )
     } finally {
       setBusy(false)
     }
