@@ -1,3 +1,4 @@
+import { track } from '@/lib/analytics'
 import { clearByokKey, getByokKey, getByokWorkspace } from '@/lib/try/byok-client'
 
 /**
@@ -51,6 +52,10 @@ export const generateFetch = (input: RequestInfo | URL, init?: RequestInit): Pro
  */
 export const noteGenerateRefusal = (response: Response): string | null => {
   if (response.status === 402) {
+    // Counted here rather than in the sheet, which has no idea why it opened.
+    // Only /try listens, so only there is a 402 the sheet; the dashboard turns
+    // the same status into a toast, which is not this event.
+    if (window.location.pathname.startsWith('/try')) track('pool_exhausted_shown')
     window.dispatchEvent(new CustomEvent(OUT_OF_CREDITS_EVENT))
     return null
   }

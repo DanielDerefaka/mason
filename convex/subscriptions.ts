@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
 import { CREDITS_PER_PERIOD } from '../src/lib/plan'
+import { bump } from './lib/signals'
 
 /** Statuses Polar reports that still mean "this person can use the product". */
 const LIVE = new Set(['active', 'trialing'])
@@ -85,6 +86,9 @@ export const upsertFromPolar = mutation({
       } else {
         await ctx.db.insert('credits', { userId, balance: CREDITS_PER_PERIOD })
       }
+      // Beside the grant rather than the row write, so a status change that
+      // paid for nothing is not counted as money.
+      await bump(ctx.db, 'subscription_paid')
     }
 
     return { success: true }

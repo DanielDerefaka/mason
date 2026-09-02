@@ -4,6 +4,7 @@ import { useMutation } from 'convex/react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE } from '@/lib/sanitise'
 import { captureDesignPng } from '@/lib/try/capture'
 import { latestFinishedDesign } from '@/lib/try/latest-design'
@@ -97,6 +98,7 @@ export const useShareOnX = ({
     setBusy(true)
     try {
       const token = await createShare({ projectId, designId: latest.id })
+      track('share_created', { via: 'x' })
       const url = `${window.location.origin}/s/${token}`
       const intent = `https://x.com/intent/post?text=${encodeURIComponent(SHARE_TEXT)}&url=${url}`
       const popup = window.open(intent, '_blank')

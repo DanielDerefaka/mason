@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
 
+import { track } from '@/lib/analytics'
 import { stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
 import {
   DESIGN_GENERATED_EVENT,
@@ -49,6 +50,7 @@ export const useFrame = () => {
 
     setGeneratingFrameId(frame.id)
     const id = nanoid()
+    track('generate_clicked')
 
     try {
       const image = await rasteriseFrame(frame, shapes)
@@ -74,7 +76,11 @@ export const useFrame = () => {
           .json()
           .then((body: { message?: string }) => body.message)
           .catch(() => null)
-        throw new Error(refusal ?? message ?? 'Failed to generate the design')
+        // The status rides on the error so the catch can count which refusal
+        // this was without a second throw site.
+        throw Object.assign(new Error(refusal ?? message ?? 'Failed to generate the design'), {
+          status: response.status,
+        })
       }
 
       // Added only once the response is on its way, so a rejected request does
@@ -118,6 +124,7 @@ export const useFrame = () => {
       const empty = wasEmpty(markup)
 
       if (empty) {
+        track('generation_empty')
         // Nothing usable came back. The route has already put the credit
         // back; say so rather than leaving an empty panel on the canvas.
         dispatch(removeShape(id))
@@ -130,6 +137,8 @@ export const useFrame = () => {
       dispatch(
         setGeneratedHtml({ id, html: stripOutcomeMarkers(markup), streaming: false }),
       )
+      // A cut design is still a design on the canvas, so it counts as one.
+      track('generation_succeeded', { truncated: cut })
 
       // The /try shell publishes to Explore from this; the dashboard has no
       // listener. The sketch is the PNG the model was shown, so the gallery
@@ -167,6 +176,9 @@ export const useFrame = () => {
        */
       const message = error instanceof Error ? error.message : ''
       const dropped = /failed to fetch|network|load failed|terminated/i.test(message)
+      track('generation_failed', {
+        status: (error as { status?: number }).status ?? (dropped ? 'dropped' : 'error'),
+      })
 
       toast.error(dropped ? 'The connection to the model dropped' : message || 'Failed to generate the design', {
         description: dropped
