@@ -127,6 +127,19 @@ describe('the site tells a crawler who it is', () => {
   })
 
   /**
+   * The regression this guards: the em-dash purge changed the home title and
+   * left `scripts/smoke.mjs` expecting the old one, so `npm run smoke` was red
+   * on main from 2026-08-29 and read as noise. The smoke cannot import the
+   * layout, so this holds its spelling to the two places the title is set.
+   */
+  it('spells the home title the way the smoke expects to find it', () => {
+    const expected = read('scripts/smoke.mjs').match(/<title>([^<]+)<\/title>/)?.[1]
+    expect(expected).toBeTruthy()
+    expect(layout).toContain(`default: "${expected}"`)
+    expect(read('src/app/(marketing)/page.tsx')).toContain(`absolute: '${expected}'`)
+  })
+
+  /**
    * The regression this guards: every page used to end its own title with
    * "| Mason" by hand. Adding a template to the root without stripping those
    * gives "Blog | Mason · Mason" on fifteen pages, which is the kind of thing

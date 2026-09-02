@@ -19,10 +19,17 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   const freeWeek = isFreeWeek()
 
   return (
-    <div className="marketing min-h-screen">
+    <div className="marketing min-h-screen" suppressHydrationWarning>
       {/* Turns on the scroll-in animation only for browsers that run JS.
           Without this class, `.reveal` stays fully visible, which is what a
-          crawler that never executes script needs. */}
+          crawler that never executes script needs.
+
+          The script runs while the HTML is still being parsed, so by the time
+          React hydrates, the div already carries a class React never rendered.
+          That is the one attribute mismatch this tree is meant to have;
+          `suppressHydrationWarning` on the div (it covers that element only)
+          keeps React from reporting it as a hydration error on every marketing
+          page, which is what `smoke:browser` was failing `/` and `/explore` on. */}
       <script
         dangerouslySetInnerHTML={{
           __html: `document.currentScript&&document.currentScript.parentElement&&document.currentScript.parentElement.classList.add('reveal-js')`,

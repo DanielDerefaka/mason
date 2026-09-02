@@ -288,7 +288,7 @@ const main = async () => {
   console.log('\nThe home page carries the brand, in words and in structured data')
   {
     const html = await (await get('/', 'follow')).text()
-    const titled = html.includes('<title>SketchMason — draw the shape, get the product</title>')
+    const titled = html.includes('<title>SketchMason: draw the shape, get the product</title>')
     const named = /property="og:site_name" content="SketchMason"/.test(html)
     const entity = (html.match(/"alternateName":"Mason"/g) ?? []).length === 2
     record(
