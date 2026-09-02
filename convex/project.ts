@@ -139,6 +139,13 @@ export const restoreProjects = mutation({
  * or mood board, and a blob nobody can reach is a bill that never stops —
  * leaving them behind would mean the storage of every deleted project is paid
  * for forever.
+ *
+ * The same is true of the snapshots, and it was not being done: this deleted
+ * the project row and left both history tables pointing at an id that no
+ * longer resolves. `versions` grows only when somebody presses a button, so it
+ * went unnoticed; `design_versions` fills itself as people edit, which would
+ * have turned a slow leak into the largest orphaned table in the database.
+ * `guest.purgeStale` has always cleared them and is where this is copied from.
  */
 export const deleteProjectsForever = mutation({
   args: { projectIds: v.array(v.id('projects')) },
@@ -152,6 +159,14 @@ export const deleteProjectsForever = mutation({
       ]) {
         // A missing blob is not a reason to abandon the delete.
         await ctx.storage.delete(storageId as Id<'_storage'>).catch(() => {})
+      }
+
+      for (const table of ['versions', 'design_versions'] as const) {
+        const versions = await ctx.db
+          .query(table)
+          .withIndex('by_project', (q) => q.eq('projectId', projectId))
+          .collect()
+        for (const version of versions) await ctx.db.delete(version._id)
       }
 
       await ctx.db.delete(projectId)

@@ -383,11 +383,13 @@ const purgeGuest = async (ctx: MutationCtx, guest: Doc<'guests'>) => {
       await dropBlob(storageId)
     }
 
-    const versions = await ctx.db
-      .query('versions')
-      .withIndex('by_project', (q) => q.eq('projectId', project._id))
-      .collect()
-    for (const version of versions) await ctx.db.delete(version._id)
+    for (const table of ['versions', 'design_versions'] as const) {
+      const versions = await ctx.db
+        .query(table)
+        .withIndex('by_project', (q) => q.eq('projectId', project._id))
+        .collect()
+      for (const version of versions) await ctx.db.delete(version._id)
+    }
 
     const shares = await ctx.db
       .query('shares')

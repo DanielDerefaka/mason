@@ -85,6 +85,7 @@ import {
 import { SNAP_PX, sameGuides, snapDelta, type Guide, type Rect } from './snapping'
 import { AiPanel } from './ai'
 import { nodeAnswer } from './answer'
+import { HistoryButton } from './history'
 import { Layers } from './layers'
 import { ShareButton } from './share'
 import { Properties } from './properties'
@@ -280,6 +281,34 @@ export const DesignEditor = () => {
     if (!root || next === undefined) return
     past.current.push(root.innerHTML)
     restore(next)
+  }
+
+  /** The markup as it would be stored, which is what a snapshot has to be. */
+  const currentHtml = () => (stage.current ? serialise(stage.current) : '')
+
+  /**
+   * Puts a stored version of the design back on the artboard.
+   *
+   * Not `restore` above, which replays markup this session serialised and can
+   * trust it. This is a row that may have been written before either the
+   * sanitiser or the id scheme was last changed, so it comes in the same way
+   * the design itself does on first paint.
+   *
+   * The snapshot first is the point: a restore lands on the undo stack, so
+   * pressing undo once reverses it. Restoring the wrong version is exactly the
+   * mistake somebody opening this panel is already worried about making.
+   */
+  const onRestoreVersion = (html: string) => {
+    const root = stage.current
+    if (!root) return
+    snapshot()
+    root.innerHTML = sanitiseHtml(html)
+    stripRings(root)
+    assignNodeIds(root)
+    setSelectedId(null)
+    setExpanded(defaultExpanded(root))
+    readTree()
+    commit()
   }
 
   const selected = selectedId && stage.current ? findNode(stage.current, selectedId) : null
@@ -1452,6 +1481,15 @@ export const DesignEditor = () => {
           <HeaderButton label="Redo" onClick={redo} disabled={future.current.length === 0}>
             <Redo2 className="size-4" />
           </HeaderButton>
+          {/* Beside undo rather than off in a menu: running out of undo is the
+              moment somebody needs this, and it is no use if they have to know
+              it exists to go looking for it. */}
+          <HistoryButton
+            projectId={projectId}
+            designId={design.id}
+            currentHtml={currentHtml}
+            onRestore={onRestoreVersion}
+          />
           <span className="mx-1 h-5 w-px bg-white/10" />
           <HeaderButton
             label="Zoom out"
