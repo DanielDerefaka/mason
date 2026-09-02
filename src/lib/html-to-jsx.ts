@@ -41,6 +41,10 @@ const RENAMED: Record<string, string> = {
   'font-size': 'fontSize',
   'font-weight': 'fontWeight',
   'text-anchor': 'textAnchor',
+  'fill-opacity': 'fillOpacity',
+  'stroke-opacity': 'strokeOpacity',
+  'dominant-baseline': 'dominantBaseline',
+  'xlink:href': 'xlinkHref',
 }
 
 /** Attributes that are true by their presence alone. */

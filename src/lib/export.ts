@@ -1,3 +1,4 @@
+import { designResetCss } from '@/lib/design-reset'
 import { buildDesignPrompt } from '@/lib/prompt-export'
 import { buildProject, projectFilename } from '@/lib/project-export'
 import { rasteriseFrame } from '@/lib/rasterise'
@@ -41,13 +42,6 @@ export const exportFramePng = async (frame: Shape, shapes: Shape[]) => {
 }
 
 /**
- * Wraps the generated fragment in a document.
- *
- * The design's inline styles reference the style guide through CSS variables,
- * so those have to travel with it — without them the exported file renders
- * unstyled, which is the most obvious way an export like this goes wrong.
- */
-/**
  * Photograph slots point at this application by relative path, which is right
  * everywhere the design is rendered by us — the canvas, the editor, the
  * preview, a share link — and wrong in a file on someone's desktop, where
@@ -58,12 +52,27 @@ export const exportFramePng = async (frame: Shape, shapes: Shape[]) => {
  * resolving every slot to its stock URL at export time, which means a network
  * round trip per image before the download can start.
  */
-const absoluteImageUrls = (html: string) =>
-  html.replace(/(["'(])\/api\/image\//g, `$1${window.location.origin}/api/image/`)
+const absoluteImageUrls = (html: string, origin: string) =>
+  html.replace(/(["'(])\/api\/image\//g, `$1${origin}/api/image/`)
 
-export const exportDesignHtml = (design: Shape, styleGuide?: StyleGuide | null) => {
+/**
+ * Wraps the generated fragment in a document.
+ *
+ * The design's inline styles reference the style guide through CSS variables,
+ * so those have to travel with it — without them the exported file renders
+ * unstyled, which is the most obvious way an export like this goes wrong.
+ *
+ * Apart from the download, so a test can read what a person would open:
+ * `download` needs a browser to click in, and while the two were one function
+ * the only way to see the exported file was to export one.
+ */
+export const buildDesignHtml = (
+  design: Shape,
+  styleGuide: StyleGuide | null,
+  options: { origin: string },
+): string => {
   const sanitised = sanitiseHtml(design.html ?? '')
-  const fragment = absoluteImageUrls(sanitised)
+  const fragment = absoluteImageUrls(sanitised, options.origin)
   const usesPhotos = fragment.includes('/api/image/')
 
   // Same walk the canvas does when it binds the design's variables, so the
@@ -81,7 +90,13 @@ export const exportDesignHtml = (design: Shape, styleGuide?: StyleGuide | null) 
       ).replace(/%20/g, '+')}:wght@300;400;500;600;700&display=swap">`
     : ''
 
-  const doc = `<!doctype html>
+  // Indented to sit with the rules around it; the reset is written flush.
+  const reset = designResetCss()
+    .split('\n')
+    .map((line) => `      ${line}`)
+    .join('\n')
+
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -101,6 +116,9 @@ ${variables}
         color: var(--foreground);
         font-family: var(--font-family);
       }
+      /* What the design was drawn under in Mason, so this file shows what the
+         editor showed. Layered, so the design's own stylesheet always wins. */
+${reset}
     </style>
   </head>
   <body>
@@ -121,7 +139,10 @@ ${fragment}
   </body>
 </html>
 `
+}
 
+export const exportDesignHtml = (design: Shape, styleGuide?: StyleGuide | null) => {
+  const doc = buildDesignHtml(design, styleGuide ?? null, { origin: window.location.origin })
   download(new Blob([doc], { type: 'text/html' }), `${slug(design.label ?? 'design')}.html`)
 }
 
