@@ -413,18 +413,17 @@ describe('the chrome offers the canvas on every page, not just the home page', (
   })
 
   /**
-   * Sign-in stays in the header in both states, and the guard that used to sit
-   * around it is the regression: while the week was on, the shared auth layout
-   * redirected every screen to /try, so the header hid the link rather than
-   * leave one that bounced. Both halves were wrong. Sign-up is what the week
-   * closes; the accounts made before it still need their door, on the one week
-   * of the year the most people see the page. `free-week.test.ts` holds the
-   * rest of that rule.
+   * Sign-in is in the header whenever the screen behind it is open, which is
+   * every day the free week is not running. The guard around it must be that
+   * flag and nothing else: an unconditional hide is a site with no way in at
+   * all, and an unconditional link is one that bounces during the week.
+   * `free-week.test.ts` holds the other half, that both auth screens close
+   * together and that the flag reaches this component as a prop.
    */
   it('keeps a way in for people who already have an account', () => {
     const header = read('src/components/marketing/layout/SiteHeader.tsx')
     expect(header).toMatch(/href="\/auth\/sign-in"/)
-    expect(header).not.toMatch(/!freeWeek &&/)
+    expect(header).toMatch(/\{!freeWeek && \(/)
   })
 })
 

@@ -23,10 +23,12 @@ export type GuestContextValue = {
    * True while the free week is on and accounts are not on offer.
    *
    * Read by the exits from /try — the cap screen, the out-of-credits sheet,
-   * "Keep this canvas" — which offer an account outside the week and say
-   * "accounts open soon" during it. It changes nothing about what a download
-   * costs. A prop from the server page rather than a read of the environment,
-   * because the switch is server-side.
+   * "Keep this canvas" — which offer an account outside the week and, during
+   * it, either say "accounts open soon" or are not rendered at all: both auth
+   * screens redirect to /try while the flag is on, so an offer of one is an
+   * offer to go nowhere. It changes nothing about what a download costs. A
+   * prop from the server page rather than a read of the environment, because
+   * the switch is server-side.
    */
   freeWeek: boolean
   /**

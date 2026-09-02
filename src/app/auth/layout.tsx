@@ -41,16 +41,13 @@ export const metadata: Metadata = {
  * above them, so the app's providers mount here rather than in the root; the
  * root mounts nothing, which is what lets the marketing pages prerender.
  *
- * The free week does not close this layout, and it used to: `isFreeWeek()`
- * sent every auth screen to /try, sign-in included, on the theory that half a
- * door is worse than none. What that shut was every account made before the
- * week began — a subscriber who pressed "Sign in" landed on the guest canvas
- * with no way back to their own work, for seven days, on a site whose header
- * still showed the link. The week's promise is that nothing *needs* an
- * account, which is a fact about /try and not a reason to lock out the people
- * who already have one. Only sign-up closes during the week, and it closes in
- * `sign-up/layout.tsx`, because a shared layout cannot see which of its
- * children is rendering and this is the one place all three meet.
+ * The free week closes two of the three screens under this layout, and it
+ * closes them one at a time rather than here. `isFreeWeek()` once sat in this
+ * file and sent all three to /try, the password reset included, which left
+ * anybody mid-reset with no way to finish it and no way to ask. A shared
+ * layout cannot see which of its children is rendering, so the redirect
+ * belongs in `sign-in/layout.tsx` and `sign-up/layout.tsx`, where the two that
+ * close say why. `free-week.test.ts` fails if this file reads the flag again.
  */
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const token = await convexAuthNextjsToken()

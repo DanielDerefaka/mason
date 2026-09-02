@@ -32,8 +32,11 @@ import { useAccountNotice, useGuest } from './guest-context'
  * claim subsystem in convex/guest.ts exists for the other case, an address
  * that already has an account, and nothing calls it yet.
  *
- * During the free week the form is closed, so the primary asks for an
- * address instead and the body says accounts open soon.
+ * During the free week the button that opens this is not rendered at all, so
+ * the branch below is unreachable while the flag is on. It stays anyway: it is
+ * the safe state for the day somebody ungates the button, since the link it
+ * replaces would otherwise send a guest to a sign-up form that redirects them
+ * straight back to the canvas they were already on.
  */
 export const KeepCanvasDialog = ({
   open,

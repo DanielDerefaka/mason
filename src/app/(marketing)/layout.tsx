@@ -14,9 +14,10 @@ import { isFreeWeek } from '@/lib/try/free-week'
  * sticky rather than fixed, so `main` needs no top padding.
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
-  // Read here, on the server, and threaded down as a prop: the footer is a
-  // client component and must not read the env itself. The header no longer
-  // needs it at all.
+  // Read here, on the server, and threaded down as a prop: the header, the
+  // menu inside it and the footer are all client components and must not read
+  // the env themselves. All three drop their sign-in link during the week,
+  // because the screen behind it redirects back to /try.
   const freeWeek = isFreeWeek()
 
   return (
@@ -39,7 +40,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <SmoothScroll />
       <Preloader />
       <RevealObserver />
-      <SiteHeader />
+      <SiteHeader freeWeek={freeWeek} />
       <main>{children}</main>
       <SiteFooter freeWeek={freeWeek} />
     </div>
