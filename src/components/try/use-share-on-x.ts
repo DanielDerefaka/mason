@@ -15,7 +15,10 @@ import type { Id } from '../../../convex/_generated/dataModel'
 import { asGuest, type GuestMe } from './types'
 import { uploadBlob } from './upload'
 
-const SHARE_TEXT = 'I sketched this and Mason turned it into a real page 👇'
+// The public name, because this is the one sentence of ours that leaves the
+// site: the post body is read by people who have never seen the product, and
+// "Mason" on its own is a bricklayer and a jar.
+const SHARE_TEXT = 'I sketched this and SketchMason turned it into a real page 👇'
 
 const selectors = shapesAdapter.getSelectors()
 

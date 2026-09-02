@@ -136,6 +136,15 @@ export const getSharedDesign = query({
     const design = (stored.shapes ?? []).find((shape) => shape.id === share.designId)
     if (!design?.html) return null
 
+    // The same design, if its owner put it in Explore. A remix needs a gallery
+    // row: that is the snapshot of the sketch behind the design, and a share
+    // holds only the design. The row is keyed by design id, which both carry,
+    // and a hidden row stays hidden here as it does on Explore.
+    const published = await ctx.db
+      .query('gallery')
+      .withIndex('by_design', (q) => q.eq('designId', share.designId))
+      .first()
+
     return {
       html: design.html,
       label: design.label ?? 'Design',
@@ -144,6 +153,7 @@ export const getSharedDesign = query({
       previewUrl: share.previewStorageId
         ? await ctx.storage.getUrl(share.previewStorageId as Id<'_storage'>)
         : null,
+      remixId: published?.visible ? published._id : null,
     }
   },
 })

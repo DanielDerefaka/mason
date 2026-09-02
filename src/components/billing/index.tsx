@@ -7,10 +7,13 @@ import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { LogoMark } from '@/components/logo-mark'
+import { CREDITS_PER_PERIOD } from '@/lib/plan'
 import { api } from '../../../convex/_generated/api'
 
+// The number is the webhook's, not a copy of it: /pricing prints the same
+// constant, and the two pages used to carry the figure by hand.
 const PERKS = [
-  '200 credits every month',
+  `${CREDITS_PER_PERIOD} credits every month`,
   'Style guides from your own mood board',
   'Designs, flows and mobile versions',
   'The editor, and public share links',
@@ -47,7 +50,7 @@ export const Billing = () => {
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           {subscription?.active
-            ? 'Thanks — your subscription is active.'
+            ? 'Thanks, your subscription is active.'
             : 'A sketch in, a finished screen out. Cancel whenever you like.'}
         </p>
       </div>

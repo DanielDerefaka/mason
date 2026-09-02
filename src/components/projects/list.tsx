@@ -1,16 +1,24 @@
 'use client'
 
+import { useQuery } from 'convex/react'
+import { Plus } from 'lucide-react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/hooks/use-projects'
+import { api } from '../../../convex/_generated/api'
 import { ProjectArchive } from './archive'
 import { ProjectCard } from './card'
 
 export const ProjectsList = () => {
   const params = useParams<{ session: string }>()
-  const { projects, archiveProjects } = useProjects()
+  const { projects, archiveProjects, createProject, creating } = useProjects()
+  // The query the navbar's badge reads, so the first-run note and the corner
+  // of the screen cannot disagree about how many generations are left.
+  const credits = useQuery(api.credits.getBalance)
   const [view, setView] = useState<'live' | 'archive'>('live')
   /** True while a card is hovering the Archive tab, so the target can say so. */
   const [dropping, setDropping] = useState(false)
@@ -18,10 +26,8 @@ export const ProjectsList = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Your Projects</h1>
-        <p className="text-muted-foreground mt-1.5 text-sm">
-          Manage your design projects and continue where you left off.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Your projects</h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">Pick up where you left off.</p>
       </div>
 
       {/* A tab rather than a separate page: the archive is the same list in
@@ -74,9 +80,35 @@ export const ProjectsList = () => {
       {view === 'archive' ? (
         <ProjectArchive />
       ) : projects.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No projects yet. Create one to get started.
-        </p>
+        /* The first run. Someone who has just made an account landed on a
+           heading, a tab bar and a line saying there was nothing here, with
+           the one button that makes something up in the navbar. This says
+           what the product does and what they have to spend, and puts both
+           ways to start where they are already looking. The count waits for
+           the query rather than showing a placeholder: a sentence with a
+           dash in it reads as broken. */
+        <div className="max-w-[560px] rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+          <p className="text-sm leading-relaxed">
+            Nothing here yet. Start a sketch and Mason builds the screen beside it.
+            {credits == null
+              ? ''
+              : ` You have ${credits} credit${credits === 1 ? '' : 's'}, and one credit is one generation.`}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button
+              size="sm"
+              className="rounded-full px-4"
+              onClick={() => void createProject()}
+              disabled={creating}
+            >
+              <Plus className="size-4" />
+              {creating ? 'Creating…' : 'New project'}
+            </Button>
+            <Button asChild size="sm" variant="outline" className="rounded-full px-4">
+              <Link href="/try">Open the canvas</Link>
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((project) => (

@@ -851,10 +851,12 @@ describe('the public surface stays in its category', () => {
    * pages that day, one of them in the pill every page ends on. A comma, a
    * colon or a full stop says the same thing, so copy a visitor reads carries
    * none. The sweep is the category guard's surface plus the blog posts, the
-   * /try screens and the strings behind them, comments stripped first so a
-   * note may still use one. A lone '—' is a value placeholder (an unset phone
-   * number, a count still loading), not prose, and `PENDING_CONFIRMATION` is
-   * never rendered; both are let through.
+   * /try screens and the strings behind them, and the screens behind a
+   * session: the dashboard, billing, settings and the auth forms, where four
+   * more were found once the public pages were clean. Comments are stripped
+   * first so a note may still use one. A lone '—' is a value placeholder (an
+   * unset phone number, a count still loading), not prose, and
+   * `PENDING_CONFIRMATION` is never rendered; both are let through.
    */
   it('punctuates copy like a person: no em dash a visitor can read', () => {
     const files = new Set([
@@ -864,6 +866,12 @@ describe('the public surface stays in its category', () => {
       ...walk(join(process.cwd(), 'src/lib/try')),
       ...walk(join(APP_DIR, 'try')),
       join(process.cwd(), 'src/lib/byok.ts'),
+      ...walk(join(process.cwd(), 'src/components/billing')),
+      ...walk(join(process.cwd(), 'src/components/projects')),
+      ...walk(join(process.cwd(), 'src/components/settings')),
+      ...walk(join(process.cwd(), 'src/components/navbar')),
+      ...walk(join(process.cwd(), 'src/components/auth')),
+      ...walk(join(APP_DIR, 'auth')),
     ])
     const offenders = [...files].flatMap((path) =>
       withoutComments(readFileSync(path, 'utf8'))

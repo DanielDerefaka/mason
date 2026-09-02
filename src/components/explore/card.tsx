@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { DESIGN_SCOPE, designScope, sanitiseHtml } from '@/lib/sanitise'
+import { remixHref } from '@/lib/try/remix'
 import type { ExploreItem } from './use-explore-list'
 
 /**
@@ -171,7 +172,7 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
             {remixCount(item.remixes)}
           </span>
           <Link
-            href={`/try?remix=${item.id}`}
+            href={remixHref(item.id)}
             className="pill pill-primary px-4 py-1.5 text-[13px]"
             aria-label={`Remix ${item.label}`}
           >
