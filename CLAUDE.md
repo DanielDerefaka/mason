@@ -20,7 +20,7 @@ would otherwise look like arbitrary code.
 npm run dev          # then, in another terminal:
 npm run smoke        # 32 live checks against a running server
 npm run smoke:browser # 5 pages in a real headless Chrome, for what smoke cannot see
-npm test             # 872 unit tests, no server needed
+npm test             # 910 unit tests, no server needed
 npm run icons        # favicon.ico and apple-icon.png, regenerated from icon.svg
 npm run build        # always check the exit code, not the log
 npx convex dev --once
@@ -36,6 +36,12 @@ It never calls a model, so it is free to run as often as you like.
 
 **Never run `npm run build` while `npm run dev` is live** — the build rewrites `.next` out
 from under the dev server and every route starts 500ing.
+
+**A layout edit that holds on one page only is the dev server, not the edit.** After a change
+to `(marketing)/layout.tsx`, `npm run dev` served the new render for the route it recompiled
+and the old one for every other route: the `suppressHydrationWarning` fix looked to work on
+`/` and not on `/explore`, with the RSC payload for each proving it. Restart the dev server
+before debugging a fix that seems to work in one place.
 
 **Do not grep the build log for "Failed"** — it matches unrelated font warnings. Check the
 exit code.
