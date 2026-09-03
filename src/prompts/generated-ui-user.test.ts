@@ -84,4 +84,63 @@ describe('generatedUi.user', () => {
       expect(message).toContain('use the design system, and return only the HTML fragment.')
     }
   })
+
+  describe('the frame', () => {
+    /**
+     * The regression this exists for: a landscape sketch that fitted its
+     * frame came back as a portrait page twice the frame's height. The
+     * picture carried the aspect and the manifest's header carried the size,
+     * and neither was stated as a rule.
+     */
+    it('states the frame as a rule, read from the manifest, ahead of the manifest', () => {
+      const message = user('', 0, undefined, MANIFEST)
+      expect(message).toContain(
+        '## The frame\n\nThe frame is 1440×1024, landscape, and it is the page: 1440px wide, and 1024px tall at that width. A landscape frame is a landscape screen, not a portrait page.',
+      )
+      expect(message).toContain('an element at h12 is about 123px tall')
+      expect(message).toContain('at 1440px the page ends where the frame ends')
+      expect(message.indexOf('## The frame')).toBeLessThan(message.indexOf('## Manifest'))
+    })
+
+    it('lets the page continue only when the manifest says the sketch does', () => {
+      const scrolling = MANIFEST.replace(
+        'left to right.',
+        'left to right. 2 elements run past the bottom edge, so the sketch continues below the frame.',
+      )
+      const message = user('', 0, undefined, scrolling)
+      expect(message).toContain(
+        '2 elements in the manifest run past the bottom edge, so the page continues below the frame: keep the first 1024px to the frame',
+      )
+      expect(message).not.toContain('the page ends where the frame ends')
+    })
+
+    it('reads a portrait frame as a phone, not a desktop page squeezed into one', () => {
+      const phone = MANIFEST.replace('Frame 1440×1024, landscape.', 'Frame 393×852, portrait.')
+      expect(user('', 0, undefined, phone)).toContain(
+        'The frame is 393×852, portrait, and it is the page: 393px wide, and 852px tall at that width. A portrait frame is a tall, narrow screen',
+      )
+    })
+
+    it('says nothing about the frame when there is no header to read it from', () => {
+      // Wrong would be worse than nothing: a default of 1440×1024 stated as a
+      // rule would turn a phone sketch into a desktop page.
+      expect(user('', 0, undefined, '1. box, x0 y0 w100 h6')).not.toContain('## The frame')
+      expect(user('', 0)).not.toContain('## The frame')
+    })
+  })
+
+  it('says the labels are copy, with or without a manifest', () => {
+    // The regression this exists for: a button hand-labelled "GET FREE" came
+    // back reading "GET STARTED". The manifest quoted the label; nothing said
+    // the quote was the button's text rather than a hint about the button.
+    for (const message of [user('', 0), user('', 0, 'note', MANIFEST)]) {
+      expect(message).toContain('Every label written in the sketch is copy, verbatim.')
+      expect(message).toContain('A button labelled "GET FREE" says GET FREE, in that case')
+    }
+    // After the manifest, so it is read with the quotes fresh, and before the
+    // drawer's note, so the note keeps the last word.
+    const message = user('', 0, 'note', MANIFEST)
+    expect(message.indexOf('copy, verbatim')).toBeGreaterThan(message.indexOf('## Manifest'))
+    expect(message.indexOf('copy, verbatim')).toBeLessThan(message.indexOf('The person who drew this'))
+  })
 })

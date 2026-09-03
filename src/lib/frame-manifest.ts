@@ -39,6 +39,40 @@ export const MANIFEST_MAX_CHARS = 12_000
 /** Longer text is the drawer's paragraph, and the first part of it says what it is. */
 const MAX_LABEL_CHARS = 160
 
+/**
+ * The header, read back.
+ *
+ * The user prompt states the frame's size as a rule, and the only place the
+ * size crosses the wire is the first line `describeFrame` writes. Parsing it
+ * back here keeps the writer and the reader in one file, so the day the header
+ * changes shape the round-trip test beside them fails before a generation
+ * silently loses its frame. A manifest from a client that predates the header,
+ * or none at all, reads as no frame, and the prompt then says nothing about
+ * size rather than something wrong.
+ */
+export type FrameSize = {
+  width: number
+  height: number
+  orientation: 'landscape' | 'portrait' | 'square'
+  /** How many elements run past the bottom edge; the page scrolls only when this is not zero. */
+  pastTheEdge: number
+}
+
+const HEADER = /^Frame (\d+)×(\d+), (landscape|portrait|square)\./
+const PAST_THE_EDGE = /(\d+) elements? runs? past the bottom edge/
+
+export const frameSizeOf = (manifest: string | undefined | null): FrameSize | null => {
+  const header = (manifest ?? '').trim().split('\n')[0] ?? ''
+  const match = HEADER.exec(header)
+  if (!match) return null
+  return {
+    width: Number(match[1]),
+    height: Number(match[2]),
+    orientation: match[3] as FrameSize['orientation'],
+    pastTheEdge: Number(PAST_THE_EDGE.exec(header)?.[1] ?? 0),
+  }
+}
+
 type Box = { left: number; top: number; right: number; bottom: number }
 
 /** Kinds that occupy a box, as opposed to a text run or a stroke. */
@@ -351,10 +385,12 @@ export const describeFrame = (frame: Shape, shapes: Shape[]): string => {
     const group = element.parent ? element.parent.children : topLevel
     const previous = group[group.indexOf(element) - 1] as Element | undefined
 
-    const geometry =
-      shape.kind === 'text'
-        ? `x${element.x} y${element.y} w${element.w}`
-        : `x${element.x} y${element.y} w${element.w} h${element.h}`
+    // A text element's height is the room its words were given: the box grows
+    // to fit them as they are typed, so h is the block as the drawer saw it.
+    // It was left off the line as if a text box had no height, and a two-line
+    // headline in a compact hero came back as five lines at 120px, because
+    // nothing said how tall it was allowed to be.
+    const geometry = `x${element.x} y${element.y} w${element.w} h${element.h}`
 
     const detail: string[] = []
     if (shape.kind === 'text') {
@@ -423,11 +459,23 @@ export const describeFrame = (frame: Shape, shapes: Shape[]): string => {
   })
   const omittedArrows = Math.max(0, arrows.length - MAX_ARROWS)
 
+  // The page scrolls only where the sketch does. A landscape frame came back
+  // as a portrait page twice its height because nothing said the sketch ended
+  // at the frame's edge, so the header says when it does not: an element whose
+  // bottom hangs past the frame, by more than a hand's overhang, is the drawer
+  // saying the page goes on. `frameSizeOf` reads this sentence back.
+  const pastTheEdge = numbered.filter(
+    (shape) => shape.y + shape.height > frame.y + height + tolerance,
+  ).length
+  const continues = pastTheEdge
+    ? ` ${pastTheEdge} element${pastTheEdge === 1 ? ' runs' : 's run'} past the bottom edge, so the sketch continues below the frame.`
+    : ''
+
   const count = numbered.length
   const header =
     `${size} ${count} element${count === 1 ? '' : 's'}, top to bottom, left to right` +
     (arrows.length ? `; ${arrows.length} arrow${arrows.length === 1 ? '' : 's'}` : '') +
-    '. Positions and sizes are percentages of the frame.'
+    `.${continues} Positions and sizes are percentages of the frame.`
 
   const body = [
     ...elements.map(describe),

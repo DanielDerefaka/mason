@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       // than saved silently.
       maxOutputTokens: 32000,
       system: [
-        prompts.generatedUi.system,
+        prompts.generatedUi.systemFor({ referenceCount: inspirationUrls.length }),
         `## The project's design system\n\n${describeStyleGuide(styleGuide, inspirationUrls.length)}`,
         ...(describeReferenceBrief(referenceBrief)
           ? [`## What the references actually look like\n\n${describeReferenceBrief(referenceBrief)}`]

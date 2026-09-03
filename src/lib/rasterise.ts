@@ -76,7 +76,8 @@ export const arrowHeadFor = (points: Point[], lineWidth: number): [Point, Point,
  * `crossOrigin` is set before the source because a canvas that has drawn an
  * image without CORS permission is tainted, and `toBlob` then throws — the
  * export would fail wholesale rather than lose one picture. A load that fails
- * resolves to null so the rest of the frame still renders.
+ * resolves to null so the rest of the frame still renders, and the caller
+ * draws a placeholder where the picture was going to be.
  */
 const loadImage = (src: string): Promise<HTMLImageElement | null> =>
   new Promise((resolve) => {
@@ -86,6 +87,86 @@ const loadImage = (src: string): Promise<HTMLImageElement | null> =>
     image.onerror = () => resolve(null)
     image.src = src
   })
+
+/**
+ * Breaks a text run into the lines the canvas shows.
+ *
+ * The canvas lays a text shape out with `white-space: pre-wrap` at the
+ * shape's width: the drawer's own line breaks hold, and a line longer than
+ * the box wraps at a space. `fillText` does neither, so a paragraph typed
+ * into a 240px box went into the picture as one line across whatever stood
+ * to its right, and the model read a layout the drawer never saw. A single
+ * word wider than the box runs over, as it does on screen, and an empty
+ * line stays an empty line. `measure` is the width of a run in the font the
+ * shape is set in; the canvas's `measureText` in practice, and anything in a
+ * test.
+ */
+export const wrapText = (
+  text: string,
+  maxWidth: number,
+  measure: (run: string) => number,
+): string[] =>
+  text.split('\n').flatMap((paragraph) => {
+    const lines: string[] = []
+    let line = ''
+    for (const word of paragraph.split(' ')) {
+      const candidate = line ? `${line} ${word}` : word
+      if (line && measure(candidate) > maxWidth) {
+        lines.push(line)
+        line = word
+      } else {
+        line = candidate
+      }
+    }
+    lines.push(line)
+    return lines
+  })
+
+/**
+ * What the model sees where a picture should have been.
+ *
+ * A stored image whose URL failed was skipped, so the picture had a hole
+ * where the manifest listed an image: the model was told about a photograph
+ * at a position it could not see, and designed around the hole. The mark
+ * every wireframe uses for a picture — a light box, a diagonal, the word
+ * "image" — says a picture goes here, which is the one thing about it the
+ * model needs to know.
+ */
+const PLACEHOLDER_FILL = 'rgba(255,255,255,0.12)'
+const PLACEHOLDER_INK = 'rgba(255,255,255,0.6)'
+export const PLACEHOLDER_WORD = 'image'
+
+const paintPlaceholder = (ctx: CanvasRenderingContext2D, shape: Shape, radius: number) => {
+  const { x, y, width, height } = shape
+
+  ctx.save()
+  roundedRect(ctx, x, y, width, height, radius)
+  ctx.clip()
+  ctx.fillStyle = PLACEHOLDER_FILL
+  ctx.fillRect(x, y, width, height)
+  ctx.strokeStyle = PLACEHOLDER_INK
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + width, y + height)
+  ctx.stroke()
+  ctx.restore()
+
+  roundedRect(ctx, x, y, width, height, radius)
+  ctx.strokeStyle = PLACEHOLDER_INK
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  // Sized to the box, so a thumbnail is still labelled and a hero does not shout.
+  const size = Math.max(10, Math.min(24, width / 6, height / 3))
+  ctx.save()
+  ctx.fillStyle = PLACEHOLDER_INK
+  ctx.font = `500 ${size}px "Inter", sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(PLACEHOLDER_WORD, x + width / 2, y + height / 2)
+  ctx.restore()
+}
 
 /**
  * A rectangle with rounded corners, as a path. `roundRect` is newer than some
@@ -147,12 +228,24 @@ const paintBox = (ctx: CanvasRenderingContext2D, shape: Shape) => {
  * box went through `fillRect` in its fill colour, so an outlined box was sent
  * filled, a pill was sent square and an arrow had no head. The drawer's marks
  * are the sketch's emphasis, and the model needs to see them to act on them.
+ *
+ * Besides the picture it reports what the picture could not show: the images
+ * whose files did not load, which are drawn as placeholders so the model
+ * still knows a picture goes there, and which the caller can tell the drawer
+ * about once.
  */
-export const rasteriseFrame = async (
+export type Rasterised = {
+  blob: Blob
+  /** Images in the frame whose file did not load; each is a placeholder in the picture. */
+  missingImages: number
+}
+
+export const rasteriseFrameWithReport = async (
   frame: Shape,
   shapes: Shape[],
   scale = scaleFor(frame),
-): Promise<Blob> => {
+): Promise<Rasterised> => {
+  let missingImages = 0
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(frame.width * scale))
   canvas.height = Math.max(1, Math.round(frame.height * scale))
@@ -234,6 +327,12 @@ export const rasteriseFrame = async (
           shape.height,
         )
         ctx.restore()
+      } else {
+        // A file that failed is a picture the drawer meant and the model would
+        // otherwise never see; a shape with no file yet is the same box to the
+        // model, and nothing to warn anybody about.
+        if (shape.src) missingImages += 1
+        paintPlaceholder(ctx, shape, style.radius)
       }
       if (style.strokeWidth > 0) {
         roundedRect(ctx, shape.x, shape.y, shape.width, shape.height, style.radius)
@@ -269,11 +368,19 @@ export const rasteriseFrame = async (
         `${text.italic ? 'italic ' : ''}${text.fontWeight} ` +
         `${text.fontSize}px "${text.fontFamily}", sans-serif`
       ctx.textBaseline = 'top'
+      // Tracking widens every run, so it goes on the context before the
+      // measuring, or the wrap lands a word late against what is on screen.
+      // A browser without the property spaces nothing and wraps a little
+      // generously, which is the old picture rather than a broken one.
+      ctx.letterSpacing = `${text.letterSpacing}px`
 
       const lineHeight = text.fontSize * text.lineHeight
-      const lines = (shape.label ?? 'Text').split('\n')
+      // The browser splits the leading above and below each line; `top` puts
+      // the glyphs at the top of the box, so half of it is added back.
+      const leading = (lineHeight - text.fontSize) / 2
+      const lines = wrapText(shape.label ?? 'Text', shape.width, (run) => ctx.measureText(run).width)
       lines.forEach((line, index) => {
-        ctx.fillText(line, shape.x, shape.y + index * lineHeight)
+        ctx.fillText(line, shape.x, shape.y + leading + index * lineHeight)
       })
       continue
     }
@@ -294,10 +401,18 @@ export const rasteriseFrame = async (
     paintBox(ctx, shape)
   }
 
-  return await new Promise<Blob>((resolve, reject) =>
+  const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the frame'))),
+      (encoded) => (encoded ? resolve(encoded) : reject(new Error('Could not encode the frame'))),
       'image/png',
     ),
   )
+  return { blob, missingImages }
 }
+
+/** The picture alone, for a caller that wants only the pixels: the PNG export. */
+export const rasteriseFrame = async (
+  frame: Shape,
+  shapes: Shape[],
+  scale = scaleFor(frame),
+): Promise<Blob> => (await rasteriseFrameWithReport(frame, shapes, scale)).blob
