@@ -20,7 +20,9 @@ export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   try {
-    const limit = await checkRateLimit()
+    // Its own allowance: an edit is seconds of model time, and eight of them
+    // shared with the page generations was a working session refused as a loop.
+    const limit = await checkRateLimit('edit')
     if (!limit.ok) {
       return NextResponse.json(
         { message: `Too many requests. Try again in ${limit.retryAfter}s` },

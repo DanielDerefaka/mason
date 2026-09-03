@@ -2,6 +2,7 @@
 
 import { KeyRound } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -38,10 +39,28 @@ type Props = {
  * copy.test.ts; `BILLING_ENFORCED` gates the dashboard, not the starting
  * balance, so the number holds in both of its states. During the free week
  * the form is closed, so the row asks for an address instead.
+ *
+ * The share row is offered to every guest, off with its reason under it when
+ * it cannot be pressed. It used to be rendered only while the bonus was on,
+ * so a guest whose share had been claimed, or whose one design had been
+ * refunded, saw the row the banner promised them vanish with no word why.
  */
 export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsAt }: Props) => {
   const { isGuest, freeWeek } = useGuest()
   const notify = useAccountNotice()
+
+  // A clock, not a snapshot: the countdown was computed once at render, and
+  // a sheet left open for an hour still said the hour it opened with.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!open) return
+    setNow(Date.now())
+    const tick = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(tick)
+  }, [open])
+
+  const offerShare = isGuest || share.earnsBonus
+  const shareOff = share.earnsBonus ? share.disabledReason : share.bonusReason
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -55,10 +74,10 @@ export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsA
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {share.earnsBonus && (
+            {offerShare && (
               <Button
                 className="rounded-full"
-                disabled={Boolean(share.disabledReason) || share.busy}
+                disabled={Boolean(shareOff) || share.busy}
                 onClick={() => {
                   onOpenChange(false)
                   void share.share()
@@ -68,7 +87,7 @@ export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsA
               </Button>
             )}
             <Button
-              variant={share.earnsBonus ? 'outline' : 'default'}
+              variant={offerShare && !shareOff ? 'outline' : 'default'}
               className="rounded-full"
               onClick={() => {
                 onOpenChange(false)
@@ -79,6 +98,9 @@ export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsA
               Add your key
             </Button>
           </div>
+          {offerShare && shareOff && (
+            <p className="text-xs text-muted-foreground">{shareOff}</p>
+          )}
           {isGuest && (
             <p className="text-sm text-muted-foreground">
               {freeWeek ? (
@@ -103,7 +125,7 @@ export const OutOfCreditsSheet = ({ open, onOpenChange, share, onAddKey, resetsA
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Comes back at 00:00 UTC (in {formatRoughCountdown(resetsAt - Date.now())})
+            Comes back at 00:00 UTC (in {formatRoughCountdown(resetsAt - now)})
           </p>
         </div>
       </SheetContent>

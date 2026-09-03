@@ -151,9 +151,13 @@ const refundGuest = async (ctx: MutationCtx, userId: Id<'users'>, ticket?: strin
   if (guest.lastSpendSource === 'pool') {
     const pool = guest.lastPoolDay ? await poolDayRow(ctx.db, guest.lastPoolDay) : null
     if (pool) await ctx.db.patch(pool._id, { used: Math.max(0, pool.used - 1) })
+    // `poolUses` stays. It counts turns taken and nothing reads it for
+    // availability, which `lastPoolDay` alone decides; what reads it is
+    // `canClaimShare`, and a design cut short and refunded is still a
+    // design the guest made, kept on the canvas and worth sharing. Taking
+    // the turn back off the count left them unable to share it for the bonus.
     await ctx.db.patch(guest._id, {
       lastPoolDay: undefined,
-      poolUses: Math.max(0, guest.poolUses - 1),
       lastSpendSource: undefined,
       refundTicket: undefined,
     })

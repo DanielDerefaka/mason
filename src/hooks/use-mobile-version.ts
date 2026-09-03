@@ -78,7 +78,7 @@ export const useMobileVersion = () => {
           height: design.height,
           fill: 'transparent',
           sourceFrameId: design.sourceFrameId,
-          label: `${design.label ?? 'Design'} — mobile`,
+          label: `${design.label ?? 'Design'} (mobile)`,
           html: '',
           streaming: true,
         }),

@@ -5,7 +5,7 @@ import { nanoid } from '@reduxjs/toolkit'
 import { toast } from 'sonner'
 
 import { track } from '@/lib/analytics'
-import { stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
+import { isUnusable, stripOutcomeMarkers, wasEmpty, wasTruncated } from '@/lib/truncation'
 import {
   DESIGN_GENERATED_EVENT,
   generateFetch,
@@ -16,6 +16,7 @@ import { useContinueDesign } from '@/hooks/use-continue-design'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   addGeneratedUI,
+  focusOnRect,
   removeShape,
   setGeneratedHtml,
   shapesAdapter,
@@ -33,6 +34,37 @@ const GUTTER = 80
 /** Repainting on every chunk pegs a CPU; a design lands in ~40 updates instead. */
 const UPDATE_INTERVAL = 200
 
+/**
+ * What a refused request throws, so the catch can act on the refusal without
+ * a second throw site: the status for the count, and whatever
+ * `noteGenerateRefusal` decided about how to say it.
+ */
+type GenerationRefused = Error & {
+  status?: number
+  description?: string
+  retryAfter?: number
+  sheetOpened?: boolean
+}
+
+/**
+ * A 429 that counts down. The route's Retry-After is a number of seconds that
+ * is wrong a second after it is read, so the toast is re-issued under the same
+ * id once a second and dismissed when the wait is over.
+ */
+const toastRetryCountdown = (title: string, seconds: number) => {
+  let left = seconds
+  const id = toast.error(title, { description: `Try again in ${left}s`, duration: left * 1000 })
+  const tick = setInterval(() => {
+    left -= 1
+    if (left <= 0) {
+      clearInterval(tick)
+      toast.dismiss(id)
+      return
+    }
+    toast.error(title, { id, description: `Try again in ${left}s`, duration: left * 1000 })
+  }, 1000)
+}
+
 export const useFrame = () => {
   const dispatch = useAppDispatch()
   const { continueDesign } = useContinueDesign()
@@ -46,11 +78,25 @@ export const useFrame = () => {
       toast.error('Open a project first')
       return
     }
-    if (generatingFrameId) return
+    if (generatingFrameId) {
+      // One at a time, and said so. A second Generate used to return here in
+      // silence, which on a frame with its own pill reads as a click that did
+      // not register, and gets pressed again.
+      toast.info('One design at a time', {
+        description:
+          'The one already running will finish first. Press Generate again once it has landed.',
+      })
+      return
+    }
 
     setGeneratingFrameId(frame.id)
     const id = nanoid()
     track('generate_clicked')
+
+    // Both outlive the try: the catch needs to know whether the panel exists
+    // and how much of the page reached it.
+    let placed = false
+    let markup = ''
 
     try {
       const image = await rasteriseFrame(frame, shapes)
@@ -59,6 +105,44 @@ export const useFrame = () => {
       // model reads the geometry as numbers rather than estimating it from
       // purple blocks.
       const manifest = describeFrame(frame, shapes)
+
+      // Placed before the request goes out, not once the response is on its
+      // way. The route holds its headers until the model's first word, which
+      // is most of a minute after the click, and for all of it the canvas
+      // showed that nothing had happened. The panel now stands where the
+      // design will land and says what stage it is at; a refusal removes it
+      // in the catch, which is what the old ordering was for.
+      dispatch(
+        addGeneratedUI({
+          id,
+          kind: 'generated-ui',
+          x: frame.x + frame.width + GUTTER,
+          y: frame.y,
+          width: frame.width,
+          height: frame.height,
+          fill: 'transparent',
+          sourceFrameId: frame.id,
+          label: frame.label,
+          instruction: frame.instruction,
+          html: '',
+          streaming: true,
+        }),
+      )
+      placed = true
+
+      // Sketch and design in one view. The design sits a gutter to the right
+      // of the frame, which at a zoom chosen for drawing is off the screen,
+      // and a page that appeared out of sight was a page that had not.
+      dispatch(
+        focusOnRect({
+          x: frame.x,
+          y: frame.y,
+          width: frame.width * 2 + GUTTER,
+          height: frame.height,
+          viewWidth: window.innerWidth,
+          viewHeight: Math.max(240, window.innerHeight - 120),
+        }),
+      )
 
       const form = new FormData()
       form.append('image', image, 'frame.png')
@@ -78,33 +162,19 @@ export const useFrame = () => {
           .catch(() => null)
         // The status rides on the error so the catch can count which refusal
         // this was without a second throw site.
-        throw Object.assign(new Error(refusal ?? message ?? 'Failed to generate the design'), {
-          status: response.status,
-        })
+        throw Object.assign(
+          new Error(refusal.message ?? message ?? 'Failed to generate the design'),
+          {
+            status: response.status,
+            description: refusal.description,
+            retryAfter: refusal.retryAfter,
+            sheetOpened: refusal.sheetOpened,
+          },
+        )
       }
-
-      // Added only once the response is on its way, so a rejected request does
-      // not leave an empty panel on the canvas.
-      dispatch(
-        addGeneratedUI({
-          id,
-          kind: 'generated-ui',
-          x: frame.x + frame.width + GUTTER,
-          y: frame.y,
-          width: frame.width,
-          height: frame.height,
-          fill: 'transparent',
-          sourceFrameId: frame.id,
-          label: frame.label,
-          instruction: frame.instruction,
-          html: '',
-          streaming: true,
-        }),
-      )
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
-      let markup = ''
       let lastUpdate = 0
 
       for (;;) {
@@ -164,8 +234,8 @@ export const useFrame = () => {
         toast.success('Design generated')
       }
     } catch (error) {
-      // Clear the spinner on a shape that will never finish.
-      dispatch(setGeneratedHtml({ id, html: '', streaming: false }))
+      const refused = error as GenerationRefused
+      const message = error instanceof Error ? error.message : ''
 
       /**
        * "Failed to fetch" is what the browser says when the connection dropped
@@ -174,17 +244,49 @@ export const useFrame = () => {
        * up on a long generation, which is a different problem with a different
        * fix, so say so.
        */
-      const message = error instanceof Error ? error.message : ''
-      const dropped = /failed to fetch|network|load failed|terminated/i.test(message)
+      const dropped =
+        refused.status === undefined && /failed to fetch|network|load failed|terminated/i.test(message)
       track('generation_failed', {
-        status: (error as { status?: number }).status ?? (dropped ? 'dropped' : 'error'),
+        status: refused.status ?? (dropped ? 'dropped' : 'error'),
       })
 
-      toast.error(dropped ? 'The connection to the model dropped' : message || 'Failed to generate the design', {
-        description: dropped
-          ? 'The design was still being written when the connection closed. Your credit has been returned — try again, and if it keeps happening the model endpoint is the thing to look at, not the sketch.'
-          : undefined,
-      })
+      /**
+       * What arrived stays. A dropped stream used to blank the panel and leave
+       * it reading "waiting for the first chunk" for good, with four-fifths of
+       * a page thrown away; that is the case Continue exists for. Nothing is
+       * promised about the credit here, because the browser cannot tell its
+       * own connection dropping from the model's, and the route treats the
+       * two differently.
+       */
+      const kept = stripOutcomeMarkers(markup)
+      if (placed && !isUnusable(kept)) {
+        dispatch(setGeneratedHtml({ id, html: kept, streaming: false }))
+        toast.warning('The page stopped before it finished', {
+          description: dropped
+            ? 'The connection dropped. What arrived is on the canvas, and Continue writes the rest.'
+            : 'What arrived is on the canvas, and Continue writes the rest.',
+          duration: 30000,
+          action: { label: 'Continue', onClick: () => void continueDesign(id, kept) },
+        })
+        return
+      }
+      // Nothing worth keeping, so no empty panel either.
+      if (placed) dispatch(removeShape(id))
+
+      // The sheet is already the answer; a toast over it said the same thing twice.
+      if (refused.sheetOpened) return
+      if (refused.retryAfter) {
+        toastRetryCountdown(message, refused.retryAfter)
+        return
+      }
+      if (dropped) {
+        toast.error('The connection to the model dropped', {
+          description:
+            'Nothing had arrived, so nothing was kept. Try again, and if it keeps happening the model endpoint is the thing to look at, not the sketch.',
+        })
+        return
+      }
+      toast.error(message || 'Failed to generate the design', { description: refused.description })
     } finally {
       setGeneratingFrameId(null)
     }
