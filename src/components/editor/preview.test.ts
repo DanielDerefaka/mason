@@ -61,4 +61,20 @@ describe('the device preview', () => {
   it('does not blame the design for the preview', () => {
     expect(source).not.toContain('This design is wider than')
   })
+
+  /**
+   * What shipped broken: the controls floated over the top left corner of the
+   * design, faded to a quarter, and the top left corner is where every design
+   * keeps its logo and its navigation. The way back sat on the header of the
+   * thing being previewed.
+   */
+  it('keeps its controls in a bar of their own, above the frame', () => {
+    expect(source).not.toMatch(/fixed top-4 left-4/)
+    expect(source).not.toContain('opacity-25')
+    // The bar comes first in the column and does not give way to the frame.
+    expect(source.indexOf('aria-label="Back to the editor"')).toBeLessThan(
+      source.indexOf('<iframe'),
+    )
+    expect(source).toContain('shrink-0')
+  })
 })

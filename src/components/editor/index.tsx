@@ -34,7 +34,7 @@ import { useGoogleFont } from '@/hooks/use-google-font'
 import { canvasPathOf, useWorkspacePath } from '@/hooks/use-workspace-path'
 import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
-import { generateFetch } from '@/lib/try/generate-fetch'
+import { generateFetch, noteGenerateRefusal } from '@/lib/try/generate-fetch'
 import { cn } from '@/lib/utils'
 
 import { useMutation } from 'convex/react'
@@ -65,6 +65,7 @@ import {
   findNode,
   insertNode,
   labelFor,
+  layerOf,
   canHostChildren,
   isRowLayout,
   lockedAncestor,
@@ -74,6 +75,7 @@ import {
   renameNode,
   sectionScope,
   serialise,
+  setDirectText,
   setHidden,
   setLocked,
   siblingIndex,
@@ -90,6 +92,9 @@ import {
 import { SNAP_PX, sameGuides, snapDelta, type Guide, type Rect } from './snapping'
 import { AiPanel } from './ai'
 import { nodeAnswer } from './answer'
+import { EditorCredits } from './credits'
+import { MAX_ZOOM, MIN_ZOOM, clampZoom, fitZoom } from './fit'
+import { designTitle } from './title'
 import { HistoryButton } from './history'
 import { Layers } from './layers'
 import { ShareButton } from './share'
@@ -110,7 +115,8 @@ import { exportDesignHtml, exportDesignPrompt, exportDesignProject } from '@/lib
  * storage.
  */
 export const DesignEditor = () => {
-  const { projectId, design, styleGuide, loading, status, saveHtml } = useDesignEditor()
+  const { projectId, design, styleGuide, loading, status, saveHtml, flush, retry } =
+    useDesignEditor()
   const workspace = useWorkspacePath()
   const { requireExport } = useGuest()
 
@@ -146,6 +152,19 @@ export const DesignEditor = () => {
   const [dropLine, setDropLine] = useState<
     { left: number; top: number; width: number; height: number } | null
   >(null)
+  /**
+   * The container a dragged element will land in, outlined and named.
+   *
+   * The drop line alone said where between two things the element would go
+   * and nothing about what it would go into: a card dragged to the edge of
+   * a grid could be joining the grid or leaving it for the section behind,
+   * and the two-pixel line looked the same either way.
+   */
+  const [dropTarget, setDropTarget] = useState<{ box: Box; name: string } | null>(null)
+  /** A node is open for typing; the box around it says so and how to stop. */
+  const [editing, setEditing] = useState(false)
+  /** The stage's laid-out height, so the room it takes can be sized to its zoom. */
+  const [stageHeight, setStageHeight] = useState(0)
   const [guides, setGuides] = useState<Guide[]>([])
   const guidesRef = useRef<Guide[]>([])
   /** Writes only when the drawing would change; see `sameGuides`. */
@@ -196,9 +215,17 @@ export const DesignEditor = () => {
     [expanded, treeTick],
   )
 
-  /** Snapshots of the markup. The canvas's history does not reach in here. */
-  const past = useRef<string[]>([])
-  const future = useRef<string[]>([])
+  /**
+   * Snapshots of the markup, each with the selection that went with it. The
+   * canvas's history does not reach in here.
+   *
+   * The selection is part of the record because of what undo felt like
+   * without it: moving a card and pressing undo put the card back and left
+   * nothing selected, so the thing that had just moved back was the one thing
+   * not highlighted, and a second move meant finding it again.
+   */
+  const past = useRef<Snapshot[]>([])
+  const future = useRef<Snapshot[]>([])
   const [historyTick, setHistoryTick] = useState(0)
 
   useGoogleFont(styleGuide?.typography.fontFamily, [300, 400, 500, 600, 700, 800])
@@ -264,18 +291,27 @@ export const DesignEditor = () => {
     setHistoryTick((tick) => tick + 1)
   }
 
-  const snapshot = () => {
+  /**
+   * Records the markup before an edit, and which node undo should land on.
+   *
+   * By default the current selection. An edit that starts from a press on
+   * something not yet selected, a drag or a layer drop, passes the id of the
+   * node it is about to move, because the state that selects it has not
+   * rendered yet when the snapshot is taken.
+   */
+  const snapshot = (keep: string | null = selectedId) => {
     const root = stage.current
     if (!root) return
-    past.current.push(root.innerHTML)
+    past.current.push({ html: root.innerHTML, selectedId: keep })
     if (past.current.length > 60) past.current.shift()
     future.current = []
   }
 
-  const restore = (html: string) => {
+  const restore = (entry: Snapshot) => {
     const root = stage.current
     if (!root) return
-    root.innerHTML = html
+    root.innerHTML = entry.html
+    setSelectedId(entry.selectedId)
     readTree()
     commit()
   }
@@ -284,7 +320,7 @@ export const DesignEditor = () => {
     const root = stage.current
     const previous = past.current.pop()
     if (!root || previous === undefined) return
-    future.current.push(root.innerHTML)
+    future.current.push({ html: root.innerHTML, selectedId })
     restore(previous)
   }
 
@@ -292,7 +328,7 @@ export const DesignEditor = () => {
     const root = stage.current
     const next = future.current.pop()
     if (!root || next === undefined) return
-    past.current.push(root.innerHTML)
+    past.current.push({ html: root.innerHTML, selectedId })
     restore(next)
   }
 
@@ -541,8 +577,15 @@ export const DesignEditor = () => {
       })
 
       if (!response.ok) {
+        // The same reading of a refusal the canvas makes: a 402 under /try
+        // opens the out-of-credits sheet, which offers the two ways on, and
+        // is not reported as a fault on top of that. It used to be a toast
+        // saying "Out of credits" and nothing to do about it, in the one place
+        // a guest most wants to keep going.
+        const refusal = noteGenerateRefusal(response)
+        if (response.status === 402 && workspace === '/try') return
         const body = (await response.json().catch(() => null)) as { message?: string } | null
-        toast.error(body?.message ?? 'Could not apply that')
+        toast.error(refusal ?? body?.message ?? 'Could not apply that')
         return
       }
 
@@ -597,13 +640,26 @@ export const DesignEditor = () => {
     let node = target as HTMLElement | null
     while (node && node !== root && !node.hasAttribute(NODE_ATTR)) node = node.parentElement
     if (!node || node === root) return null
+    // The same node the tree lists: a bold word is part of its sentence.
+    node = layerOf(node, root)
     return lockedAncestor(node, root) ? null : node
   }
 
-  /** Double-click types straight into the design rather than the side panel. */
+  /**
+   * Double-click types straight into the design rather than the side panel.
+   *
+   * A mode, and it looks and ends like one. It used to open the node for
+   * typing with nothing on screen to say so and no way out but clicking
+   * elsewhere: Enter put a line break in a button, Escape did nothing, and a
+   * double-click that typed nothing still left an undo step and an unsaved
+   * change. Enter now finishes, Escape puts the text back as it was, the box
+   * says which, and the snapshot is taken at the first keystroke so there is
+   * nothing to undo until something was typed.
+   */
   const onStageDoubleClick = (event: React.MouseEvent) => {
+    const root = stage.current
     const node = nodeFor(event.target)
-    if (!node) return
+    if (!root || !node) return
     if (!canEditInline(node)) {
       // Refusing without saying so is what made this look broken. Only for a
       // node that holds text of its own — double-clicking a container is a
@@ -617,11 +673,17 @@ export const DesignEditor = () => {
     }
 
     event.stopPropagation()
-    setSelectedId(node.getAttribute(NODE_ATTR))
-    snapshot()
+    const id = node.getAttribute(NODE_ATTR)
+    setSelectedId(id)
+
+    const rootBefore = root.innerHTML
+    const before = node.innerHTML
+    let dirty = false
+    let done = false
 
     node.contentEditable = 'true'
     node.focus()
+    setEditing(true)
     // Put the caret where the pointer landed rather than at the start.
     const selection = window.getSelection()
     const range = document.caretRangeFromPoint?.(event.clientX, event.clientY)
@@ -630,13 +692,53 @@ export const DesignEditor = () => {
       selection.addRange(range)
     }
 
-    const finish = () => {
-      node.removeAttribute('contenteditable')
-      node.removeEventListener('blur', finish)
-      readTree()
-      commit()
+    const onInput = () => {
+      if (dirty) return
+      dirty = true
+      past.current.push({ html: rootBefore, selectedId: id })
+      if (past.current.length > 60) past.current.shift()
+      future.current = []
     }
-    node.addEventListener('blur', finish)
+
+    const finish = (keep: boolean) => {
+      if (done) return
+      done = true
+      node.removeEventListener('blur', onBlur)
+      node.removeEventListener('keydown', onKeyDown)
+      node.removeEventListener('input', onInput)
+      node.removeAttribute('contenteditable')
+      setEditing(false)
+      if (!keep) {
+        node.innerHTML = before
+        // The step recorded at the first keystroke now leads nowhere.
+        if (dirty) past.current.pop()
+      }
+      if (node.innerHTML === before) {
+        readTree()
+        return
+      }
+      // Typing can add or remove elements, a break or a bold run pasted in,
+      // and every id below this node is positional.
+      restamp(node)
+    }
+
+    const onBlur = () => finish(true)
+    const onKeyDown = (key: KeyboardEvent) => {
+      if (key.key === 'Enter' && !key.shiftKey) {
+        key.preventDefault()
+        node.blur()
+      }
+      if (key.key === 'Escape') {
+        key.preventDefault()
+        key.stopPropagation()
+        finish(false)
+        node.blur()
+      }
+    }
+
+    node.addEventListener('input', onInput)
+    node.addEventListener('keydown', onKeyDown)
+    node.addEventListener('blur', onBlur)
   }
 
   /**
@@ -759,7 +861,9 @@ export const DesignEditor = () => {
   const onMoveStart = (event: React.PointerEvent, node: HTMLElement) => {
     const root = stage.current
     if (!root) return
-    snapshot()
+    // The node's own id, not the selection: a drag can start from a press on
+    // something not yet selected, and undo should land on what moved.
+    snapshot(node.getAttribute(NODE_ATTR))
 
     const started = placementOf(readStyle(node, 'position'))
     /**
@@ -792,6 +896,18 @@ export const DesignEditor = () => {
     }
 
     let target: { node: HTMLElement; before: boolean } | null = null
+    /** The container last outlined, so the outline is redrawn only on a change. */
+    let host: HTMLElement | null = null
+    const showHost = (next: HTMLElement | null) => {
+      if (next === host) return
+      host = next
+      if (!next) {
+        setDropTarget(null)
+        return
+      }
+      const box = measureNode(next)
+      setDropTarget(box ? { box, name: next === root ? 'Page' : labelFor(next) } : null)
+    }
 
     /**
      * The state a free move needs, measured on the frame it starts rather than
@@ -817,6 +933,7 @@ export const DesignEditor = () => {
       if (moving) return
       returnBorrowed()
       setDropLine(null)
+      showHost(null)
       target = null
       if (!movesByOffset(placementOf(readStyle(node, 'position')))) {
         applyWrites(
@@ -901,6 +1018,7 @@ export const DesignEditor = () => {
       if (!under || under === root || under === node || node.contains(under)) {
         target = null
         setDropLine(null)
+        showHost(null)
         return
       }
 
@@ -926,6 +1044,7 @@ export const DesignEditor = () => {
       if (!under || under === root || under === node || node.contains(under)) {
         target = null
         setDropLine(null)
+        showHost(null)
         return
       }
 
@@ -943,6 +1062,7 @@ export const DesignEditor = () => {
         ? move.clientX < rect.left + rect.width / 2
         : move.clientY < rect.top + rect.height / 2
       target = { node: under, before }
+      showHost(container ?? root)
 
       const wrap = artboard.current
       if (!wrap) return
@@ -968,6 +1088,7 @@ export const DesignEditor = () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       setDropLine(null)
+      showHost(null)
       setDraggingNode(false)
       setDragHint(false)
       putGuides([])
@@ -995,10 +1116,6 @@ export const DesignEditor = () => {
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
   }
-
-  const MIN_ZOOM = 0.1
-  const MAX_ZOOM = 4
-  const clampZoom = (level: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
 
   /**
    * Zooms about a point on screen, keeping whatever is under the pointer
@@ -1041,6 +1158,61 @@ export const DesignEditor = () => {
     view.scrollTop = pending.y * pending.ratio - pending.anchorY
   }, [zoom])
 
+  /**
+   * Opens the design at the zoom that fits the pane, once.
+   *
+   * The artboard is laid out at the design's own width and scaled as a
+   * picture, so a 1440px page in a 680px pane is that page smaller rather
+   * than reflowed. It used to take its width from whatever the two panels
+   * left, and a layout the model wrote for a desktop was then judged at a
+   * width it was never given: three columns stacked, a headline wrapping to a
+   * word a line, and every one of those read as the model's fault. A layout
+   * effect, so the first frame is already the fitted one. `fitted` rather
+   * than a dependency on the design, because every save is a new design
+   * object and a fit on each would fight the zoom the user chose.
+   */
+  const fitted = useRef(false)
+  useLayoutEffect(() => {
+    const view = viewport.current
+    if (fitted.current || !view || !design) return
+    fitted.current = true
+    setZoom(fitZoom(view.clientWidth, design.width))
+  }, [design])
+
+  /**
+   * The stage's height, followed rather than read once: images decode and
+   * fonts swap after the first layout, and the frame around the scaled
+   * artboard has to be as tall as the artboard is now.
+   */
+  useEffect(() => {
+    const root = stage.current
+    if (!root || typeof ResizeObserver === 'undefined') return
+    const read = () => setStageHeight(root.offsetHeight)
+    read()
+    const observer = new ResizeObserver(read)
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [design?.html])
+
+  /**
+   * The design's headline, for the tab. Re-read whenever the tree changes,
+   * because typing over the heading is one of the edits.
+   */
+  const headline = useMemo(() => {
+    const text = stage.current?.querySelector('h1')?.textContent
+    return text?.replace(/\s+/g, ' ').trim() || null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeTick])
+
+  useEffect(() => {
+    if (!design) return
+    document.title = designTitle({
+      headline,
+      label: design.label,
+      instruction: design.instruction,
+    })
+  }, [design, headline])
+
   /** Fits the selected element, or the whole design when nothing is selected. */
   const zoomToSelection = useCallback(() => {
     const view = viewport.current
@@ -1067,7 +1239,9 @@ export const DesignEditor = () => {
 
     setZoom(level)
     requestAnimationFrame(() => {
-      const artboardLeft = wrap.offsetLeft
+      // The frame around the artboard is what the viewport lays out; the
+      // artboard itself sits at its top left corner.
+      const artboardLeft = (wrap.offsetParent as HTMLElement | null)?.offsetLeft ?? 0
       view.scrollLeft = artboardLeft + offsetX * level - (view.clientWidth - width * level) / 2
       view.scrollTop = offsetY * level - (view.clientHeight - height * level) / 2
     })
@@ -1142,7 +1316,7 @@ export const DesignEditor = () => {
     // step for something that did not happen.
     if (!moving || !target || !canDropLayer(moving, target, where)) return
 
-    snapshot()
+    snapshot(movingId)
     dropLayer(moving, target, where)
     restamp(moving)
   }
@@ -1296,10 +1470,11 @@ export const DesignEditor = () => {
     }
   }
 
+  /** The node's own words, with an icon or a line break inside it left alone. */
   const onText = (text: string) => {
     if (!selected) return
     snapshot()
-    selected.textContent = text
+    setDirectText(selected, text)
     readTree()
     commit()
   }
@@ -1458,7 +1633,13 @@ export const DesignEditor = () => {
         if (event.shiftKey) redo()
         else undo()
       }
-      if (event.key === 'Escape') setSelectedId(null)
+      // Escape closes the nearest thing first: the AI dock while it is open,
+      // and only then the selection. It used to clear the selection under an
+      // open dock and leave the dock there.
+      if (event.key === 'Escape') {
+        if (aiOpen) setAiOpen(false)
+        else setSelectedId(null)
+      }
       if ((event.metaKey || event.ctrlKey) && (event.key === '=' || event.key === '+')) {
         event.preventDefault()
         setZoom((level) => clampZoom(level * 1.2))
@@ -1535,14 +1716,21 @@ export const DesignEditor = () => {
     <div className="relative flex h-screen flex-col overflow-hidden bg-[#0B0B0C]">
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] px-3">
         <div className="flex min-w-0 items-center gap-3">
+          {/* The save is debounced, and leaving inside the debounce used to
+              lose the last second of editing: the write was still queued
+              when the editor unmounted. Flushed here as well as on unmount,
+              so it is sent before the navigation rather than during it. */}
           <Link
             href={back}
             aria-label="Back to the canvas"
+            onClick={() => flush()}
             className="text-muted-foreground hover:text-foreground grid size-8 shrink-0 place-items-center rounded-md transition-colors hover:bg-white/[0.06]"
           >
             <ArrowLeft className="size-4" />
           </Link>
-          <span className="truncate text-sm font-medium">{design.label ?? 'Design'}</span>
+          <span className="truncate text-sm font-medium">
+            {design.label ?? headline ?? 'Design'}
+          </span>
           <span className="text-muted-foreground shrink-0 text-[11px]">
             {status === 'saving' && 'Saving…'}
             {status === 'saved' && (
@@ -1551,7 +1739,21 @@ export const DesignEditor = () => {
               </span>
             )}
             {status === 'unsaved' && 'Unsaved changes'}
-            {status === 'error' && 'Could not save'}
+            {/* "Could not save" was the end of it: the next edit retried, but
+                somebody who has stopped editing because it failed makes no
+                next edit. */}
+            {status === 'error' && (
+              <span className="flex items-center gap-1.5 text-red-400">
+                Could not save
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="rounded px-1.5 py-0.5 font-medium text-red-300 underline-offset-2 transition-colors hover:bg-red-500/15 hover:underline"
+                >
+                  Retry
+                </button>
+              </span>
+            )}
           </span>
         </div>
 
@@ -1648,16 +1850,26 @@ export const DesignEditor = () => {
         {/* Artboard */}
         <main
           ref={attachViewport}
-          className="min-w-0 flex-1 overflow-auto p-8"
+          className="relative min-w-0 flex-1 overflow-auto p-8"
           style={{
             backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)',
             backgroundSize: '18px 18px',
           }}
           onClick={() => setSelectedId(null)}
         >
+          {/* The frame is the room the artboard takes at this zoom. A
+              transform leaves the layout box at the unscaled size, so
+              without it the pane scrolled to 1440px of nothing at a third
+              of the size and could not scroll far enough at twice it. The
+              artboard is laid out at the design's own width inside, and
+              scaled from the corner so the two line up. */}
+          <div
+            className="relative mx-auto"
+            style={{ width: design.width * zoom, height: stageHeight * zoom }}
+          >
           <div
             ref={artboard}
-            className="relative mx-auto origin-top shadow-2xl"
+            className="absolute top-0 left-0 origin-top-left shadow-2xl"
             style={{ width: design.width, transform: `scale(${zoom})` }}
           >
             <div
@@ -1733,10 +1945,28 @@ export const DesignEditor = () => {
               />
             ))}
 
+            {dropTarget && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute border border-dashed border-fuchsia-400/80"
+                style={{ ...dropTarget.box, borderWidth: 1.5 / zoom }}
+              >
+                <span
+                  className="absolute top-0 left-0 rounded-br bg-fuchsia-400 px-1.5 py-0.5 text-[10px] whitespace-nowrap text-black"
+                  style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'top left' }}
+                >
+                  Into {dropTarget.name}
+                </span>
+              </div>
+            )}
+
             {box && (
               <div
                 aria-hidden
-                className="pointer-events-none absolute border border-sky-400"
+                className={cn(
+                  'pointer-events-none absolute border border-sky-400',
+                  editing && 'border-dashed',
+                )}
                 style={{ ...box, borderWidth: 1.5 / zoom }}
               >
 
@@ -1781,8 +2011,19 @@ export const DesignEditor = () => {
                     {Math.round(box.width)} × {Math.round(box.height)}
                   </span>
                 )}
+
+                {/* The way out of typing, said where the typing is. */}
+                {editing && (
+                  <span
+                    className="absolute top-full left-0 mt-1 rounded bg-sky-500 px-1.5 py-0.5 text-[10px] whitespace-nowrap text-white"
+                    style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'top left' }}
+                  >
+                    Enter finishes, Esc puts it back
+                  </span>
+                )}
               </div>
             )}
+          </div>
           </div>
         </main>
 
@@ -1943,6 +2184,7 @@ export const DesignEditor = () => {
               label={selected ? labelFor(selected) : 'whole page'}
               busy={asking}
               onAsk={(instruction) => void onAsk(instruction)}
+              onClose={() => setAiOpen(false)}
               sections={sections}
               onTarget={setSelectedId}
             />
@@ -2035,11 +2277,17 @@ export const DesignEditor = () => {
           </div>
         </>
       )}
+
+      {/* Under /try only: the dashboard has credits of its own and no pool. */}
+      {workspace === '/try' && <EditorCredits projectId={projectId} />}
     </div>
   )
 }
 
 type Box = { left: number; top: number; width: number; height: number }
+
+/** One step of undo: the markup, and the node undo should land on. */
+type Snapshot = { html: string; selectedId: string | null }
 
 /**
  * The key the hint names, spelled the way the reader's own keyboard does.

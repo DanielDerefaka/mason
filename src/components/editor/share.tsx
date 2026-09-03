@@ -2,13 +2,15 @@
 
 import { useMutation, useQuery } from 'convex/react'
 import { Check, Copy, Link2, Loader2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import { useGuest } from '@/components/try/guest-context'
 import { track } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
+import { useDismiss } from './use-dismiss'
 
 /**
  * The share control.
@@ -28,6 +30,9 @@ export const ShareButton = ({
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const popover = useRef<HTMLDivElement>(null)
+  useDismiss(open, popover, () => setOpen(false))
+  const { isGuest } = useGuest()
 
   const token = useQuery(
     api.shares.shareFor,
@@ -79,7 +84,7 @@ export const ShareButton = ({
   }
 
   return (
-    <div className="relative">
+    <div ref={popover} className="relative">
       <button
         type="button"
         aria-label="Share"
@@ -98,7 +103,6 @@ export const ShareButton = ({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute top-full right-0 z-50 mt-2 w-[300px] rounded-xl border border-white/10 bg-[#141416] p-3 shadow-2xl">
             {token === undefined ? (
               <p className="text-muted-foreground py-2 text-xs">Checking…</p>
@@ -149,6 +153,17 @@ export const ShareButton = ({
                   </button>
                 </div>
               </>
+            )}
+
+            {/* A guest's design is kept for a fortnight and then gone, and a
+                link to it goes with it. The dialog used to promise "anyone
+                with this link can view it" with no end on the promise, to
+                the one kind of account whose work has one. */}
+            {isGuest && token !== undefined && (
+              <p className="text-muted-foreground mt-3 border-t border-white/10 pt-3 text-[11px] leading-relaxed">
+                This design was made without an account, so it is kept for fourteen days.
+                The link stops working when it goes.
+              </p>
             )}
           </div>
         </>
