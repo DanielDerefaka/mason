@@ -84,7 +84,9 @@ describe('generating a design', () => {
 
   it('counts a 429 down rather than quoting a number that is stale at once', () => {
     expect(source).toMatch(/toastRetryCountdown\(message, refused\.retryAfter\)/)
-    expect(source).toMatch(/toast\.dismiss\(id\)/)
+    // The countdown itself moved beside the refusal it reads, because the
+    // editor asks the same routes and is told to wait by the same limiter.
+    expect(read('src/lib/try/generate-fetch.ts')).toMatch(/toast\.dismiss\(id\)/)
   })
 })
 

@@ -16,11 +16,23 @@ describe('running out of credits in the editor', () => {
    */
   it('reads a refusal the way the canvas does and opens the sheet', () => {
     expect(editor).toContain('noteGenerateRefusal(response)')
-    expect(editor).toContain("if (response.status === 402 && workspace === '/try') return")
+    // Read from the refusal rather than worked out again from the status and
+    // this file's own idea of the workspace: two readings of one 402 is how
+    // the toast gets back on top of the sheet.
+    expect(editor).toContain('if (refusal.sheetOpened) return')
     expect(editor).toContain("{workspace === '/try' && <EditorCredits projectId={projectId} />}")
     expect(credits).toContain('OUT_OF_CREDITS_EVENT')
     expect(credits).toContain('<OutOfCreditsSheet')
     expect(credits).toContain('<KeyDialog')
+  })
+
+  /**
+   * And a 429 here counts down, as it does on the canvas. The editor read the
+   * refusal as a bare string before the two branches met, so a wait arrived
+   * as "Too many requests" with nothing saying how long.
+   */
+  it('counts a rate limit down rather than stating it once', () => {
+    expect(editor).toContain('toastRetryCountdown(title, refusal.retryAfter)')
   })
 })
 

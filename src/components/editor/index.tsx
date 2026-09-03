@@ -34,7 +34,7 @@ import { useGoogleFont } from '@/hooks/use-google-font'
 import { canvasPathOf, useWorkspacePath } from '@/hooks/use-workspace-path'
 import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE, sanitiseHtml } from '@/lib/sanitise'
-import { generateFetch, noteGenerateRefusal } from '@/lib/try/generate-fetch'
+import { generateFetch, noteGenerateRefusal, toastRetryCountdown } from '@/lib/try/generate-fetch'
 import { cn } from '@/lib/utils'
 
 import { useMutation } from 'convex/react'
@@ -583,9 +583,19 @@ export const DesignEditor = () => {
         // saying "Out of credits" and nothing to do about it, in the one place
         // a guest most wants to keep going.
         const refusal = noteGenerateRefusal(response)
-        if (response.status === 402 && workspace === '/try') return
+        // The sheet is the answer to a 402, so nothing is said on top of it.
+        // `sheetOpened` is the single reading of that, rather than this file
+        // deciding again from the status and its own idea of the workspace.
+        if (refusal.sheetOpened) return
         const body = (await response.json().catch(() => null)) as { message?: string } | null
-        toast.error(refusal ?? body?.message ?? 'Could not apply that')
+        const title = refusal.message ?? body?.message ?? 'Could not apply that'
+        // A 429 is a wait, and a wait wants counting down: the header's
+        // number is stale a second after it is read.
+        if (refusal.retryAfter) {
+          toastRetryCountdown(title, refusal.retryAfter)
+          return
+        }
+        toast.error(title, refusal.description ? { description: refusal.description } : undefined)
         return
       }
 

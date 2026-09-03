@@ -10,6 +10,7 @@ import {
   DESIGN_GENERATED_EVENT,
   generateFetch,
   noteGenerateRefusal,
+  toastRetryCountdown,
   type DesignGeneratedDetail,
 } from '@/lib/try/generate-fetch'
 import { useContinueDesign } from '@/hooks/use-continue-design'
@@ -44,25 +45,6 @@ type GenerationRefused = Error & {
   description?: string
   retryAfter?: number
   sheetOpened?: boolean
-}
-
-/**
- * A 429 that counts down. The route's Retry-After is a number of seconds that
- * is wrong a second after it is read, so the toast is re-issued under the same
- * id once a second and dismissed when the wait is over.
- */
-const toastRetryCountdown = (title: string, seconds: number) => {
-  let left = seconds
-  const id = toast.error(title, { description: `Try again in ${left}s`, duration: left * 1000 })
-  const tick = setInterval(() => {
-    left -= 1
-    if (left <= 0) {
-      clearInterval(tick)
-      toast.dismiss(id)
-      return
-    }
-    toast.error(title, { id, description: `Try again in ${left}s`, duration: left * 1000 })
-  }, 1000)
 }
 
 export const useFrame = () => {

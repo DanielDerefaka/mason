@@ -1,3 +1,5 @@
+import { toast } from 'sonner'
+
 import { track } from '@/lib/analytics'
 import { clearByokKey, getByokKey, getByokWorkspace } from '@/lib/try/byok-client'
 
@@ -104,4 +106,28 @@ export const noteGenerateRefusal = (response: Response): GenerateRefusal => {
     }
   }
   return { message: null, sheetOpened: false }
+}
+
+/**
+ * A 429 that counts down. The route's Retry-After is a number of seconds that
+ * is wrong a second after it is read, so the toast is re-issued under the same
+ * id once a second and dismissed when the wait is over.
+ *
+ * It lives beside the refusal it reads rather than in one of the two callers.
+ * The canvas and the editor both ask the same routes and are both told to wait
+ * by the same limiter, so a countdown in only one of them is a wait explained
+ * in one place and a bare "Too many requests" in the other.
+ */
+export const toastRetryCountdown = (title: string, seconds: number) => {
+  let left = seconds
+  const id = toast.error(title, { description: `Try again in ${left}s`, duration: left * 1000 })
+  const tick = setInterval(() => {
+    left -= 1
+    if (left <= 0) {
+      clearInterval(tick)
+      toast.dismiss(id)
+      return
+    }
+    toast.error(title, { id, description: `Try again in ${left}s`, duration: left * 1000 })
+  }, 1000)
 }
