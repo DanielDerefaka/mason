@@ -19,6 +19,12 @@ export default defineSchema({
     userId: v.id('users'),
     label: v.string(),
     createdAt: v.number(),
+    /**
+     * Named by hand, copied by the minute as somebody works, or taken just
+     * before a restore. Optional because every row from before the automatic
+     * copies existed was named by hand; see `src/lib/canvas-history.ts`.
+     */
+    origin: v.optional(v.union(v.literal('manual'), v.literal('auto'), v.literal('restore'))),
     /** The whole sketchesData payload as it was. */
     data: v.any(),
   }).index('by_project', ['projectId']),
