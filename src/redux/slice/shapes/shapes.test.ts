@@ -9,6 +9,7 @@ import reducer, {
   addGeneratedUI,
   addShape,
   alignSelected,
+  discardGeneratedUI,
   distributeSelected,
   duplicateSelected,
   moveSelected,
@@ -249,6 +250,45 @@ describe('history while a design streams in', () => {
 
     state = reducer(state, redo())
     expect(at(state, 'd').html).toBe('<p>done</p>')
+  })
+})
+
+describe('a generation that produced nothing leaves no trace', () => {
+  /**
+   * The panel goes down before the request is sent, and a refusal took it off
+   * again with `removeShape`. Both commit history, so a failed generation left
+   * two entries: the first Cmd+Z put the empty placeholder back, clock and
+   * all, and a second was needed to reach the canvas the person had drawn.
+   */
+  it('does not make undo restore the empty placeholder', () => {
+    let state = withShapes(shape('f', { kind: 'frame' }))
+    const before = order(state)
+    const depth = state.past.length
+
+    state = reducer(
+      state,
+      addGeneratedUI(shape('d', { kind: 'generated-ui', html: '', streaming: true })),
+    )
+    state = reducer(state, discardGeneratedUI('d'))
+
+    expect(order(state)).toEqual(before)
+    expect(state.past.length).toBe(depth)
+
+    // And the step before Generate was pressed is still the one undo reaches.
+    state = reducer(state, undo())
+    expect(order(state)).toEqual([])
+  })
+
+  it('leaves the selection alone rather than pointing at a shape that is gone', () => {
+    let state = withShapes(shape('a'))
+    state = reducer(
+      state,
+      addGeneratedUI(shape('d', { kind: 'generated-ui', html: '', streaming: true })),
+    )
+    state = reducer(state, setSelection(['a', 'd']))
+    state = reducer(state, discardGeneratedUI('d'))
+
+    expect(state.selectedIds).toEqual(['a'])
   })
 })
 

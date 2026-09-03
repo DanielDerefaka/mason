@@ -68,10 +68,17 @@ describe('the generated codebase is not part of the trial', () => {
    * account is for. Hidden rather than shown-and-refused — an offer withdrawn
    * at the click is worse than one never made.
    */
+  /**
+   * The actions moved. They were drawn inside the design shape, in the layer
+   * the canvas scales, which made them eleven-pixel text on a canvas reopened
+   * at its fitted zoom; they are drawn by `DesignControls` in screen space
+   * now. The rule did not move, so this pin follows the buttons rather than
+   * the file they used to live in.
+   */
   it('hides the project export on the canvas for a guest', () => {
-    const canvas = read('src/components/canvas/shapes/generated-ui.tsx')
-    expect(canvas).toMatch(/const canExportProject = onExportProject && !isGuest/)
-    expect(canvas).toMatch(/\{canExportProject && \(/)
+    const canvas = read('src/components/canvas/index.tsx')
+    expect(canvas).toMatch(/\{!isGuest && \(/)
+    expect(canvas).toMatch(/const \{ requireExport, isGuest \} = useGuest\(\)/)
   })
 
   it('hides it in the editor panel too, which is a separate route', () => {
@@ -81,8 +88,19 @@ describe('the generated codebase is not part of the trial', () => {
   })
 
   it('still offers the design and the brief, which are what the email buys', () => {
-    const canvas = read('src/components/canvas/shapes/generated-ui.tsx')
+    const canvas = read('src/components/canvas/index.tsx')
     expect(canvas).toMatch(/gated\(onExport\)/)
     expect(canvas).toMatch(/gated\(onExportPrompt\)/)
+  })
+
+  /**
+   * And the shape itself must not grow a second set. Two rows of actions, one
+   * gated and one not, is how the rule gets undone without anybody editing
+   * the rule.
+   */
+  it('leaves no export buttons behind in the design shape', () => {
+    const shape = read('src/components/canvas/shapes/generated-ui.tsx')
+    expect(shape).not.toMatch(/onExportProject/)
+    expect(shape).not.toMatch(/useGuest/)
   })
 })

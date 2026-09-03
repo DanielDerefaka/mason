@@ -55,8 +55,17 @@ describe('generating a design', () => {
   it('keeps what arrived when the stream drops, and offers Continue', () => {
     expect(source).toMatch(/if \(placed && !isUnusable\(kept\)\)/)
     expect(source).toMatch(/onClick: \(\) => void continueDesign\(id, kept\)/)
-    expect(source).toMatch(/if \(placed\) dispatch\(removeShape\(id\)\)/)
+    expect(source).toMatch(/if \(placed\) dispatch\(discardGeneratedUI\(id\)\)/)
     expect(source).not.toMatch(/html: '', streaming: false/)
+  })
+
+  /**
+   * And the panel is discarded rather than removed. `removeShape` commits a
+   * history entry, so a generation that produced nothing left two of them and
+   * the first Cmd+Z after a failure restored the empty placeholder.
+   */
+  it('takes a refused panel back off without spending an undo', () => {
+    expect(source).not.toMatch(/removeShape/)
   })
 
   it('promises no refund it cannot see', () => {

@@ -588,11 +588,37 @@ const DesignControls = ({
   onEdit: () => void
 }) => {
   const { requireExport, isGuest } = useGuest()
-  if (shape.streaming) return null
 
+  /**
+   * Every download goes through the gate, not just the project one.
+   *
+   * It used to be the Next.js export alone, because the gate demanded an
+   * account and the other two were not worth one. The gate now asks a guest
+   * for an email, once, so the natural line is "anything you take away" — and
+   * a visitor who has already given it is never asked again whichever button
+   * they press. Outside /try there is no provider and `requireExport` is a
+   * resolved promise, so the dashboard's buttons behave as they always have.
+   */
   const gated = (run: () => void) => async () => {
     if (!(await requireExport())) return
     run()
+  }
+
+  // A design still being written has a name but nothing to act on yet, so the
+  // caption stays and the actions wait. It reads at the row's left because
+  // the actions are pushed right, the way a frame's label sits beside its own.
+  const caption = shape.label ? (
+    <span className="pointer-events-none mr-auto max-w-[12rem] truncate text-xs text-muted-foreground">
+      {shape.label}
+    </span>
+  ) : null
+
+  if (shape.streaming) {
+    return caption ? (
+      <Controls shape={shape} viewport={viewport}>
+        {caption}
+      </Controls>
+    ) : null
   }
 
   return (
@@ -612,6 +638,7 @@ const DesignControls = ({
         </button>
       }
     >
+      {caption}
       <span className="pointer-events-auto">
         <ExploreSwitch designId={shape.id} ready={Boolean(shape.html)} />
       </span>

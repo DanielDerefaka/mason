@@ -17,14 +17,14 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import {
   addGeneratedUI,
   focusOnRect,
-  removeShape,
+  discardGeneratedUI,
   setGeneratedHtml,
   shapesAdapter,
   type Shape,
 } from '@/redux/slice/shapes'
 import type { RootState } from '@/redux/store'
 import { describeFrame } from '@/lib/frame-manifest'
-import { rasteriseFrame } from '@/lib/rasterise'
+import { rasteriseFrameWithReport } from '@/lib/rasterise'
 
 const selectors = shapesAdapter.getSelectors()
 
@@ -99,7 +99,20 @@ export const useFrame = () => {
     let markup = ''
 
     try {
-      const image = await rasteriseFrame(frame, shapes)
+      // A photo that failed to load is painted as a labelled placeholder
+      // rather than left blank, and the count comes back so the person is
+      // told. Silence here is how a design arrives with a grey box where
+      // their sketch was and nothing explains it.
+      const { blob: image, missingImages } = await rasteriseFrameWithReport(frame, shapes)
+      if (missingImages) {
+        toast.warning(
+          `${missingImages} image${missingImages === 1 ? '' : 's'} could not be loaded`,
+          {
+            description:
+              'A placeholder was sent in its place, so the design still gets a picture there.',
+          },
+        )
+      }
       // The same shapes the picture was drawn from, as words: where each
       // element is, how big, what it holds and what points at it, so the
       // model reads the geometry as numbers rather than estimating it from
@@ -197,7 +210,7 @@ export const useFrame = () => {
         track('generation_empty')
         // Nothing usable came back. The route has already put the credit
         // back; say so rather than leaving an empty panel on the canvas.
-        dispatch(removeShape(id))
+        dispatch(discardGeneratedUI(id))
         toast.error('The model returned nothing', {
           description: 'Your credit has been refunded. Try again, or add more detail to the sketch.',
         })
@@ -270,8 +283,11 @@ export const useFrame = () => {
         })
         return
       }
-      // Nothing worth keeping, so no empty panel either.
-      if (placed) dispatch(removeShape(id))
+      // Nothing worth keeping, so no empty panel either. Discarded rather
+      // than removed: a removal is a step in history, and a generation that
+      // produced nothing must not leave the person two undos away from the
+      // canvas they drew.
+      if (placed) dispatch(discardGeneratedUI(id))
 
       // The sheet is already the answer; a toast over it said the same thing twice.
       if (refused.sheetOpened) return

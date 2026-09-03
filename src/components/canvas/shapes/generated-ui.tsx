@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Download, FolderDown, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
 import { DESIGN_SCOPE, designScope, sanitisePartialHtml } from '@/lib/sanitise'
@@ -9,8 +9,6 @@ import { cn } from '@/lib/utils'
 import { useStyles } from '@/hooks/use-styles'
 import { useDesignFonts } from '@/hooks/use-design-fonts'
 import { useGoogleFont } from '@/hooks/use-google-font'
-import { useGuest } from '@/components/try/guest-context'
-import { ExploreSwitch } from '@/components/try/explore-switch'
 import {
   GENERATION_TAKES,
   NOTHING_ARRIVED,
@@ -31,63 +29,14 @@ export const GeneratedUI = ({
   shape,
   selected,
   onGrab,
-  onGenerateWorkflow,
-  onOpenChat,
-  onExport,
-  onExportPrompt,
-  onExportProject,
-  onEdit,
-  onMobile,
-  mobileRunning,
-  workflowRunning,
 }: {
   shape: Shape
   selected?: boolean
   onGrab?: (event: React.PointerEvent<Element>) => void
-  onGenerateWorkflow?: () => void
-  onOpenChat?: () => void
-  onExport?: () => void
-  /** The design as a build brief, for rebuilding it in another stack. */
-  onExportPrompt?: () => void
-  /** The design as a Next.js project that runs. */
-  onExportProject?: () => void
-  onEdit?: () => void
-  onMobile?: () => void
-  mobileRunning?: boolean
-  workflowRunning?: boolean
 }) => {
   const dispatch = useAppDispatch()
   const { styleGuide } = useStyles()
-  const { requireExport, isGuest } = useGuest()
   const containerRef = useRef<HTMLDivElement>(null)
-
-  /**
-   * Every download goes through the gate, not just the project one.
-   *
-   * It used to be the Next.js export alone, because the gate demanded an
-   * account and the other two were not worth one. The gate now asks a guest
-   * for an email, once, so the natural line is "anything you take away" —
-   * and a visitor who has already given it is never asked again whichever
-   * button they press. Outside /try there is no provider and this is a
-   * resolved promise, so the dashboard's buttons behave as they always have.
-   */
-  const gated = (run?: () => void) => async () => {
-    if (!run) return
-    if (!(await requireExport())) return
-    run()
-  }
-
-  /**
-   * The whole Next.js codebase is not part of the trial.
-   *
-   * A guest takes away the design and the brief — enough to prove Mason
-   * works, and enough to be worth an email address. The generated project is
-   * the thing an account is for, so on /try the button is not shown at all
-   * rather than shown and refused: an offer withdrawn at the click is worse
-   * than one never made. `isGuest` is false everywhere outside /try, so the
-   * dashboard is untouched.
-   */
-  const canExportProject = onExportProject && !isGuest
 
   // The design references var(--font-family); this is what actually fetches it.
   useGoogleFont(
@@ -161,122 +110,10 @@ export const GeneratedUI = ({
       )}
       style={{ left: shape.x, top: shape.y, width: shape.width }}
     >
-      {/* Caption and actions sit above the panel, like a frame's do. */}
-      {shape.label && (
-        <span className="text-muted-foreground absolute -top-6 left-0 text-[11px]">
-          {shape.label}
-        </span>
-      )}
-      {onGenerateWorkflow && !shape.streaming && (
-        <div className="absolute -top-7 right-0 flex items-center gap-2">
-          <ExploreSwitch designId={shape.id} ready={Boolean(shape.html)} />
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={onGenerateWorkflow}
-            disabled={workflowRunning}
-            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50"
-          >
-            {workflowRunning ? (
-              <>
-                <Loader2 className="size-3 animate-spin" />
-                Building flow…
-              </>
-            ) : (
-              <>
-                <Workflow className="size-3" />
-                Generate Workflow
-              </>
-            )}
-          </button>
-          {onOpenChat && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={onOpenChat}
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-            >
-              <MessageSquare className="size-3" />
-              Design Chat
-            </button>
-          )}
-          {onMobile && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={onMobile}
-              disabled={mobileRunning}
-              title="Restructure this design for a phone, as a new design beside it"
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] transition-colors hover:bg-white/[0.14] disabled:opacity-50"
-            >
-              {mobileRunning ? (
-                <>
-                  <Loader2 className="size-3 animate-spin" />
-                  Building…
-                </>
-              ) : (
-                <>
-                  <Smartphone className="size-3" />
-                  Mobile version
-                </>
-              )}
-            </button>
-          )}
-          {onExport && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void gated(onExport)()}
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-            >
-              <Download className="size-3" />
-              Export
-            </button>
-          )}
-          {onExportPrompt && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void gated(onExportPrompt)()}
-              title="Download a build brief: palette, type scale, structure and rules"
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-            >
-              <FileText className="size-3" />
-              Prompt
-            </button>
-          )}
-          {canExportProject && (
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void gated(onExportProject)()}
-              title="Download a Next.js project: tokens, a component per section, Tailwind"
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-            >
-              <FolderDown className="size-3" />
-              Project
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Edit sits below on its own. The top strip already carries the
-          caption and three actions, and this is the one that leaves the
-          canvas — worth not burying in a crowded row. */}
-      {onEdit && !shape.streaming && (
-        <div className="absolute -bottom-8 right-0 flex items-center gap-2">
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={onEdit}
-            title="Open this design in the editor"
-            className="text-foreground flex items-center gap-1.5 rounded-full bg-white/[0.14] px-2.5 py-1 text-[11px] transition-colors hover:bg-white/[0.2]"
-          >
-            <PenLine className="size-3" />
-            Edit
-          </button>
-        </div>
-      )}
+      {/* The caption and every action are drawn by `DesignControls` in
+          screen space, so they stay legible at any zoom. They used to be
+          drawn here, inside the layer the canvas scales, which made them
+          eleven-pixel text at 30% on a canvas reopened at its fitted zoom. */}
 
       {/* The pill sits over the markup once there is markup; before that the
           placeholder below carries the same stage and clock, and two clocks

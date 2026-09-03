@@ -179,6 +179,28 @@ export const shapesSlice = createSlice({
     },
 
     /**
+     * Take the panel back off, as if it had never been placed.
+     *
+     * The panel goes down before the request is sent, so a refusal has to
+     * remove it again — and `removeShape` was doing that, which left two
+     * entries in history for a generation that produced nothing: one from
+     * `addGeneratedUI` and one from the removal. Undo after a failed
+     * generation restored the empty placeholder, streaming clock and all,
+     * and a second undo was needed to get back to the canvas the person
+     * actually drew.
+     *
+     * So this commits nothing, and drops the snapshot the add pushed when
+     * that snapshot has become a copy of the present. The pair leaves the
+     * history exactly as it stood before Generate was pressed.
+     */
+    discardGeneratedUI: (state, action: PayloadAction<string>) => {
+      shapesAdapter.removeOne(state.entities, action.payload)
+      state.selectedIds = state.selectedIds.filter((id) => id !== action.payload)
+      const top = state.past[state.past.length - 1]
+      if (top && serialise(top) === serialise(state.entities)) state.past.pop()
+    },
+
+    /**
      * Stream progress. Deliberately not committed to history: a generation
      * fires this every 200ms, and each snapshot would push out the user's real
      * undo steps within a couple of seconds.
@@ -684,6 +706,7 @@ export const {
   updateShapeStyle,
   updateShapeStyleLive,
   addGeneratedUI,
+  discardGeneratedUI,
   setGeneratedHtml,
   resizeGeneratedUI,
   updateShape,
