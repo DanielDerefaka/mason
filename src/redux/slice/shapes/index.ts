@@ -526,6 +526,66 @@ export const shapesSlice = createSlice({
     resetViewport: (state) => {
       state.viewport = { scale: 1, translate: { x: 0, y: 0 } }
     },
+    /**
+     * Puts a frame round an image that landed on bare canvas, and selects it.
+     *
+     * A photo of a paper sketch is the whole reason a picture gets placed
+     * here, and a placed picture used to sit on the canvas with nothing to
+     * press: Generate is a frame's button, the instruction bar wants a frame
+     * selected, and the hint had gone the moment the image arrived. So the
+     * frame is made for them, the size of the picture plus a margin to grab
+     * it by, and selected so the bar and the pills appear at once.
+     *
+     * A frame holds whatever touches it (`frameContents` in the manifest),
+     * so an image dropped onto an existing frame is already inside one and is
+     * left alone. The new frame goes *behind* the image in paint order: a
+     * frame drawn over a picture would take every click meant for it.
+     */
+    wrapImageInFrame: (
+      state,
+      action: PayloadAction<{ id: string; frameId: string; margin: number }>,
+    ) => {
+      const image = state.entities.entities[action.payload.id]
+      if (!image || image.kind !== 'image') return
+
+      const ids = state.entities.ids as string[]
+      const held = ids.some((id) => {
+        const frame = state.entities.entities[id]
+        return (
+          frame?.kind === 'frame' &&
+          image.x < frame.x + frame.width &&
+          image.x + image.width > frame.x &&
+          image.y < frame.y + frame.height &&
+          image.y + image.height > frame.y
+        )
+      })
+      if (held) return
+
+      commit(state)
+      const margin = Math.max(0, action.payload.margin)
+      const frame: Shape = {
+        id: action.payload.frameId,
+        kind: 'frame',
+        x: image.x - margin,
+        y: image.y - margin,
+        width: image.width + margin * 2,
+        height: image.height + margin * 2,
+        fill: 'transparent',
+        // "Frame", as a drawn one is named: the file's name is not a
+        // description of the screen, and the route drops a bare "Frame"
+        // before the prompt is built.
+        label: 'Frame',
+      }
+      shapesAdapter.addOne(state.entities, frame)
+      const without = (state.entities.ids as string[]).filter((id) => id !== frame.id)
+      without.splice(without.indexOf(image.id), 0, frame.id)
+      state.entities.ids = without
+
+      state.selectedIds = [frame.id]
+      // Whatever tool placed the picture, the next thing to do is press
+      // Generate or type an instruction, and both want the frame selectable.
+      state.tool = 'select'
+    },
   },
 })
 
@@ -565,6 +625,7 @@ export const {
   alignSelected,
   distributeSelected,
   duplicateSelected,
+  wrapImageInFrame,
 } = shapesSlice.actions
 
 export default shapesSlice.reducer

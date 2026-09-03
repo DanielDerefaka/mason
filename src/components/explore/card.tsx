@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { track } from '@/lib/analytics'
 import { DESIGN_SCOPE, designScope, sanitiseHtml } from '@/lib/sanitise'
 import { remixHref } from '@/lib/try/remix'
+import { exploreTitle } from './title'
 import type { ExploreItem } from './use-explore-list'
 
 /**
@@ -59,6 +60,10 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
 
   // Sanitised once per card, not per render: the walk parses the whole design.
   const preview = useMemo(() => sanitiseHtml(item.html, scope), [item.html, scope])
+
+  // The design's headline, or the instruction, before the label: the label is
+  // the frame's, which is nearly always the preset it was made at.
+  const title = useMemo(() => exploreTitle(item), [item])
 
   useEffect(() => {
     const frameNode = frame.current
@@ -132,8 +137,11 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-foreground truncate text-[1rem] font-medium tracking-[-0.02em]">
-            {item.label}
+          <h3
+            className="font-display text-foreground truncate text-[1rem] font-medium tracking-[-0.02em]"
+            title={title}
+          >
+            {title}
           </h3>
           <time
             dateTime={new Date(item.createdAt).toISOString()}
@@ -176,7 +184,7 @@ export const ExploreCard = ({ item }: { item: ExploreItem }) => {
             href={remixHref(item.id)}
             onClick={() => track('explore_remix_clicked')}
             className="pill pill-primary px-4 py-1.5 text-[13px]"
-            aria-label={`Remix ${item.label}`}
+            aria-label={`Remix ${title}`}
           >
             Remix
           </Link>
