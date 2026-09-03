@@ -60,8 +60,39 @@ describe('the first-run hint', () => {
     expect(read('src/components/canvas/frame-presets/index.tsx')).toContain('>New frame<')
   })
 
-  it('says a labelled box is an instruction and an unlabelled one a guess', () => {
-    expect(text).toContain('A labelled box is an instruction, an unlabelled one is a guess.')
+  /**
+   * It said "A labelled box is an instruction, an unlabelled one is a guess",
+   * which names no tool and no gesture: nothing on the canvas is called a
+   * label, and a first visitor had no way to find out that the Text tool is
+   * how a box gets one. The sentence now says the thing to do.
+   */
+  it('says that text in a box is what tells Mason what the box is', () => {
+    expect(text).toContain('Text inside a box says what it is')
+  })
+
+  /**
+   * A photo placed on bare canvas used to be a picture with nothing to press:
+   * the pills and the instruction bar belong to a frame, and no word said so.
+   * The hint offers the paper route now, and every gesture it names is one
+   * the canvas wires, ending in the frame it promises.
+   */
+  it('offers a photographed paper sketch a route it can actually take', () => {
+    expect(text).toContain('Sketched on paper? Photograph it and drop or paste the photo here.')
+    expect(text).toContain('It gets a frame of its own.')
+    expect(canvas).toContain('onDrop={')
+    expect(canvas).toContain("window.addEventListener('paste'")
+    expect(canvas).toContain('dispatch(wrapImageInFrame(')
+  })
+
+  /**
+   * It went at the first shape. A rectangle drawn to see what the tool did
+   * took the instructions with it while the one step that leads anywhere, a
+   * frame, was still undone.
+   */
+  it('stays until there is a frame, not until there is a shape', () => {
+    expect(block).toContain('{!hasFrame && (')
+    expect(block).not.toContain('shapes.length === 0')
+    expect(canvas).toContain("const hasFrame = shapes.some((shape) => shape.kind === 'frame')")
   })
 
   /** The sentence is pinned beside its component; here, that the hint carries it. */

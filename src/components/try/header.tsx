@@ -12,6 +12,7 @@ import { setFrameDialogOpen } from '@/redux/slice/shapes'
 
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
+import { accountCredits, guestCredits } from './credits-label'
 import { useGuest } from './guest-context'
 import { KeepCanvasDialog } from './keep-canvas-dialog'
 import { PoolBanner } from './pool-banner'
@@ -31,31 +32,25 @@ type Props = {
   onNewSketch: () => void
 }
 
-const plural = (n: number) => `${n} credit${n === 1 ? '' : 's'}`
-
 /**
- * A guest's pill says what they can spend right now — the pool turn and any
- * bonus are different pots, so they are named apart rather than summed. A
- * real user just sees their balance, the way the dashboard shows it.
+ * A guest's pill says what they can spend right now — the free turn and any
+ * earned credits are different pots, so they are named apart rather than
+ * summed; the words are in `credits-label.ts`, with the reasoning. A real
+ * user just sees their balance, the way the dashboard shows it.
  */
 const CreditsPill = ({ me }: { me: GuestMe | null | undefined }) => {
   const guest = asGuest(me)
   const balance = useQuery(api.credits.getBalance, me && !guest ? {} : 'skip')
-
-  let label: string
-  if (guest) {
-    const parts: string[] = []
-    if (guest.poolAvailable) parts.push('1 pool')
-    if (guest.bonus > 0 || parts.length === 0) parts.push(plural(guest.bonus))
-    label = parts.join(' + ')
-  } else {
-    label = balance == null ? '…' : plural(balance)
-  }
+  const label = guest ? guestCredits(guest) : accountCredits(balance)
 
   return (
     <span
-      className="rounded-full border border-white/10 px-2.5 py-1 text-xs tabular-nums text-muted-foreground"
-      title={guest ? 'Your free pool turn today, plus any credits earned by sharing' : 'Your credit balance'}
+      className="rounded-full border border-white/10 px-2.5 py-1 text-xs whitespace-nowrap tabular-nums text-muted-foreground"
+      title={
+        guest
+          ? 'One free generation a day, plus any credits earned by sharing'
+          : 'Your credit balance'
+      }
     >
       {label}
     </span>
