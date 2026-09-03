@@ -32,16 +32,52 @@ const SHORT: Record<string, string> = {
 
 export type AiSection = { id: string; name: string }
 
+/** The trailing `/name` being typed, if any. */
+const SLASH = /(?:^|\s)\/[\w-]*$/
+
+/** `/hero`, `/call-to-action`: a section's name as one token with no spaces in it. */
+export const slugOf = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/** "Hero" from "Hero: Design faster", so the sentence reads "the hero". */
+const roleOf = (name: string): string => name.split(': ')[0]
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Whether the instruction asks for anything.
+ *
+ * Apply lit up for a bare "/": the token the picker was reading counted as
+ * text, and so did the " the Hero " a choice leaves behind, so pressing a
+ * section and then Apply sent the model a sentence with no verb in it and
+ * spent a credit finding that out. An address is not an instruction.
+ */
+export const isActionable = (instruction: string, sections: AiSection[] = []): boolean => {
+  let rest = instruction.replace(/(?:^|\s)\/[\w-]*(?=\s|$)/g, ' ')
+  for (const section of sections) {
+    for (const name of [section.name, roleOf(section.name)]) {
+      rest = rest.replace(new RegExp(`(?<!\\w)the ${escapeRegExp(name)}(?!\\w)`, 'gi'), ' ')
+    }
+  }
+  return /\w/.test(rest)
+}
+
 export const AiPanel = ({
   label,
   busy,
   onAsk,
+  onClose,
   sections = [],
   onTarget,
 }: {
   label: string
   busy: boolean
   onAsk: (instruction: string) => void
+  /** Escape, once there is no picker left to close. */
+  onClose?: () => void
   /** The page's top-level sections, for `/name` addressing. */
   sections?: AiSection[]
   onTarget?: (id: string) => void
@@ -59,20 +95,19 @@ export const AiPanel = ({
    */
   const slash = /(?:^|\s)\/([\w-]*)$/.exec(instruction)
   const matches = slash
-    ? sections.filter((section) =>
-        section.name.toLowerCase().replace(/\s+/g, '-').includes(slash[1].toLowerCase()),
-      )
+    ? sections.filter((section) => slugOf(section.name).includes(slash[1].toLowerCase()))
     : []
 
   const choose = (section: AiSection) => {
     onTarget?.(section.id)
-    // Replace the token with the name so the sentence still reads back.
-    setInstruction((current) => current.replace(/(?:^|\s)\/[\w-]*$/, ` the ${section.name} `))
+    // Replace the token with the role so the sentence still reads back: "the
+    // hero", not "the Hero: Design faster".
+    setInstruction((current) => current.replace(SLASH, ` the ${roleOf(section.name)} `))
   }
 
   const submit = (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || busy) return
+    if (!isActionable(trimmed, sections) || busy) return
     onAsk(trimmed)
     setInstruction('')
   }
@@ -104,7 +139,7 @@ export const AiPanel = ({
               onClick={() => choose(section)}
               className="block w-full px-2.5 py-1.5 text-left text-[11px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
             >
-              /{section.name.toLowerCase().replace(/\s+/g, '-')}
+              /{slugOf(section.name)}
             </button>
           ))}
         </div>
@@ -119,6 +154,15 @@ export const AiPanel = ({
           if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault()
             submit(instruction)
+          }
+          // Escape closes the nearest thing: the picker while one is open,
+          // and the panel after that. It used to close neither, and the
+          // editor behind it took the key as "clear the selection".
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            if (slash) setInstruction((current) => current.replace(SLASH, ''))
+            else onClose?.()
           }
         }}
         rows={3}
@@ -145,7 +189,7 @@ export const AiPanel = ({
 
       <button
         type="button"
-        disabled={busy || !instruction.trim()}
+        disabled={busy || !isActionable(instruction, sections)}
         onClick={() => submit(instruction)}
         className="flex h-9 items-center justify-center gap-2 rounded-md bg-white text-xs font-medium text-black transition-opacity hover:opacity-90 disabled:opacity-30"
       >

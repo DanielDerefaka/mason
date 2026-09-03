@@ -3,15 +3,23 @@
 import { useEffect, useState } from 'react'
 
 /**
- * A screen the canvas cannot be drawn on: narrower than 768px, or driven by a
- * finger. Each half matters on its own. A phone held sideways is 844px wide
- * and still has nothing finer than a thumb to draw with, and the canvas is
- * `touch-none`; a desktop window snapped narrow still has a mouse, but the
- * toolbar wraps and no frame preset fits, and the advice it gets, a bigger
- * screen, still holds. The breakpoint is the one `useIsMobile` uses, so the
- * two agree about where a phone ends.
+ * A screen the canvas cannot be drawn on: narrower than 768px, or a touch
+ * screen narrower than 1024px. Each half matters on its own. A desktop window
+ * snapped narrow still has a mouse, but the toolbar wraps and no frame preset
+ * fits, and the advice it gets, a bigger screen, still holds. A phone held
+ * sideways is up to 932px wide and still has nothing finer than a thumb to
+ * draw with, and the canvas is `touch-none`.
+ *
+ * The touch half used to have no width on it at all, and `(pointer: coarse)`
+ * alone is every iPad ever made: an iPad Pro with a keyboard and a trackpad
+ * still reports a coarse primary pointer, so it was sent to the phone screen
+ * at 1366px wide. From 1024px a touch screen gets the canvas, which is every
+ * iPad in landscape and none in portrait. A portrait iPad is 744 to 834px
+ * wide and is turned away, on purpose: the panels it would get are the ones
+ * a phone gets, and it turns sideways. The 768 breakpoint is the one
+ * `useIsMobile` uses, so the two agree about where a phone ends.
  */
-export const PHONE_QUERY = '(max-width: 767px), (pointer: coarse)'
+export const PHONE_QUERY = '(max-width: 767px), (max-width: 1023px) and (pointer: coarse)'
 
 /**
  * Whether this is a phone, or nothing yet.

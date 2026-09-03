@@ -16,8 +16,12 @@ import { cn } from '@/lib/utils'
  * answers "what does it feel like" — and it cannot do that with a layer tree
  * down one side and a property panel down the other.
  *
- * Everything of ours fades out until the pointer comes near it, so a
- * screenshot of this page is a screenshot of the design.
+ * Everything of ours is one slim bar above the frame. It used to float over
+ * the top left corner of the design, faded to a quarter until the pointer
+ * came near, and the top left corner is where every design keeps its logo
+ * and its navigation: the way back sat on the header of the thing being
+ * previewed, and reaching for the logo lit up the toolbar instead. Forty
+ * pixels of bar cover nothing.
  */
 
 /**
@@ -164,58 +168,21 @@ export const DesignPreview = () => {
       .find((swatch) => swatch.token === '--background')?.color ?? undefined
 
   return (
-    <div
-      className={cn(
-        'flex h-screen w-screen items-center justify-center overflow-hidden',
-        device?.width && 'p-6',
-      )}
-      style={{ background }}
-    >
-      <iframe
-        ref={viewport}
-        title={design.label ?? 'Design preview'}
-        srcDoc={document_}
-        // No `allow-scripts`: a design is static markup, and the sanitiser
-        // already refuses script. `allow-same-origin` is what keeps the
-        // document readable from here, which is how the fit above is known.
-        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
-        className={cn(
-          'block border-0',
-          // A device has edges. Twelve pixels of radius sits under any real
-          // content, so nothing of the design is lost to it.
-          device?.width && 'rounded-xl shadow-2xl ring-1 ring-black/10',
-        )}
-        style={{
-          width: device?.width ?? '100%',
-          height: device?.height ?? '100%',
-          // A window shorter than an iPad is a shorter iPad, not a clipped
-          // one: the frame stays a real viewport, and the design reflows.
-          maxWidth: '100%',
-          maxHeight: '100%',
-        }}
-      />
-
-      {overflowing && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-          <p className="pointer-events-auto rounded-full bg-amber-500/90 px-3.5 py-2 text-[11px] font-medium text-black shadow-lg">
-            This design does not fit a {device?.width}px screen. Open it in the editor, select the
-            outermost group and press <span className="font-semibold">Make responsive</span>.
-          </p>
-        </div>
-      )}
-
-      {/* Ours, and deliberately almost invisible until reached for. */}
-      <div className="group fixed top-4 left-4 z-50 flex items-center gap-1 opacity-25 transition-opacity hover:opacity-100 focus-within:opacity-100">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#0B0B0C]">
+      {/* Ours, above the design rather than over it. */}
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.08] px-2 text-white">
         <Link
           href={back}
           aria-label="Back to the editor"
           title="Back to the editor (Esc)"
-          className="grid size-9 place-items-center rounded-full bg-black/70 text-white backdrop-blur transition-colors hover:bg-black/90"
+          className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[11px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-3.5" />
+          Editor
         </Link>
+        <span className="truncate text-[11px] text-white/50">{design.label ?? 'Preview'}</span>
 
-        <div className="flex items-center gap-0.5 rounded-full bg-black/70 p-1 backdrop-blur">
+        <div className="ml-auto flex items-center gap-0.5 rounded-md bg-white/[0.06] p-0.5">
           {DEVICES.map((option) => (
             <button
               key={option.key}
@@ -225,7 +192,7 @@ export const DesignPreview = () => {
               title={option.label}
               onClick={() => setSize(option.key)}
               className={cn(
-                'grid size-7 place-items-center rounded-full transition-colors',
+                'grid size-7 place-items-center rounded transition-colors',
                 size === option.key
                   ? 'bg-white/20 text-white'
                   : 'text-white/60 hover:bg-white/10 hover:text-white',
@@ -235,6 +202,47 @@ export const DesignPreview = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      <div
+        className={cn(
+          'relative flex min-h-0 flex-1 items-center justify-center overflow-hidden',
+          device?.width && 'p-6',
+        )}
+        style={{ background }}
+      >
+        <iframe
+          ref={viewport}
+          title={design.label ?? 'Design preview'}
+          srcDoc={document_}
+          // No `allow-scripts`: a design is static markup, and the sanitiser
+          // already refuses script. `allow-same-origin` is what keeps the
+          // document readable from here, which is how the fit above is known.
+          sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+          className={cn(
+            'block border-0',
+            // A device has edges. Twelve pixels of radius sits under any real
+            // content, so nothing of the design is lost to it.
+            device?.width && 'rounded-xl shadow-2xl ring-1 ring-black/10',
+          )}
+          style={{
+            width: device?.width ?? '100%',
+            height: device?.height ?? '100%',
+            // A window shorter than an iPad is a shorter iPad, not a clipped
+            // one: the frame stays a real viewport, and the design reflows.
+            maxWidth: '100%',
+            maxHeight: '100%',
+          }}
+        />
+
+        {overflowing && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
+            <p className="pointer-events-auto rounded-full bg-amber-500/90 px-3.5 py-2 text-[11px] font-medium text-black shadow-lg">
+              This design does not fit a {device?.width}px screen. Open it in the editor, select
+              the outermost group and press <span className="font-semibold">Make responsive</span>.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

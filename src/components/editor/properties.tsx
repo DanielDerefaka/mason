@@ -1000,6 +1000,45 @@ const Effects = ({
  * Text and image
  * ------------------------------------------------------------------ */
 
+/** The same reading `directText` gives, so a draft can be compared with it. */
+const normalise = (text: string) => text.replace(/\s+/g, ' ').trim()
+
+/**
+ * The node's own words, kept as typed while they are being typed.
+ *
+ * The field used to show `directText(element)` straight from the DOM, and
+ * that reading trims: "Get " came back as "Get", so the space typed before
+ * the next word never arrived and two words could not be typed in a row. The
+ * draft is what was typed and is shown for as long as it still reads as what
+ * the element holds; the element's own text takes over when it changes under
+ * the field, on selecting another node or an undo.
+ */
+const ContentField = ({
+  element,
+  onText,
+}: {
+  element: HTMLElement
+  onText: (text: string) => void
+}) => {
+  const value = directText(element)
+  const [draft, setDraft] = useState({ element, text: value })
+  const shown = draft.element === element && normalise(draft.text) === value ? draft.text : value
+
+  return (
+    <Field label="Content">
+      <Textarea
+        value={shown}
+        onChange={(event) => {
+          setDraft({ element, text: event.target.value })
+          onText(event.target.value)
+        }}
+        rows={3}
+        className="resize-none border-white/10 bg-white/[0.04] text-xs"
+      />
+    </Field>
+  )
+}
+
 const TextSection = ({
   element,
   scale,
@@ -1024,15 +1063,10 @@ const TextSection = ({
 
   return (
     <Group label="Text">
-      {isTextEditable(element) && (
-        <Field label="Content">
-          <Textarea
-            value={directText(element)}
-            onChange={(event) => onText(event.target.value)}
-            rows={3}
-            className="resize-none border-white/10 bg-white/[0.04] text-xs"
-          />
-        </Field>
+      {/* Anything with words of its own, not only a node with nothing else in
+          it: a button with an icon beside its label has a label to edit. */}
+      {(isTextEditable(element) || directText(element) !== '') && (
+        <ContentField element={element} onText={onText} />
       )}
 
       <Field label={`Size: ${Math.round(fontSize)}px`}>
