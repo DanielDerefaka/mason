@@ -1,18 +1,33 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { nanoid } from '@reduxjs/toolkit'
 
 import { useCanvasImage } from '@/hooks/use-canvas-image'
 import { useInfiniteCanvas } from '@/hooks/use-canvas'
-import type { Shape, Tool } from '@/redux/slice/shapes'
+import type { Shape, Tool, Viewport } from '@/redux/slice/shapes'
 import type { ResizeHandle } from '@/hooks/use-canvas'
 import { cn } from '@/lib/utils'
-import { Download, Layers as LayersIcon, Loader2, Sparkles, Wand2 } from 'lucide-react'
+import {
+  Download,
+  FileText,
+  FolderDown,
+  Layers as LayersIcon,
+  Loader2,
+  MessageSquare,
+  PenLine,
+  Smartphone,
+  Sparkles,
+  Wand2,
+  Workflow,
+} from 'lucide-react'
 import { useFrame } from '@/hooks/use-frame'
 import { useWorkflow } from '@/hooks/use-workflow'
 import { useMobileVersion } from '@/hooks/use-mobile-version'
-import { useAppDispatch } from '@/redux/hooks'
-import { updateShape } from '@/redux/slice/shapes'
+import { useAppDispatch, useAppStore } from '@/redux/hooks'
+import { shapesAdapter, updateShape, wrapImageInFrame } from '@/redux/slice/shapes'
+import { useGuest } from '@/components/try/guest-context'
+import { ExploreSwitch } from '@/components/try/explore-switch'
 import { GeneratedUI } from './shapes/generated-ui'
 import { InspirationSidebar } from './shapes/inspiration-sidebar'
 import { DesignChat } from './shapes/design-chat'
@@ -46,6 +61,15 @@ import {
 
 type PointerHandler = (event: React.PointerEvent<Element>) => void
 
+const selectors = shapesAdapter.getSelectors()
+
+/**
+ * World units between a placed image and the frame wrapped round it. Enough
+ * to read as a page holding a picture rather than a border painted on one,
+ * and small enough that the frame is still plainly the image's.
+ */
+const IMAGE_FRAME_MARGIN = 24
+
 /**
  * Keeps a control's pointerdown away from the shape underneath it. Without
  * this the shape captures the pointer, and a captured pointer sends the
@@ -64,60 +88,24 @@ const ShapeView = ({
   shape,
   selected,
   onGrab,
-  onGenerate,
-  onInspiration,
-  onGenerateWorkflow,
-  onOpenChat,
-  onExport,
-  onExportPrompt,
-  onExportProject,
-  onEdit,
-  onMobile,
-  mobileRunning,
-  workflowRunning,
   onBeginEdit,
   onEndEdit,
   onTextChange,
   editing,
-  generating,
 }: {
   shape: Shape
   selected?: boolean
   onGrab?: PointerHandler
-  onGenerate?: () => void
-  onInspiration?: () => void
-  onGenerateWorkflow?: () => void
-  onOpenChat?: () => void
-  onExport?: () => void
-  onExportPrompt?: () => void
-  onExportProject?: () => void
-  onEdit?: () => void
-  onMobile?: () => void
-  mobileRunning?: boolean
-  workflowRunning?: boolean
   onBeginEdit?: () => void
   onEndEdit?: () => void
   onTextChange?: (value: string, height: number) => void
   editing?: boolean
-  generating?: boolean
 }) => {
   if (shape.kind === 'generated-ui') {
-    return (
-      <GeneratedUI
-        shape={shape}
-        selected={selected}
-        onGrab={onGrab}
-        onGenerateWorkflow={onGenerateWorkflow}
-        onOpenChat={onOpenChat}
-        onExport={onExport}
-        onExportPrompt={onExportPrompt}
-        onExportProject={onExportProject}
-        onEdit={onEdit}
-        onMobile={onMobile}
-        mobileRunning={mobileRunning}
-        workflowRunning={workflowRunning}
-      />
-    )
+    // The design's actions are drawn by `DesignControls`, outside the zoomed
+    // layer. Handed its callbacks, the panel would draw a second row of its
+    // own inside it, at whatever size the zoom made them.
+    return <GeneratedUI shape={shape} selected={selected} onGrab={onGrab} />
   }
 
   const base = 'absolute'
@@ -129,52 +117,10 @@ const ShapeView = ({
   }
 
   if (shape.kind === 'frame') {
+    // The label and the action pills are `FrameControls`, drawn in screen
+    // space; only the page itself lives in the zoomed layer.
     return (
       <div className={base} style={style} onPointerDown={onGrab}>
-        <FrameLabel shape={shape} />
-        {/* Frame actions sit above the top-right corner, outside the frame. */}
-        <div className="absolute -top-7 right-0 flex items-center gap-2">
-          <button
-            type="button"
-            onPointerDown={stopPointer}
-            onClick={onInspiration}
-            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-          >
-            <Sparkles className="size-3" />
-            Inspiration
-          </button>
-          <button
-            type="button"
-            onPointerDown={stopPointer}
-            onClick={onGenerate}
-            disabled={generating}
-            className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="size-3 animate-spin" />
-                Generating…
-              </>
-            ) : (
-              <>
-                <Wand2 className="size-3" />
-                Generate
-              </>
-            )}
-          </button>
-          {onExport && (
-            <button
-              type="button"
-              onPointerDown={stopPointer}
-              onClick={onExport}
-              title="Export this frame as a PNG"
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground"
-            >
-              <Download className="size-3" />
-              Export
-            </button>
-          )}
-        </div>
         <div
           className={cn('size-full rounded-sm ring-1', selected ? 'ring-white/70' : 'ring-white/25')}
           // A frame is a page, and a page has a colour. It used to paint a
@@ -417,7 +363,15 @@ const ShapeView = ({
  * somebody gives it a real one. Renaming needed to be as cheap as
  * double-clicking it.
  */
-const FrameLabel = ({ shape }: { shape: Shape }) => {
+const FrameLabel = ({
+  shape,
+  selected,
+  onGrab,
+}: {
+  shape: Shape
+  selected?: boolean
+  onGrab?: PointerHandler
+}) => {
   const dispatch = useAppDispatch()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(shape.label ?? '')
@@ -454,7 +408,7 @@ const FrameLabel = ({ shape }: { shape: Shape }) => {
         // Without this the pointer down starts a drag on the frame underneath
         // and the caret never lands.
         onPointerDown={(event) => event.stopPropagation()}
-        className="absolute -top-6 left-0 w-48 rounded border border-sky-400/60 bg-black/80 px-1 text-[11px] text-white outline-none"
+        className="pointer-events-auto mr-auto w-48 rounded border border-sky-400/60 bg-black/80 px-1 text-xs text-white outline-none"
       />
     )
   }
@@ -463,16 +417,279 @@ const FrameLabel = ({ shape }: { shape: Shape }) => {
 
   return (
     <span
-      onPointerDown={stopPointer}
+      /**
+       * The label is a handle for the frame under it. It used to stop the
+       * pointer instead, so the one word that reads as the frame's name was
+       * the one place above it that a click did nothing: it neither selected
+       * the frame nor moved it. The same grab the frame itself uses selects
+       * on press and moves on drag, and the double-click rename still works
+       * because a press with no drag is not a move.
+       */
+      onPointerDown={onGrab}
       onDoubleClick={() => {
         setDraft(shape.label ?? '')
         setEditing(true)
       }}
       title="Double-click to rename"
-      className="text-muted-foreground hover:text-foreground absolute -top-6 left-0 cursor-text text-[11px] transition-colors"
+      className={cn(
+        'pointer-events-auto mr-auto max-w-[12rem] cursor-default truncate text-xs transition-colors hover:text-foreground',
+        selected ? 'text-foreground' : 'text-muted-foreground',
+      )}
     >
       {shape.label}
     </span>
+  )
+}
+
+/**
+ * Where a world rectangle lands on the canvas, in screen pixels.
+ *
+ * The world layer is `translate(tx, ty) scale(s)`, so a point at world (x, y)
+ * is drawn at (x * s + tx, y * s + ty). Anything positioned from this stays
+ * the size it was written at whatever the zoom is.
+ */
+const screenRect = (shape: Shape, viewport: Viewport) => ({
+  left: shape.x * viewport.scale + viewport.translate.x,
+  top: shape.y * viewport.scale + viewport.translate.y,
+  width: shape.width * viewport.scale,
+  height: shape.height * viewport.scale,
+})
+
+const pill =
+  'pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-white/[0.14] hover:text-foreground disabled:opacity-50'
+
+/**
+ * A control row above a shape, in screen space.
+ *
+ * The pills used to be children of the shape inside the zoomed layer, at
+ * `text-[11px]` that the zoom then multiplied: zoomed out to see a whole
+ * page, Generate was a smear seven pixels tall, and zoomed in, a banner. This
+ * box is the shape's screen rectangle with nothing painted in it; the row
+ * hangs off its top edge at the size the stylesheet says, and wraps upward
+ * when the shape on screen is narrower than its controls, so nothing is
+ * clipped or stacked on a neighbour. The box itself lets the pointer through,
+ * so the frame and the canvas under it still get every click.
+ */
+const Controls = ({
+  shape,
+  viewport,
+  children,
+  below,
+}: {
+  shape: Shape
+  viewport: Viewport
+  children: React.ReactNode
+  /** Anything that hangs off the bottom edge instead. */
+  below?: React.ReactNode
+}) => (
+  <div className="pointer-events-none absolute" style={screenRect(shape, viewport)}>
+    <div className="pointer-events-none absolute inset-x-0 bottom-full mb-1.5 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      {children}
+    </div>
+    {below && (
+      // A design's box is allowed to run ten world pixels short of its markup
+      // before it is grown to fit, so this clears that as well as the edge.
+      <div className="pointer-events-none absolute top-full right-0 mt-3 flex items-center">
+        {below}
+      </div>
+    )}
+  </div>
+)
+
+const FrameControls = ({
+  shape,
+  selected,
+  viewport,
+  generating,
+  onGrab,
+  onGenerate,
+  onInspiration,
+  onExport,
+}: {
+  shape: Shape
+  selected: boolean
+  viewport: Viewport
+  generating: boolean
+  onGrab: PointerHandler
+  onGenerate: () => void
+  onInspiration: () => void
+  onExport: () => void
+}) => (
+  <Controls shape={shape} viewport={viewport}>
+    <FrameLabel shape={shape} selected={selected} onGrab={onGrab} />
+    <button type="button" onPointerDown={stopPointer} onClick={onInspiration} className={pill}>
+      <Sparkles className="size-3.5" />
+      Inspiration
+    </button>
+    <button
+      type="button"
+      onPointerDown={stopPointer}
+      onClick={onGenerate}
+      disabled={generating}
+      className={pill}
+    >
+      {generating ? (
+        <>
+          <Loader2 className="size-3.5 animate-spin" />
+          Generating…
+        </>
+      ) : (
+        <>
+          <Wand2 className="size-3.5" />
+          Generate
+        </>
+      )}
+    </button>
+    <button
+      type="button"
+      onPointerDown={stopPointer}
+      onClick={onExport}
+      title="Export this frame as a PNG"
+      className={pill}
+    >
+      <Download className="size-3.5" />
+      Export
+    </button>
+  </Controls>
+)
+
+/**
+ * The generated design's actions, in screen space like the frame's.
+ *
+ * Every pill the panel used to draw for itself, with the same rules: nothing
+ * while the design is still streaming, every download through the guest gate,
+ * and the Next.js project not offered to a guest at all, since an offer
+ * withdrawn at the click is worse than one never made. Edit sits below on its
+ * own, as before, because it is the one that leaves the canvas.
+ */
+const DesignControls = ({
+  shape,
+  viewport,
+  workflowRunning,
+  mobileRunning,
+  onGenerateWorkflow,
+  onOpenChat,
+  onMobile,
+  onExport,
+  onExportPrompt,
+  onExportProject,
+  onEdit,
+}: {
+  shape: Shape
+  viewport: Viewport
+  workflowRunning: boolean
+  mobileRunning: boolean
+  onGenerateWorkflow: () => void
+  onOpenChat: () => void
+  onMobile: () => void
+  onExport: () => void
+  onExportPrompt: () => void
+  onExportProject: () => void
+  onEdit: () => void
+}) => {
+  const { requireExport, isGuest } = useGuest()
+  if (shape.streaming) return null
+
+  const gated = (run: () => void) => async () => {
+    if (!(await requireExport())) return
+    run()
+  }
+
+  return (
+    <Controls
+      shape={shape}
+      viewport={viewport}
+      below={
+        <button
+          type="button"
+          onPointerDown={stopPointer}
+          onClick={onEdit}
+          title="Open this design in the editor"
+          className={cn(pill, 'bg-white/[0.14] text-foreground hover:bg-white/[0.2]')}
+        >
+          <PenLine className="size-3.5" />
+          Edit
+        </button>
+      }
+    >
+      <span className="pointer-events-auto">
+        <ExploreSwitch designId={shape.id} ready={Boolean(shape.html)} />
+      </span>
+      <button
+        type="button"
+        onPointerDown={stopPointer}
+        onClick={onGenerateWorkflow}
+        disabled={workflowRunning}
+        className={pill}
+      >
+        {workflowRunning ? (
+          <>
+            <Loader2 className="size-3.5 animate-spin" />
+            Building flow…
+          </>
+        ) : (
+          <>
+            <Workflow className="size-3.5" />
+            Generate Workflow
+          </>
+        )}
+      </button>
+      <button type="button" onPointerDown={stopPointer} onClick={onOpenChat} className={pill}>
+        <MessageSquare className="size-3.5" />
+        Design Chat
+      </button>
+      <button
+        type="button"
+        onPointerDown={stopPointer}
+        onClick={onMobile}
+        disabled={mobileRunning}
+        title="Restructure this design for a phone, as a new design beside it"
+        className={pill}
+      >
+        {mobileRunning ? (
+          <>
+            <Loader2 className="size-3.5 animate-spin" />
+            Building…
+          </>
+        ) : (
+          <>
+            <Smartphone className="size-3.5" />
+            Mobile version
+          </>
+        )}
+      </button>
+      <button
+        type="button"
+        onPointerDown={stopPointer}
+        onClick={() => void gated(onExport)()}
+        className={pill}
+      >
+        <Download className="size-3.5" />
+        Export
+      </button>
+      <button
+        type="button"
+        onPointerDown={stopPointer}
+        onClick={() => void gated(onExportPrompt)()}
+        title="Download a build brief: palette, type scale, structure and rules"
+        className={pill}
+      >
+        <FileText className="size-3.5" />
+        Prompt
+      </button>
+      {!isGuest && (
+        <button
+          type="button"
+          onPointerDown={stopPointer}
+          onClick={() => void gated(onExportProject)()}
+          title="Download a Next.js project: tokens, a component per section, Tailwind"
+          className={pill}
+        >
+          <FolderDown className="size-3.5" />
+          Project
+        </button>
+      )}
+    </Controls>
   )
 }
 
@@ -663,10 +880,37 @@ export const Canvas = () => {
    * set of rules about size and type.
    */
   const dropAt = useRef<{ x: number; y: number } | null>(null)
-  const { place: placeImages } = useCanvasImage(
+  const images = useCanvasImage(
     () =>
       dropAt.current ?? screenToWorld({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
   )
+  const store = useAppStore()
+  const dispatch = useAppDispatch()
+
+  /**
+   * A photo that lands on bare canvas gets a frame of its own.
+   *
+   * The route to Generate runs through a frame: the instruction bar and the
+   * pills belong to one, and a frame draws in whatever touches it. So a
+   * photograph of a paper sketch, the thing the hint tells people to bring,
+   * used to arrive as a picture with nothing to press and no word about the
+   * frame it needed. Placing wraps it now, sized to the picture with a
+   * margin, and selects the frame so the next move is on screen at once. An
+   * image dropped on a frame is that frame's already and is left alone.
+   *
+   * The wrap happens here, after `place()` resolves, rather than in the
+   * placing hook: the ids are read back from the store because the hook
+   * announces nothing about what it added.
+   */
+  const placeImages = async (files: FileList | null) => {
+    const before = new Set(selectors.selectIds(store.getState().shapes.entities))
+    await images.place(files)
+    for (const shape of selectors.selectAll(store.getState().shapes.entities)) {
+      if (shape.kind !== 'image' || before.has(shape.id)) continue
+      dispatch(wrapImageInFrame({ id: shape.id, frameId: nanoid(), margin: IMAGE_FRAME_MARGIN }))
+    }
+    dropAt.current = null
+  }
   const [overFiles, setOverFiles] = useState(false)
 
   /** A drag carrying files, as opposed to a shape being dragged on the canvas. */
@@ -819,6 +1063,7 @@ export const Canvas = () => {
   // The dot grid is painted in screen space and offset by the translate, so it
   // scrolls with the content without needing a huge tiled element.
   const gridSize = 24 * viewport.scale
+  const hasFrame = shapes.some((shape) => shape.kind === 'frame')
   const selectedShape = shapes.find((shape) => shape.id === selectedId)
   const chosen = shapes.filter((shape) => selectedIds.includes(shape.id))
   const selectionBounds =
@@ -935,26 +1180,10 @@ export const Canvas = () => {
               key={shape.id}
               shape={shape}
               selected={selectedIds.includes(shape.id)}
-              onGenerate={() => void generateDesign(shape)}
-              onInspiration={() => setInspirationOpen((open) => !open)}
-              onGenerateWorkflow={() => void generateWorkflow(shape)}
-              onOpenChat={() => toggleDesignChat(shape.id)}
-              onExport={() => onExport(shape)}
-              onExportProject={
-                shape.kind === 'generated-ui' ? () => onExportProject(shape) : undefined
-              }
-              onExportPrompt={
-                shape.kind === 'generated-ui' ? () => onExportPrompt(shape) : undefined
-              }
-              onEdit={() => openEditor(shape)}
-              onMobile={() => void generateMobile(shape)}
-              mobileRunning={mobileRunningFor !== null}
-              workflowRunning={workflowRunningFor !== null}
               editing={editingId === shape.id}
               onBeginEdit={() => beginEdit(shape.id)}
               onEndEdit={endEdit}
               onTextChange={(value, height) => setShapeText(shape.id, value, height)}
-              generating={generatingFrameId === shape.id}
               onGrab={(event) => beginMove(shape, event)}
             />
           ))}
@@ -1020,6 +1249,47 @@ export const Canvas = () => {
             />
           )}
         </div>
+
+        {/* Labels and action pills, drawn at screen size. See `Controls`. A
+            layer above the world one, and beneath the drop overlay. */}
+        <div className="pointer-events-none absolute inset-0 z-20">
+          {shapes.map((shape) => {
+            if (shape.kind === 'frame') {
+              return (
+                <FrameControls
+                  key={shape.id}
+                  shape={shape}
+                  viewport={viewport}
+                  selected={selectedIds.includes(shape.id)}
+                  generating={generatingFrameId === shape.id}
+                  onGrab={(event) => beginMove(shape, event)}
+                  onGenerate={() => void generateDesign(shape)}
+                  onInspiration={() => setInspirationOpen((open) => !open)}
+                  onExport={() => onExport(shape)}
+                />
+              )
+            }
+            if (shape.kind === 'generated-ui') {
+              return (
+                <DesignControls
+                  key={shape.id}
+                  shape={shape}
+                  viewport={viewport}
+                  workflowRunning={workflowRunningFor !== null}
+                  mobileRunning={mobileRunningFor !== null}
+                  onGenerateWorkflow={() => void generateWorkflow(shape)}
+                  onOpenChat={() => toggleDesignChat(shape.id)}
+                  onMobile={() => void generateMobile(shape)}
+                  onExport={() => onExport(shape)}
+                  onExportPrompt={() => onExportPrompt(shape)}
+                  onExportProject={() => onExportProject(shape)}
+                  onEdit={() => openEditor(shape)}
+                />
+              )
+            }
+            return null
+          })}
+        </div>
       </div>
 
       {layersOpen ? (
@@ -1065,15 +1335,25 @@ export const Canvas = () => {
           to open as an empty dotted field with no indication of the move.
           The toolbar is named before the keys: it opened with "press F", which
           on a first visit is a shortcut to something not yet found. Every
-          name here is checked against its control in hint.test.ts. */}
-      {shapes.length === 0 && (
+          name here is checked against its control in hint.test.ts.
+
+          It stays until there is a frame, not until there is a shape. It went
+          at the first shape, so a rectangle drawn to see what the tool did
+          took the instructions with it while the one step that leads anywhere
+          was still undone; and a photo placed on bare canvas is a frame now,
+          so the paper route below ends where the drawn one does. */}
+      {!hasFrame && (
         <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
           <div className="max-w-sm text-center">
             <p className="text-sm font-medium">Draw a frame, then press Generate.</p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               Frame, Rectangle and Text are in the toolbar below, or press <Key>F</Key>,{' '}
-              <Key>R</Key> and <Key>T</Key>. A labelled box is an instruction, an unlabelled
-              one is a guess. <Key>New frame</Key> above picks a device size for you.
+              <Key>R</Key> and <Key>T</Key>. Text inside a box says what it is, and{' '}
+              <Key>New frame</Key> above picks a device size for you.
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              Sketched on paper? Photograph it and drop or paste the photo here. It gets a
+              frame of its own.
             </p>
             <ExploreNotice />
           </div>
@@ -1088,7 +1368,10 @@ export const Canvas = () => {
         <AutoSave />
       </div>
 
-      <ToolBar zoom={{ scale: viewport.scale, zoomIn, zoomOut, zoomToScale }} />
+      <ToolBar
+        zoom={{ scale: viewport.scale, zoomIn, zoomOut, zoomToScale }}
+        images={{ ...images, place: placeImages }}
+      />
     </>
   )
 }
