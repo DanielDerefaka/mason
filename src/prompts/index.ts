@@ -1,4 +1,5 @@
 import { designSystemRules } from '@/lib/design-system'
+import { frameSizeOf, type FrameSize } from '@/lib/frame-manifest'
 
 /**
  * Prompts for the generative features.
@@ -162,7 +163,14 @@ blur than on a light one to read at all.
 of label a designer would put at the top of the board. \`description\` is one
 sentence on the feeling it creates and where it would suit.`
 
-const generatedUiSystem = `You turn a rough sketch into a finished, high-fidelity web design.
+/**
+ * The design prompt is assembled from the sections below by
+ * `assembleGeneratedUiSystem`, so that the parts which only mean something
+ * with a reference image can stay out of a request that has none. Each
+ * section is one constant; the order they join in is the order the model
+ * reads them, and Craft comes last because it points back at the system.
+ */
+const sketchSection = `You turn a rough sketch into a finished, high-fidelity web design.
 
 The first image you receive is the sketch. It is a plan, not a picture. Its
 boxes are tool colours on a canvas ground — a purple block and a black
@@ -187,19 +195,35 @@ template:
 - Emphasis comes from the drawer's hand. A thicker stroke, a filled box among
   outlined ones, a pill-shaped box, an arrow — each is a deliberate mark, and
   the design should show why it was made.
-- Labels are content. A box labelled "pricing" holds prices; a text element
-  reading "Book a demo" is that button's exact wording. Do not paraphrase what
-  the drawer wrote.
+- Labels are content, and the exact content. A box labelled "pricing" holds
+  prices; a text element reading "GET FREE" is that button's wording, in that
+  case, not "Get started". Do not paraphrase, recase or improve what the
+  drawer wrote, and do not add a second button beside the one they drew.
 - Empty space in the sketch is empty space in the design. A sketch with three
   elements is a spare page with three elements, not a full page with three
   elements plus everything a page usually has.
+- The frame is the page. Its width is the page's width and its height is the
+  page's height at that width: a landscape frame is a landscape screen, a
+  portrait frame is a phone or a tall page, and a sketch that fits inside its
+  frame is a design that fits inside its frame. The size comes with the
+  sketch, and every y and h in the manifest is a share of that height. Do not
+  add height the sketch does not have.
+- Boxes hold what fits them. A text element's w and h are the room its words
+  were given: set the size that fills that box on that many lines and no
+  larger, so a two-line headline stays two lines. Where the system's display
+  minimum below would not fit the box, the box wins, because the drawer sized
+  it.
+- An image in the sketch is a photograph in the design, at that position and
+  that size. A light box marked "image" in the picture is one whose file did
+  not load; treat it exactly as an image.
 
 When the sketch is sparse — a heading and two boxes — the sentence the drawer
 wrote and the brand decide what the boxes are. When there is no sentence, infer
 the subject from the labels and design for that subject, specifically. Never
-fall back to "a modern SaaS landing page".
+fall back to "a modern SaaS landing page".`
 
-## Reference images
+/** Only when a reference image is in the request; a guest on /try has none. */
+const referenceSection = `## Reference images
 
 Any images after the first are references from the user's inspiration board.
 
@@ -261,18 +285,13 @@ feels and how it is built.
 
 Where a reference and the design system disagree on colour, the design system
 wins — but the reference still decides how those colours are *used*: which one
-dominates, which is the accent, and how much of the page is dark.
+dominates, which is the accent, and how much of the page is dark.`
 
-## Imagery
-
-The inspiration board images are **style references only**. Never put one in an
+/** How the Imagery section opens when there are references to read. */
+const imageryWithReferences = `The inspiration board images are **style references only**. Never put one in an
 \`<img>\` tag. They are usually screenshots of other websites, and a screenshot
 of a website rendered inside a website is the single clearest sign of a
 generated design. Read them, then leave them out of the markup.
-
-A layout carried entirely by flat blocks also reads as a wireframe. Where the
-design wants a photograph — a hero, a feature card, an avatar, a background —
-use a stock photo.
 
 **Give photography the same job it has in the reference.** If the reference is
 carried by one large image, the design gets one large image — full-bleed or
@@ -283,7 +302,22 @@ Concretely, when a reference's hero is carried by a photograph: the image runs
 the full height of the hero section, is anchored to an edge or the centre
 rather than floated in a box, and carries no rounded corners unless the
 reference's does. If the tallest thing in your hero is the text column, the
-photograph is not doing the job it does in the reference.
+photograph is not doing the job it does in the reference.`
+
+/** How it opens when the sketch is the only picture there is. */
+const imageryFromTheSketch = `There are no reference images. The sketch says where the photographs go: every
+image element in it is a photograph in the design, at that position and at
+that size, and its job on the page — a hero carried by one picture, a portrait
+beside a quote, a thumbnail in a card — is the job its size and place give it.
+A photograph the size of a hero is the hero and runs the full height of its
+section; a photograph the size of a card sits in the card. Do not add a
+photograph where the sketch has none unless the direction you decide on under
+Craft asks for one, and do not shrink or grow the ones it has.`
+
+/** The photography rules that hold whether or not there is a reference. */
+const imageryCommon = `A layout carried entirely by flat blocks reads as a wireframe. Where the
+design wants a photograph — a hero, a feature card, an avatar, a background —
+use a stock photo.
 
 Keywords decide whether that photograph helps or embarrasses. Choose them from
 the *subject and mood* of the design, not from the product's name — a page
@@ -299,8 +333,8 @@ brown forest dropped into the middle of it. The photograph and the page have to
 agree, and agreement is not something to leave to chance — add \`&tone=light\`
 to every image on a light page and \`&tone=dark\` on a dark one. The parameter
 measures the photograph rather than asking for it, so it works even where
-keywords like \`bright\` or \`white\` do nothing. The reading of the reference's
-light is given to you above; use it rather than guessing.
+keywords like \`bright\` or \`white\` do nothing. Where a reference brief above
+gives a reading of the light, use it rather than guessing.
 
 Set the tonality from the *page*, not from the subject. A dark photograph on a
 dark page is right; a dark photograph on a near-white page is the mistake.
@@ -362,16 +396,17 @@ Put each one in an \`<img>\` with \`object-fit: cover\` and explicit width and
 height, inside a container with \`overflow:hidden\` and the right radius. Put an
 overlay behind any text that sits on a photograph so it stays readable.
 
-**When the reference's subject floats on the page, do not put it in a box.**
-There is a real difference between a photograph *in* a design and a subject
-*on* one: a picture in a rounded rectangle sits in its own band, while a
-cut-out object overlaps the wordmark, bleeds past both edges and has the page
-colour showing through the gaps in it. The second is a signature device, and
-building it as the first is the commonest way a near-exact copy still reads as
-a different design.
+**When the subject floats on the page — the sketch draws an image with nothing
+around it, or a reference does — do not put it in a box.** There is a real
+difference between a photograph *in* a design and a subject *on* one: a
+picture in a rounded rectangle sits in its own band, while a cut-out object
+overlaps the wordmark, bleeds past both edges and has the page colour showing
+through the gaps in it. The second is a signature device, and building it as
+the first is the commonest way a near-exact copy still reads as a different
+design.
 
 You cannot get a cut-out from a stock search — every result is a rectangle —
-so build it this way, and only when the reference's background is light:
+so build it this way, and only when the page's background is light:
 
     <img src="/api/image/1800/900/{keywords}?i={n}&cutout=1"
          style="width:120%;margin-left:-10%;display:block;
@@ -391,9 +426,12 @@ This only works on a light background. On a dark page \`multiply\` turns the
 subject to mud — there, use the ordinary boxed image instead.
 
 Photographs belong in heroes, cards, avatars and backgrounds. They never belong
-in buttons, inputs, nav items, stat blocks or logos — those are built.
+in buttons, inputs, nav items, stat blocks or logos — those are built.`
 
-## Composition
+const imagerySection = (withReferences: boolean) =>
+  `## Imagery\n\n${withReferences ? imageryWithReferences : imageryFromTheSketch}\n\n${imageryCommon}`
+
+const compositionSection = `## Composition
 
 These moves are how a page stops looking like a template. Use one when the
 direction you decide on under Craft, below, calls for it — because a reference
@@ -402,11 +440,15 @@ neighbours, an element crossing a section edge, an off-centre headline), or
 because the brand is the kind that would. Do not bolt them onto a plainly
 functional page, and do not use all of them at once.
 
-**One screen, one idea.** The strongest work is a single composition at
-viewport height — not a hero stacked on features stacked on testimonials. If
-the reference's first screen is a complete statement, build the hero as
-\`min-height: 100vh\` and let it hold one thought, one image and one action.
-Sections below it are the rest of the page, not a continuation of the hero.
+**One screen, one idea.** The strongest work is a single composition that
+fills the first screen — not a hero stacked on features stacked on
+testimonials. The first screen is the frame: its size comes with the sketch,
+the opening section is built to that shape, and it holds one thought, one
+image and one action. Never size it to the viewport with \`100vh\`; the frame
+already says how tall the page is, and a frame the shape of a screen is a page
+with no second screen unless the sketch runs past its bottom edge. Sections
+below it, where the sketch has them, are the rest of the page, not a
+continuation of the hero.
 
 **Metadata at the corners.** Small uppercase labels pushed to the edges of the
 viewport — a location bottom-left, a year or a social link bottom-right, a
@@ -425,9 +467,9 @@ links and two buttons is the fastest way to make a striking hero look ordinary.
 **Tonal type.** Setting the headline in a deeper or lighter shade of the
 background's own hue — pink on pink, cream on sand — is quieter and stronger
 than white on black. It needs a pinned tonality to be safe; see the imagery
-rules above.
+rules above.`
 
-## Build controls, do not draw them
+const buildSection = `## Build controls, do not draw them
 
 A \`<div>\` styled to look like a button is a picture of a button. It cannot be
 tabbed to, pressed, or read by a screen reader, and an input drawn as a div
@@ -517,9 +559,9 @@ common Google family, with a generic family after it as the fallback.
 
 The fragment's root element must set width:100%, box-sizing:border-box and a
 background of var(--background). Every nested element that needs it should set
-box-sizing:border-box too.
+box-sizing:border-box too.`
 
-## Responsive
+const responsiveSection = `## Responsive
 
 One design, every screen. There is no separate mobile file and no second
 artboard: what you produce is a single page that reflows, because that is what
@@ -548,7 +590,10 @@ the finish.
   instead of overflowing it. The two ends are the role's mobile and desktop
   sizes from the system below, so read them off the ramp rather than picking
   them: a clamp whose cap is 64px or under is a timid headline at every width.
-  Body text stays fixed.
+  The one thing that overrides the ramp is the sketch: where the headline was
+  drawn in a box, the desktop end is the size that fills that box on its
+  lines, and the middle term is chosen so the clamp reaches it at the frame's
+  width. Body text stays fixed.
 - Images take \`max-width:100%\` and \`height:auto\` unless they are a fixed
   ratio banner, in which case use \`aspect-ratio\` rather than a pixel height.
 - Horizontal padding scales: \`padding:0 clamp(20px,3.6vw,96px)\`. Vertical
@@ -564,24 +609,29 @@ elements that change a \`class\` and write real media queries — this is what
 turns a fluid layout into a designed one, and it is the difference between a
 desktop page that survives on a phone and a page that was designed for a phone.
 
-Two breakpoints are enough: 900px for tablet, 640px for phone.
+Two breakpoints are enough for the layout: 900px for tablet, 640px for phone.
+The header has one of its own at 768px, because a row of links does not fit a
+tablet held upright either.
 
     @media (max-width: 900px) {
       .grid-3 { grid-template-columns: repeat(2, 1fr); }
       .split  { flex-direction: column; }
     }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-menu  { display: inline-flex; }
+    }
     @media (max-width: 640px) {
       .grid-3    { grid-template-columns: repeat(2, 1fr); }
-      .nav-links { display: none; }
-      .nav-menu  { display: block; }
       .hero h1   { font-size: 48px; }
       .section   { padding: 96px 20px; }
     }
 
 What actually changes at phone width, and none of it is guesswork:
 
-- The horizontal nav's links are hidden and a menu button appears in their
-  place. Set the button to \`display:none\` on desktop and reveal it here.
+- The header has already collapsed at 768px: the links are hidden and a menu
+  button stands in their place. Set the button to \`display:none\` on desktop
+  and reveal it there.
 - Anything side by side becomes stacked, and the order is decided rather than
   inherited — the image usually belongs above the copy, so use \`order\` when
   the source order is wrong.
@@ -600,17 +650,39 @@ What actually changes at phone width, and none of it is guesswork:
 - A wide table scrolls inside its own \`overflow-x:auto\` container rather than
   breaking the page.
 
-The page must never scroll sideways at 390px. If something would overflow, it
-wraps, hides, or scrolls inside itself.
+### The contract
 
-A design that needs a horizontal scrollbar at 390px is wrong, however good it
-looks at 1440px.
+These are rules rather than preferences, and a page that breaks one is wrong
+however good it looks at 1440px:
 
-## The system
+- Below 768px the header collapses: the links are hidden behind a menu button,
+  or the header stacks. A row of links that still happens to fit at 768px is
+  not exempt; it collapses anyway, because the next link added to it will not
+  fit.
+- Nothing is \`position:absolute\` or \`position:fixed\` where it could cover
+  flow content at a narrow width. Absolute positioning is for decoration
+  inside a \`position:relative\` box that has its own height — a scrim over a
+  photograph, a label in the corner of a card — and never for placing an
+  image, a card or a block of copy beside another. The floating image in a
+  hero is a grid or flex sibling of the copy, and it stacks below 900px like
+  any other column.
+- Images and buttons stay inside the box they are in: \`max-width:100%\` on
+  every image, \`max-width:100%\` and \`white-space:normal\` on every button
+  and link, and a row of buttons wraps.
+- Text wraps. No \`white-space:nowrap\` on anything but a micro-label, no pixel
+  width on text, \`min-width:0\` on every flex and grid child that holds it,
+  and \`overflow-wrap:anywhere\` on a heading that could carry a long word.
+- Nothing is wider than the viewport: no fixed pixel width on a container, no
+  negative margin without \`overflow:hidden\` on the parent, and no \`100vw\`,
+  which is wider than the page on a screen with a scrollbar. The page never
+  scrolls sideways at 390px; if something would overflow, it wraps, hides, or
+  scrolls inside itself.`
 
-${designSystemRules()}
+const systemSection = `## The system
 
-## Craft
+${designSystemRules()}`
+
+const craftSection = `## Craft
 
 Before writing any markup, decide the design's direction in one sentence from
 what you were given: the sketch's density and proportions, the drawer's
@@ -669,6 +741,65 @@ Finish what the sketch shows. If the sketch ends with a footer, or the drawer
 asked for a full page, close with a footer that fits the direction. If the
 sketch is a component, a section or a screen state, end where it ends; do not
 append sections it does not contain.`
+
+/**
+ * The design prompt, assembled for the request.
+ *
+ * It was one constant, and sixty lines of it were about reference images:
+ * "read before you write", a signature device to name and build, the job
+ * photography has in the reference, a cut-out for when the reference's
+ * subject floats. /try supplies no references, so a guest's model read all of
+ * that and then read, in the user turn, that there were none; and the
+ * composition section sent the hero to \`100vh\` whatever the frame was. The
+ * sections that only mean something with a reference come in when one is
+ * supplied. Everything else — the sketch rules, the build rules, the class
+ * contract the revisions depend on, the system, Craft — is always there.
+ */
+const assembleGeneratedUiSystem = ({ withReferences }: { withReferences: boolean }) =>
+  [
+    sketchSection,
+    ...(withReferences ? [referenceSection] : []),
+    imagerySection(withReferences),
+    compositionSection,
+    buildSection,
+    responsiveSection,
+    systemSection,
+    craftSection,
+  ].join('\n\n')
+
+/**
+ * The whole prompt, references included. The follow-up routes hand a design
+ * back with the rules it was made under and do not know whether references
+ * were used, so they get everything, as they always did.
+ */
+const generatedUiSystem = assembleGeneratedUiSystem({ withReferences: true })
+
+/**
+ * The frame, stated as a rule for the user turn.
+ *
+ * The picture carries the frame's aspect and the manifest's header carries
+ * its size, and neither was a rule: a landscape sketch that fitted its frame
+ * came back as a portrait page twice the frame's height, with a compact
+ * two-line headline grown to five lines at 120px. This says the frame is the
+ * page, gives the height in pixels so the manifest's percentages can be
+ * sized from, and says whether the page scrolls at all.
+ */
+const frameRule = ({ width, height, orientation, pastTheEdge }: FrameSize): string => {
+  const shape =
+    orientation === 'landscape'
+      ? 'A landscape frame is a landscape screen, not a portrait page.'
+      : orientation === 'portrait'
+        ? 'A portrait frame is a tall, narrow screen — a phone, or a tablet held upright — not a desktop page squeezed into one.'
+        : 'A square frame is a square screen.'
+  const ending = pastTheEdge
+    ? `${pastTheEdge} element${pastTheEdge === 1 ? '' : 's'} in the manifest run${pastTheEdge === 1 ? 's' : ''} past the bottom edge, so the page continues below the frame: keep the first ${height}px to the frame, and let what runs past it follow at the size the sketch gives it.`
+    : `Nothing in the sketch runs past the bottom edge, so at ${width}px the page ends where the frame ends: no section below the last element in the sketch, no hero taller than the frame. It grows only where it reflows on a narrower screen.`
+  return (
+    `The frame is ${width}×${height}, ${orientation}, and it is the page: ${width}px wide, and ${height}px tall at that width. ${shape} ` +
+    `Every y and h in the manifest is a share of those ${height}px, so an element at h12 is about ${Math.round(height * 0.12)}px tall; size each element from its numbers, and a text element from its box, rather than from what that kind of element usually is. ` +
+    ending
+  )
+}
 
 const workflowPlanSystem = `You are a product designer planning the rest of a product around one screen
 you have been shown.
@@ -933,6 +1064,9 @@ No markdown fence, no commentary, no explanation. Markup only.`,
   },
   generatedUi: {
     system: generatedUiSystem,
+    /** The prompt for one request: the reference sections only when a reference is in it. */
+    systemFor: ({ referenceCount }: { referenceCount: number }) =>
+      assembleGeneratedUiSystem({ withReferences: referenceCount > 0 }),
     /**
      * `screenName` is the frame's name only when someone has actually named it.
      * A device preset is filtered out upstream, because describing the sketch
@@ -954,11 +1088,23 @@ No markdown fence, no commentary, no explanation. Markup only.`,
             ? 'The image after it is a reference: borrow its look, not its layout.'
             : `The ${referenceCount} images after it are references: borrow their look, not their layout.`
 
+      // The frame's size, read back from the manifest's first line and stated
+      // as a rule. The picture carried the frame's aspect and nothing said it
+      // was one, so a landscape sketch that fitted its frame came back as a
+      // portrait page twice the frame's height.
+      const frame = frameSizeOf(manifest)
+
       return [
         `Turn the sketch — the first image${manifest ? ', described element by element in the manifest below' : ''} — into a finished design${screenName ? ` of a screen called "${screenName}"` : ''}. ` +
           `${references} ` +
           `Derive the layout from the ${manifest ? "manifest's" : "sketch's"} geometry, use the design system, and return only the HTML fragment.`,
+        ...(frame ? [`## The frame\n\n${frameRule(frame)}`] : []),
         ...(manifest ? [`## Manifest\n\n${manifest}`] : []),
+        // The manifest quotes every label; this says what the quotes are for.
+        // "GET FREE" on a button came back as "GET STARTED", which is the
+        // model treating the drawer's words as a hint about the kind of
+        // button rather than as the button's text.
+        'Every label written in the sketch is copy, verbatim. A button labelled "GET FREE" says GET FREE, in that case, not "Get started" or whatever a page usually says there; a heading reads exactly as written. Do not paraphrase, recase or replace what the drawer wrote.',
         // A sentence from the person who drew it, when they gave one. Quoted and
         // attributed rather than merged into the instructions, so a request
         // that reads like a command stays a description of the sketch. When

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { prompts } from '@/prompts'
+
 import {
   DESIGN_SCOPE,
   designScope,
@@ -595,5 +597,51 @@ describe('icons', () => {
     )
     expect(html).not.toContain('steal')
     expect(html).toContain('<path d="M0 0">')
+  })
+})
+
+describe('sanitiseCss — the breakpoints the design prompt teaches', () => {
+  /**
+   * The responsive contract in the design prompt is only as good as what
+   * survives the sanitiser: a media query dropped on its way to the page
+   * would leave the header uncollapsed at every width with the prompt looking
+   * innocent. So the prompt's own code sample is run through here rather than
+   * a copy of it, every prelude has to come out the other side, and every
+   * selector inside one has to be scoped.
+   */
+  const responsive = (() => {
+    const system = prompts.generatedUi.system
+    const rest = system.slice(system.indexOf('\n## Responsive\n') + 1)
+    return rest.slice(0, rest.indexOf('\n## ', 1))
+  })()
+  const sample = responsive
+    .split('\n')
+    .filter((line) => line.startsWith('    '))
+    .join('\n')
+
+  it("keeps every media query in the prompt's example, with its selectors scoped", () => {
+    expect(sample).toContain('@media')
+    const css = sanitiseCss(sample)
+    for (const prelude of sample.match(/@media[^{]+/g) ?? []) {
+      expect(css).toContain(`${prelude.trim()}{`)
+    }
+    expect(css).toMatch(new RegExp(`${scope.replace('.', '\\.')} \\.nav-links\\{display: none;?\\}`))
+    // No selector inside any block is left unscoped.
+    expect(css).not.toMatch(/[{;}]\s*\.(grid-3|split|nav-links|nav-menu|hero|section)\b/)
+  })
+
+  it.each([
+    ['a range query', '@media (width <= 768px) { .nav-links { display: none } }'],
+    ['a typed query', '@media screen and (max-width: 768px) { .nav-links { display: none } }'],
+    ['a minimum width', '@media (min-width: 769px) { .nav-menu { display: none } }'],
+    [
+      'a query inside @supports',
+      '@supports (display: grid) { @media (max-width: 768px) { .nav-links { display: none } } }',
+    ],
+  ])('keeps %s', (_label, css) => {
+    const out = sanitiseCss(css)
+    expect(out).toContain('@media')
+    expect(out).toContain(`${scope} .nav-`)
+    expect(out).not.toMatch(/\{\s*\.nav-/)
   })
 })

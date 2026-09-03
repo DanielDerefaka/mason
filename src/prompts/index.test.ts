@@ -186,6 +186,88 @@ describe('the design prompt', () => {
   })
 })
 
+describe('the design prompt, assembled for the request', () => {
+  const { systemFor } = prompts.generatedUi
+  const alone = systemFor({ referenceCount: 0 })
+
+  /**
+   * The regression this exists for: a guest on /try, who can supply no
+   * references, got sixty lines on reading the reference before writing, an
+   * imagery section that assumed one, and then a user turn saying there were
+   * none. The prompt was one constant, so nothing could leave anything out.
+   */
+  it('leaves the reference sections out when no reference was supplied', () => {
+    expect(alone).not.toContain('## Reference images')
+    expect(alone).not.toContain('Read before you write')
+    expect(alone).not.toContain('style references only')
+    expect(alone).not.toContain('same job it has in the reference')
+    expect(alone).toContain('There are no reference images')
+  })
+
+  it('keeps everything that is not about a reference', () => {
+    for (const heading of [
+      'Read the sketch',
+      'Imagery',
+      'Composition',
+      'Build controls, do not draw them',
+      'Output',
+      'Responsive',
+      'The system',
+      'Craft',
+    ]) {
+      expect(alone, `no "## ${heading}" without references`).toContain(`\n## ${heading}\n`)
+    }
+    // The class contract the revisions depend on, the image path, the
+    // defaults to leave out, and the closing footer paragraph.
+    expect(flat(alone)).toContain('Use class names for exactly two things')
+    expect(alone).toContain('/api/image/{width}/{height}/{keywords}')
+    expect(alone).toContain('### Not this')
+    expect(flat(alone).endsWith('do not append sections it does not contain.')).toBe(true)
+    expect(alone).toContain(designSystemRules())
+  })
+
+  it('brings them back with a reference, and is then the whole prompt', () => {
+    expect(systemFor({ referenceCount: 1 })).toBe(system)
+    expect(systemFor({ referenceCount: 3 })).toContain('## Reference images')
+    expect(systemFor({ referenceCount: 3 })).toContain('style references only')
+  })
+
+  it('never sizes the first screen to the viewport', () => {
+    // The regression this exists for: "build the hero as `min-height: 100vh`"
+    // sent a landscape frame back as a portrait page twice its height, with
+    // the frame's own height in the manifest the whole time.
+    expect(system).not.toContain('min-height: 100vh')
+    expect(alone).not.toContain('min-height: 100vh')
+    expect(flat(section('Composition'))).toContain('The first screen is the frame')
+  })
+
+  it('reads the frame as the page, the box as the room for its words, and a placeholder as an image', () => {
+    const opening = flat(system.slice(0, system.indexOf('\n## Reference images')))
+    expect(opening).toContain('The frame is the page')
+    expect(opening).toContain('Do not add height the sketch does not have')
+    expect(opening).toContain('the box wins')
+    expect(opening).toContain('A light box marked "image"')
+    // The live failure: "GET FREE" came back as "GET STARTED".
+    expect(opening).toContain('a text element reading "GET FREE" is that button\'s wording, in that case')
+  })
+
+  it('states the responsive contract in concrete terms', () => {
+    // The regression this exists for: the prompt asked for responsiveness in
+    // general terms, and the phone preview's header never collapsed while
+    // the call to action ran off the right edge.
+    const responsive = flat(section('Responsive'))
+    expect(responsive).toContain('### The contract')
+    expect(responsive).toContain('Below 768px the header collapses')
+    expect(responsive).toContain(
+      'Nothing is `position:absolute` or `position:fixed` where it could cover flow content',
+    )
+    expect(responsive).toContain('Images and buttons stay inside the box they are in')
+    expect(responsive).toContain('Text wraps.')
+    expect(responsive).toContain('Nothing is wider than the viewport')
+    expect(section('Responsive')).toContain('@media (max-width: 768px)')
+  })
+})
+
 describe('the no-guide fallback', () => {
   it('decides a direction instead of asking for a common sans-serif', () => {
     const alone = describeStyleGuide(null, 0)

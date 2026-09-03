@@ -5,6 +5,7 @@ import type { Shape } from '@/redux/slice/shapes'
 import {
   describeFrame,
   frameContents,
+  frameSizeOf,
   MANIFEST_MAX_CHARS,
   MAX_ARROWS,
   MAX_ELEMENTS,
@@ -90,15 +91,18 @@ const LANDING: Shape[] = [
 
 describe('describeFrame', () => {
   it('writes the landing page fixture line for line', () => {
+    // The text lines carry an h since 2026-09-03. They did not, as if a text
+    // box had no height, and a two-line headline came back as five lines at
+    // 120px because nothing said how tall its block was.
     expect(describeFrame(FRAME, LANDING)).toBe(
       [
         'Frame 1440×1024, landscape. 9 elements, top to bottom, left to right; 1 arrow. Positions and sizes are percentages of the frame.',
         '',
         '1. box, x0 y0 w100 h6 — full width along the top edge (a bar). Contains 2, 3.',
-        '2. text "Acme Ledger", x2 y1 w11, 20px bold. Inside 1.',
+        '2. text "Acme Ledger", x2 y1 w11 h2, 20px bold. Inside 1.',
         '3. box, x84 y1 w14 h4, pill — small and wide. Inside 1, beside 2.',
         '4. box, x52 y14 w41 h72 — the largest box. Contains 6, 7.',
-        '5. text "Invoices that reconcile themselves", x8 y18 w38, 48px bold — the largest text.',
+        '5. text "Invoices that reconcile themselves", x8 y18 w38 h11, 48px bold — the largest text.',
         '6. box, x55 y18 w36 h8 — wide and thin. Inside 4.',
         '7. box, x55 y30 w36 h38. Inside 4, below 6.',
         '8. box, x8 y34 w22 h5, outlined — wide and thin.',
@@ -183,9 +187,33 @@ describe('describeFrame', () => {
       text('blank', '   ', 100, 300, 100, 20),
     ])
     expect(manifest).toContain(
-      '1. text "Ship it / by Friday", x7 y10 w28, 32px italic, Playfair Display — the largest text.',
+      '1. text "Ship it / by Friday", x7 y10 w28 h6, 32px italic, Playfair Display — the largest text.',
     )
-    expect(manifest).toContain('2. text (empty), x7 y29 w7, 16px.')
+    expect(manifest).toContain('2. text (empty), x7 y29 w7 h2, 16px.')
+  })
+
+  /**
+   * The regression this exists for: a landscape sketch that fitted its frame
+   * came back as a portrait page twice the frame's height. The picture showed
+   * the frame's aspect and nothing said it was a rule, so the header now says
+   * when the sketch goes on below the frame, and stays quiet when it does not.
+   */
+  it('says when the sketch runs past the bottom edge, and nothing when it fits', () => {
+    expect(describeFrame(FRAME, LANDING)).not.toContain('past the bottom edge')
+    expect(describeFrame(FRAME, [FRAME, box('tail', 100, 900, 400, 300)])).toContain(
+      'Frame 1440×1024, landscape. 1 element, top to bottom, left to right. 1 element runs past the bottom edge, so the sketch continues below the frame. Positions and sizes are percentages of the frame.',
+    )
+    expect(
+      describeFrame(FRAME, [FRAME, box('a', 100, 900, 400, 300), box('b', 600, 1000, 400, 300)]),
+    ).toContain('. 2 elements run past the bottom edge, so the sketch continues below the frame.')
+  })
+
+  it('lets a footer sit on the bottom edge with a hand-drawn overhang', () => {
+    // Eight pixels over, inside the same tolerance nesting allows: the page
+    // ends here, it does not go on.
+    expect(describeFrame(FRAME, [FRAME, box('footer', 0, 944, 1440, 88)])).not.toContain(
+      'past the bottom edge',
+    )
   })
 
   it('cuts a paragraph down to the part that says what it is', () => {
@@ -321,5 +349,58 @@ describe('describeFrame', () => {
     expect(manifest).toContain(`; ${MAX_ARROWS + 3} arrows.`)
     expect(manifest.match(/^Arrow from /gm)).toHaveLength(MAX_ARROWS)
     expect(manifest).toContain('\nand 3 more arrows, omitted.')
+  })
+})
+
+describe('frameSizeOf', () => {
+  /**
+   * The user prompt states the frame's size as a rule, read back from the
+   * header the manifest starts with. Writer and reader are pinned together so
+   * a change to the header's shape fails here rather than silently leaving
+   * the prompt with no frame.
+   */
+  it('reads back what describeFrame wrote', () => {
+    expect(frameSizeOf(describeFrame(FRAME, LANDING))).toEqual({
+      width: 1440,
+      height: 1024,
+      orientation: 'landscape',
+      pastTheEdge: 0,
+    })
+    const phone: Shape = { ...FRAME, width: 393, height: 852 }
+    expect(frameSizeOf(describeFrame(phone, [phone, box('b', 10, 10, 100, 40)]))).toMatchObject({
+      width: 393,
+      height: 852,
+      orientation: 'portrait',
+    })
+  })
+
+  it('counts the elements that run past the bottom edge', () => {
+    const manifest = describeFrame(FRAME, [
+      FRAME,
+      box('a', 100, 900, 400, 300),
+      box('b', 600, 1000, 400, 300),
+    ])
+    expect(frameSizeOf(manifest)?.pastTheEdge).toBe(2)
+    expect(frameSizeOf(describeFrame(FRAME, [FRAME, box('a', 100, 900, 400, 300)]))?.pastTheEdge).toBe(1)
+  })
+
+  it('reads an empty frame, which still has a size', () => {
+    expect(frameSizeOf(describeFrame(FRAME, [FRAME]))).toMatchObject({ width: 1440, height: 1024 })
+  })
+
+  it('reads only the header, not a label that happens to say the words', () => {
+    const manifest = describeFrame(FRAME, [
+      FRAME,
+      text('trap', '3 elements run past the bottom edge', 100, 100, 400, 60),
+    ])
+    expect(frameSizeOf(manifest)?.pastTheEdge).toBe(0)
+  })
+
+  it('is null for a manifest with no header, or none at all', () => {
+    expect(frameSizeOf('')).toBeNull()
+    expect(frameSizeOf(undefined)).toBeNull()
+    expect(frameSizeOf(null)).toBeNull()
+    expect(frameSizeOf('1. box, x0 y0 w100 h6')).toBeNull()
+    expect(frameSizeOf('Frame 1440 by 1024')).toBeNull()
   })
 })
