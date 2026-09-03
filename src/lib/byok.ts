@@ -1,5 +1,5 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { APICallError, type LanguageModel } from 'ai'
+import { APICallError, RetryError, type LanguageModel } from 'ai'
 import { ConvexError } from 'convex/values'
 
 import { MODEL, UI_MODEL, anthropicProvider } from './anthropic'
@@ -185,7 +185,25 @@ export const describeGenerationFailure = (
   }
 
   console.error(tag, error)
-  return { status: 500, message: error instanceof Error ? error.message : fallback }
+  // Logged whole, said as the fallback. The upstream message used to reach
+  // the toast as it stood — "Failed after 3 attempts. Last error:
+  // overloaded_error…", the SDK narrating its retries to someone who can act
+  // on none of it. A busy model is the one upstream failure worth its own
+  // sentence, because waiting is the right response to it and the fallback
+  // does not say so.
+  if (modelIsBusy(error)) {
+    return { status: 503, message: 'The model is busy right now. Try again in a moment' }
+  }
+  return { status: 500, message: fallback }
+}
+
+/**
+ * Whether the failure was Anthropic saying "not now": a 429 or a 529, on its
+ * own or as the last of the SDK's retries, which wrap it in a `RetryError`.
+ */
+const modelIsBusy = (error: unknown): boolean => {
+  const last = RetryError.isInstance(error) ? error.lastError : error
+  return APICallError.isInstance(last) && (last.statusCode === 429 || last.statusCode === 529)
 }
 
 /**

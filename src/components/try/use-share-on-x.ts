@@ -14,6 +14,7 @@ import { shapesAdapter } from '@/redux/slice/shapes'
 
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
+import { shareBonusReason } from './share-offer'
 import { asGuest, type GuestMe } from './types'
 import { uploadBlob } from './upload'
 
@@ -33,6 +34,11 @@ export type ShareOnX = {
   disabledReason: string | null
   /** True while a guest can still earn the +2 for sharing. */
   earnsBonus: boolean
+  /**
+   * Why a guest cannot, for the sheet to print in place of hiding the row;
+   * null while they can, and for an account, which has no bonus to miss.
+   */
+  bonusReason: string | null
 }
 
 /**
@@ -72,6 +78,7 @@ export const useShareOnX = ({
 
   const guest = asGuest(me)
   const earnsBonus = guest?.canClaimShare ?? false
+  const bonusReason = shareBonusReason(guest)
   const disabledReason = !projectId ? 'Your canvas is still opening' : !latest ? NEEDS_DESIGN : null
 
   const attachPreview = async (token: string, designId: string) => {
@@ -129,5 +136,5 @@ export const useShareOnX = ({
     }
   }
 
-  return { share, busy, disabledReason, earnsBonus }
+  return { share, busy, disabledReason, earnsBonus, bonusReason }
 }

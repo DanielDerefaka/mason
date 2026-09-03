@@ -97,8 +97,23 @@ export async function POST(request: NextRequest) {
 
     const inspirationParts = await fetchImageParts(inspirationUrls)
 
+    /**
+     * The visitor's socket closing is the one signal a streaming route gets
+     * that nobody is reading any more. Until it was observed, a closed tab
+     * left the model writing the whole page to no one, on the house key, for
+     * up to the five minutes above; and whether the charge came back turned
+     * on whether a chunk happened to arrive after the socket went, because
+     * only the enqueue of that chunk could fail. Both `request.signal` and
+     * the stream's own cancel are wired to it, since which of the two fires
+     * first depends on the runtime.
+     */
+    const upstream = new AbortController()
+    request.signal.addEventListener('abort', () => upstream.abort(), { once: true })
+    const gone = () => upstream.signal.aborted || request.signal.aborted
+
     const result = streamText({
       model,
+      abortSignal: upstream.signal,
       providerOptions: { anthropic: { effort: UI_EFFORT } },
       // A full page of inline-styled markup is verbose — six cards of copy plus their styles ran
       // past 16k and the stream simply stopped, leaving a half-written
@@ -160,36 +175,75 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(chunk))
           }
         } catch (error) {
-          // The stream died part-way. The charge goes back either way — the
-          // connection failing is not something the caller should pay for.
-          await refundCredit()
+          // A reader that has gone is handled below this block, whichever
+          // way it was noticed: the SDK ending the text stream on the abort,
+          // or an enqueue failing on a stream the runtime already cancelled.
+          if (!gone()) {
+            // The stream died part-way on the model's side. The charge goes
+            // back either way — the connection failing is not something the
+            // caller should pay for.
+            await refundCredit()
 
-          /**
-           * If enough already arrived, keep it.
-           *
-           * A gateway that drops a long stream is the common failure here, and
-           * throwing away four-fifths of a finished design because the last
-           * fifth never came is the worst of the available outcomes. Marked as
-           * cut off, it reaches the canvas as a design the caller can press
-           * Continue on — the same path a design that hit the output ceiling
-           * takes, and that path already exists.
-           */
-          if (!isUnusable(produced)) {
-            console.error(
-              '[generate] stream dropped, keeping partial',
-              JSON.stringify({
-                bytes: produced.length,
-                chunks,
-                elapsedMs: Date.now() - startedAt,
-                reason: error instanceof Error ? error.message : String(error),
-              }),
-            )
-            controller.enqueue(encoder.encode(TRUNCATION_MARKER))
-            controller.close()
+            /**
+             * If enough already arrived, keep it.
+             *
+             * A gateway that drops a long stream is the common failure here,
+             * and throwing away four-fifths of a finished design because the
+             * last fifth never came is the worst of the available outcomes.
+             * Marked as cut off, it reaches the canvas as a design the caller
+             * can press Continue on — the same path a design that hit the
+             * output ceiling takes, and that path already exists.
+             */
+            if (!isUnusable(produced)) {
+              console.error(
+                '[generate] stream dropped, keeping partial',
+                JSON.stringify({
+                  bytes: produced.length,
+                  chunks,
+                  elapsedMs: Date.now() - startedAt,
+                  reason: error instanceof Error ? error.message : String(error),
+                }),
+              )
+              controller.enqueue(encoder.encode(TRUNCATION_MARKER))
+              controller.close()
+              return
+            }
+
+            controller.error(error)
             return
           }
+        }
 
-          controller.error(error)
+        if (gone()) {
+          /**
+           * The reader went away mid-page: a closed tab, a navigation, a
+           * connection that dropped on the visitor's side. The model call is
+           * already aborted through the signal above, so this only settles
+           * the credit, and the credit follows what was produced rather than
+           * what was read. Nothing usable, nothing owed. A usable partial
+           * keeps the charge: the browser that is still there keeps what
+           * arrived and offers Continue, which is the same outcome as a page
+           * cut at the ceiling; and a refund on every abort would let a guest
+           * replay the day's one pool turn by hanging up late, with the page
+           * kept each time. Nothing is awaited from the SDK past this point,
+           * since its promises need not settle after an abort.
+           */
+          const refunded = isUnusable(produced)
+          if (refunded) await refundCredit()
+          console.info(
+            '[generate] aborted by the reader',
+            JSON.stringify({
+              bytes: produced.length,
+              chunks,
+              elapsedMs: Date.now() - startedAt,
+              refunded,
+            }),
+          )
+          try {
+            controller.close()
+          } catch {
+            // Already cancelled by the runtime; there is nothing left to close.
+          }
           return
         }
 
@@ -307,6 +361,11 @@ export async function POST(request: NextRequest) {
         }
 
         controller.close()
+      },
+      cancel() {
+        // The reader cancelled: the browser went away, or the runtime gave up
+        // writing to a socket that had. Stop paying for words nobody reads.
+        upstream.abort()
       },
     })
 
