@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from 'convex/react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { History, Loader2, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { track } from '@/lib/analytics'
@@ -11,6 +11,7 @@ import type { Origin } from '@/lib/design-history'
 import { cn } from '@/lib/utils'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
+import { useDismiss } from './use-dismiss'
 
 /**
  * The design's own history, in the one place somebody looks for it.
@@ -46,6 +47,8 @@ export const HistoryButton = ({
 }) => {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const popover = useRef<HTMLDivElement>(null)
+  useDismiss(open, popover, () => setOpen(false))
 
   const versions = useQuery(
     api.design_versions.list,
@@ -80,7 +83,7 @@ export const HistoryButton = ({
   }
 
   return (
-    <div className="relative">
+    <div ref={popover} className="relative">
       <button
         type="button"
         aria-label="Version history"
@@ -98,7 +101,6 @@ export const HistoryButton = ({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute top-full right-0 z-50 mt-2 w-[300px] overflow-hidden rounded-xl border border-white/10 bg-[#141416] shadow-2xl">
             <header className="border-b border-white/10 px-3 py-2.5">
               <p className="text-[11px] font-medium">History</p>

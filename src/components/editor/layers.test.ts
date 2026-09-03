@@ -173,7 +173,32 @@ describe('renameNode', () => {
     renameNode(button, 'Primary')
     renameNode(button, '   ')
 
-    expect(labelFor(button)).toBe('Buy')
+    expect(labelFor(button)).toBe('Button: Buy')
+  })
+})
+
+describe('what a layer lists', () => {
+  /**
+   * What shipped broken: `<br>` was a layer. A headline written as
+   * "Design<br>faster" opened to a row called Group with nothing in it, which
+   * could be selected, dragged and deleted, and a bold word inside a sentence
+   * was a second row under the sentence. The tree lists what can be laid out.
+   */
+  it('does not list a line break or a bold word as a layer', () => {
+    const root = mount(
+      '<section><h1>Design<br>faster</h1><p>Read <strong>this</strong> now</p></section>',
+    )
+    const rows = buildLayerRows(root, new Set(['0', '0.0', '0.1']))
+
+    expect(rows.map((row) => row.id)).toEqual(['0', '0.0', '0.1'])
+    expect(rows.map((row) => row.hasChildren)).toEqual([true, false, false])
+  })
+
+  it('still lists a span that sits in a box rather than a sentence', () => {
+    const root = mount('<div><span>Badge</span><p>a</p></div>')
+    const rows = buildLayerRows(root, new Set(['0']))
+
+    expect(rows.map((row) => row.id)).toEqual(['0', '0.0', '0.1'])
   })
 })
 

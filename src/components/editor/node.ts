@@ -146,36 +146,181 @@ export const stripRings = (root: HTMLElement) => {
 export const findNode = (root: HTMLElement, id: string): HTMLElement | null =>
   root.querySelector<HTMLElement>(`[${NODE_ATTR}="${CSS.escape(id)}"]`)
 
-/** A readable name for the layers tree. */
+/**
+ * A readable name for a layer: what it is, and a few words of what it says.
+ *
+ * `Header`, `Hero: Design faster`, `Button: Get started`, `Footer`. The tree
+ * used to read Group, Group, Group down the whole left side, because a
+ * generated design is divs nearly all the way down and the tag was the only
+ * thing the label looked at. A section only became findable once somebody
+ * had renamed it by hand, and nobody renames thirty layers before starting.
+ *
+ * The role comes from the tag, or from a class or id that says what a
+ * container is for when the tag is `div`, which is how the model writes most
+ * of them (`hero-section`, `pricing-grid`, `site-footer`). The words come
+ * from the element's own text, its `alt` for an image, and for a container
+ * from the first heading inside it, which is what a person would call that
+ * part of the page. A name given in the tree wins over all of it.
+ */
 export const labelFor = (element: HTMLElement): string => {
   const given = element.getAttribute(NAME_ATTR)?.trim()
   if (given) return given
+  if (isPageWrapper(element)) return 'Page'
 
+  const role = roleFor(element)
+  const words = fewWords(textHint(element))
+  return words ? `${role}: ${words}` : role
+}
+
+const TAG_ROLES: Record<string, string> = {
+  h1: 'Heading',
+  h2: 'Heading',
+  h3: 'Heading',
+  h4: 'Heading',
+  h5: 'Heading',
+  h6: 'Heading',
+  p: 'Text',
+  span: 'Text',
+  strong: 'Text',
+  em: 'Text',
+  small: 'Text',
+  a: 'Link',
+  button: 'Button',
+  img: 'Image',
+  picture: 'Image',
+  ul: 'List',
+  ol: 'List',
+  li: 'Item',
+  section: 'Section',
+  article: 'Article',
+  header: 'Header',
+  footer: 'Footer',
+  nav: 'Navigation',
+  main: 'Main',
+  aside: 'Sidebar',
+  form: 'Form',
+  input: 'Input',
+  textarea: 'Input',
+  select: 'Select',
+  label: 'Label',
+  svg: 'Icon',
+  hr: 'Divider',
+  table: 'Table',
+  blockquote: 'Quote',
+  figure: 'Figure',
+  div: 'Group',
+}
+
+/**
+ * What a class or id says a container is for, first match wins.
+ *
+ * The parts come before the pages: `pricing-card` is a card that happens to
+ * sit in the pricing section, and `feature-grid` is the features, not a grid.
+ */
+const CLASS_ROLES: [RegExp, string][] = [
+  [/\bcard\b/, 'Card'],
+  [/\bbadge\b|\bpill\b|\bchip\b/, 'Badge'],
+  [/\bform\b/, 'Form'],
+  [/\bsidebar\b/, 'Sidebar'],
+  [/\bbanner\b/, 'Banner'],
+  [/\bhero\b/, 'Hero'],
+  [/\bnav(?:bar|igation)?\b|\bmenu\b/, 'Navigation'],
+  [/\bheader\b/, 'Header'],
+  [/\bfooter\b/, 'Footer'],
+  [/\bcta\b/, 'Call to action'],
+  [/\bpricing\b|\bplans?\b/, 'Pricing'],
+  [/\btestimonials?\b|\breviews?\b/, 'Testimonials'],
+  [/\bfaqs?\b/, 'FAQ'],
+  [/\bfeatures?\b/, 'Features'],
+  [/\bgallery\b/, 'Gallery'],
+  [/\blogos\b/, 'Logos'],
+  [/\blogo\b/, 'Logo'],
+  [/\bstats?\b/, 'Stats'],
+  [/\bgrid\b/, 'Grid'],
+]
+
+/** Tags whose meaning a class name is allowed to sharpen. */
+const GENERIC_TAGS = new Set(['div', 'section', 'article', 'ul', 'ol'])
+
+const roleFor = (element: HTMLElement): string => {
   const tag = element.tagName.toLowerCase()
-  const NAMES: Record<string, string> = {
-    h1: 'Heading 1',
-    h2: 'Heading 2',
-    h3: 'Heading 3',
-    h4: 'Heading 4',
-    p: 'Paragraph',
-    a: 'Link',
-    button: 'Button',
-    img: 'Image',
-    ul: 'List',
-    li: 'List item',
-    span: 'Text',
-    section: 'Section',
-    header: 'Header',
-    footer: 'Footer',
-    nav: 'Nav',
-    input: 'Input',
-    label: 'Label',
-    svg: 'Icon',
+  if (GENERIC_TAGS.has(tag)) {
+    const names = `${element.getAttribute('class') ?? ''} ${element.id}`.toLowerCase()
+    for (const [pattern, role] of CLASS_ROLES) if (pattern.test(names)) return role
   }
+  return TAG_ROLES[tag] ?? tag
+}
 
-  const direct = directText(element)
-  if (direct) return direct.length > 26 ? `${direct.slice(0, 26)}…` : direct
-  return NAMES[tag] ?? (tag === 'div' ? 'Group' : tag)
+/**
+ * The one wrapper a generated design puts around everything.
+ *
+ * It sat at the top of the tree as "Group" and, worse, at the top of the AI
+ * panel's `/` list as `/group`: the first thing offered to somebody choosing a
+ * section was the whole page under a name that says nothing. It is the same
+ * wrapper `sectionScope` looks past, so the two agree about which node it is.
+ */
+const isPageWrapper = (element: HTMLElement): boolean => {
+  const parent = element.parentElement
+  if (!parent || parent.hasAttribute(NODE_ATTR)) return false
+  const tag = element.tagName
+  if (tag !== 'DIV' && tag !== 'MAIN') return false
+  if (sectionScope(parent) === element) return true
+  // Beside something else at the top, a modal or a toast the model left
+  // outside, the wrapper is still the page when it is the one holding the
+  // page's parts.
+  return element.querySelector('header, main, footer, section, nav') !== null
+}
+
+/**
+ * Elements that are a sentence rather than a box: a bold run inside one is
+ * part of its text, not a layer of its own.
+ */
+const TEXT_TAGS = new Set([
+  'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'A', 'BUTTON', 'LI', 'LABEL', 'SPAN', 'BLOCKQUOTE',
+  'TD', 'TH', 'DT', 'DD', 'FIGCAPTION', 'SMALL', 'STRONG', 'EM', 'B', 'I', 'CODE', 'MARK',
+])
+
+/** Elements that render nothing to select and are never a layer. */
+const VOID_LAYERS = new Set(['BR', 'WBR'])
+
+/**
+ * The words a label uses.
+ *
+ * A sentence uses its whole text, line breaks and bold runs included. A box
+ * uses its first heading, which is what a person calls that part of the
+ * page, and failing that whatever text it holds directly, so a card with no
+ * heading is still not named after the paragraph inside it.
+ */
+const textHint = (element: HTMLElement): string => {
+  const tag = element.tagName
+  if (tag === 'IMG') return element.getAttribute('alt') ?? ''
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return element.getAttribute('placeholder') ?? ''
+  if (tag === 'SVG' || tag === 'HR' || tag === 'SELECT') return ''
+  if (TEXT_TAGS.has(tag)) return textOf(element)
+  const heading = element.querySelector('h1, h2, h3, h4, h5, h6')
+  return heading ? textOf(heading) : directText(element)
+}
+
+/** All the text under a node as one line, with a `<br>` counting as a space. */
+const textOf = (element: Element): string => {
+  let text = ''
+  for (const node of Array.from(element.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) text += node.textContent ?? ''
+    else if (node.nodeName === 'BR') text += ' '
+    else if (node.nodeType === Node.ELEMENT_NODE && !UNSTAMPED.has(node.nodeName)) {
+      text += ` ${textOf(node as Element)} `
+    }
+  }
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/** The first four words, or 26 characters, and a mark when there was more. */
+const fewWords = (text: string): string => {
+  const words = text.split(' ').filter(Boolean)
+  if (words.length === 0) return ''
+  const few = words.slice(0, 4).join(' ')
+  const cut = few.length > 26 ? few.slice(0, 26).trimEnd() : few
+  return cut === text ? cut : `${cut}…`
 }
 
 /**
@@ -186,12 +331,65 @@ export const directText = (element: HTMLElement): string =>
   Array.from(element.childNodes)
     .filter((node) => node.nodeType === Node.TEXT_NODE)
     .map((node) => node.textContent ?? '')
-    .join('')
+    .join(' ')
+    .replace(/\s+/g, ' ')
     .trim()
+
+/**
+ * Replaces the element's own text and nothing else.
+ *
+ * The Content field used to write `textContent`, which is why it was only
+ * offered for a node with no element children at all: on a button holding an
+ * icon it would have deleted the icon. Writing the text nodes alone keeps the
+ * icon, the line break and the bold run where they were, so the field can be
+ * offered to anything that has words of its own.
+ */
+export const setDirectText = (element: HTMLElement, text: string) => {
+  const own = Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE)
+  const [first, ...rest] = own
+  for (const node of rest) node.remove()
+  if (first) first.textContent = text
+  else element.prepend(element.ownerDocument.createTextNode(text))
+}
 
 /** True when a node's content is a single run of text we can safely replace. */
 export const isTextEditable = (element: HTMLElement): boolean =>
   element.children.length === 0 && element.textContent !== null
+
+/**
+ * The layer a click lands on: a bold run inside a paragraph is the paragraph.
+ *
+ * The tree does not list a `<strong>` under a heading, so a click on the bold
+ * word used to select a node the tree could not show, and the selection ring
+ * sat on half a sentence with nothing highlighted on the left.
+ */
+export const layerOf = (element: HTMLElement, root: HTMLElement): HTMLElement => {
+  let node = element
+  while (
+    node.parentElement &&
+    node.parentElement !== root &&
+    INLINE_CONTENT.has(node.tagName) &&
+    TEXT_TAGS.has(node.parentElement.tagName)
+  ) {
+    node = node.parentElement
+  }
+  return node
+}
+
+/**
+ * The children a layer lists.
+ *
+ * Not a `<br>`: it is a line break in a sentence, not a thing on the page,
+ * and every two-line headline used to open to show one, selectable, with a
+ * zero-size ring and nothing in the inspector. And not the bold and italic
+ * runs inside a sentence, for the same reason.
+ */
+export const layerChildren = (element: HTMLElement): HTMLElement[] =>
+  Array.from(element.children).filter(
+    (child) =>
+      !VOID_LAYERS.has(child.tagName) &&
+      !(INLINE_CONTENT.has(child.tagName) && TEXT_TAGS.has(element.tagName)),
+  ) as HTMLElement[]
 
 /**
  * Reads a style property as it is actually rendering.
@@ -602,7 +800,8 @@ export const buildLayerRows = (root: HTMLElement, expanded: Set<string>): LayerR
     const id = element.getAttribute(NODE_ATTR)
     if (!id) return
     const node = element as HTMLElement
-    const hasChildren = node.children.length > 0
+    const children = layerChildren(node)
+    const hasChildren = children.length > 0
     const open = hasChildren && expanded.has(id)
     const hidden = isHidden(node)
     const locked = isLocked(node)
@@ -621,7 +820,7 @@ export const buildLayerRows = (root: HTMLElement, expanded: Set<string>): LayerR
     })
 
     if (!open) return
-    for (const child of Array.from(node.children)) {
+    for (const child of children) {
       walk(child, depth + 1, hiddenAbove || hidden, lockedAbove || locked)
     }
   }

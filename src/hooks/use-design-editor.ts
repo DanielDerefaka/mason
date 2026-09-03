@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from 'convex/react'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -101,46 +101,111 @@ export const useDesignEditor = () => {
   }
 
   /**
+   * The markup waiting for the debounce, and the markup the last write carried.
+   *
+   * Both exist for the moments the timer cannot serve. Unmounting used to
+   * clear the timer and nothing else, so the last second of editing before
+   * "Back to the canvas" was gone by the time the canvas opened: the header
+   * still said Unsaved changes as the editor was torn down, and nothing read
+   * it. `flush` writes whatever is pending on the spot; `retry` writes what a
+   * failed save was carrying, which "Could not save" otherwise left nowhere.
+   */
+  const pending = useRef<string | null>(null)
+  const attempted = useRef<string | null>(null)
+
+  /**
    * Writes the edited markup back into its shape.
    *
    * The shapes array is rebuilt from what was just read rather than from a
    * cached copy, so a canvas open in another tab that moved a rectangle does
    * not have that move undone by this save.
    */
+  const write = (html: string) => {
+    if (!projectId || !designId) return
+    pending.current = null
+    attempted.current = html
+    setStatus('saving')
+    // Read here rather than when the save was asked for, so it is the last
+    // markup actually written that the history is offered.
+    const previous = lastSaved.current
+    const next = shapes.map((shape) => (shape.id === designId ? { ...shape, html } : shape))
+    void save({
+      projectId,
+      sketchesData: { ...stored, shapes: next },
+    })
+      .then(() => {
+        lastSaved.current = html
+        setStatus('saved')
+        offerCheckpoint(previous)
+      })
+      .catch(() => setStatus('error'))
+  }
+
+  // Every deferred write goes through the ref, so a timer set three renders
+  // ago and the unmount cleanup both write with the shapes as they are now.
+  const writeRef = useRef(write)
+  useEffect(() => {
+    writeRef.current = write
+  })
+
+  const flush = useCallback(() => {
+    if (debounce.current) {
+      clearTimeout(debounce.current)
+      debounce.current = null
+    }
+    const html = pending.current
+    if (html !== null) writeRef.current(html)
+  }, [])
+
+  const retry = useCallback(() => {
+    if (pending.current !== null) {
+      flush()
+      return
+    }
+    if (attempted.current !== null) writeRef.current(attempted.current)
+  }, [flush])
+
   const saveHtml = (html: string) => {
     if (!projectId || !designId) return
-    if (html === lastSaved.current) return
+    if (html === lastSaved.current) {
+      // Back to what is stored, which is what undo does: a write still queued
+      // for the markup in between would put the wrong state over the right
+      // one, and then say Saved.
+      if (debounce.current) clearTimeout(debounce.current)
+      debounce.current = null
+      pending.current = null
+      setStatus((current) => (current === 'unsaved' ? 'saved' : current))
+      return
+    }
 
     setStatus('unsaved')
+    pending.current = html
     if (debounce.current) clearTimeout(debounce.current)
-
     debounce.current = setTimeout(() => {
-      setStatus('saving')
-      // Read inside the timeout, so it is the last markup actually written
-      // rather than whatever was on screen when this save was asked for.
-      const previous = lastSaved.current
-      const next = shapes.map((shape) =>
-        shape.id === designId ? { ...shape, html } : shape,
-      )
-      void save({
-        projectId,
-        sketchesData: { ...stored, shapes: next },
-      })
-        .then(() => {
-          lastSaved.current = html
-          setStatus('saved')
-          offerCheckpoint(previous)
-        })
-        .catch(() => setStatus('error'))
+      debounce.current = null
+      writeRef.current(html)
     }, DEBOUNCE_MS)
   }
 
-  useEffect(
-    () => () => {
-      if (debounce.current) clearTimeout(debounce.current)
-    },
-    [],
-  )
+  // Unmount is the back link, the browser's own back button and a route
+  // change alike; the write has to happen here, not merely be cancelled.
+  useEffect(() => () => flush(), [flush])
+
+  /**
+   * Closing the tab is the one exit no cleanup sees. While a write is queued,
+   * in flight or has failed, the browser is asked to confirm, and the queued
+   * one is sent on the way out so a "leave anyway" still carries it as far as
+   * the socket allows.
+   */
+  useEffect(() => {
+    if (status !== 'unsaved' && status !== 'saving' && status !== 'error') return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      flush()
+      event.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [status, flush])
 
   return {
     projectId,
@@ -150,5 +215,7 @@ export const useDesignEditor = () => {
     loading: project === undefined,
     status,
     saveHtml,
+    flush,
+    retry,
   }
 }
