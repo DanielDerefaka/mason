@@ -867,6 +867,11 @@ describe('the public surface stays in its category', () => {
       ...walk(join(process.cwd(), 'src/lib/try')),
       ...walk(join(APP_DIR, 'try')),
       join(process.cwd(), 'src/lib/byok.ts'),
+      // The hooks are where the toasts are written: a dropped generation
+      // read "Your credit has been returned — try again" for a month with
+      // the sweep looking everywhere but here.
+      ...walk(join(process.cwd(), 'src/hooks')),
+      ...walk(join(process.cwd(), 'src/components/canvas/shapes')),
       ...walk(join(process.cwd(), 'src/components/billing')),
       ...walk(join(process.cwd(), 'src/components/projects')),
       ...walk(join(process.cwd(), 'src/components/settings')),

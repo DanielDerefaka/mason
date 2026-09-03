@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, Download, FolderDown, Loader2, MessageSquare, PenLine, Smartphone, Workflow } from 'lucide-react'
 import { useAppDispatch } from '@/redux/hooks'
 import { resizeGeneratedUI, type Shape } from '@/redux/slice/shapes'
@@ -11,6 +11,12 @@ import { useDesignFonts } from '@/hooks/use-design-fonts'
 import { useGoogleFont } from '@/hooks/use-google-font'
 import { useGuest } from '@/components/try/guest-context'
 import { ExploreSwitch } from '@/components/try/explore-switch'
+import {
+  GENERATION_TAKES,
+  NOTHING_ARRIVED,
+  formatElapsed,
+  generationStage,
+} from './generation-progress'
 
 /**
  * The generated design.
@@ -99,6 +105,19 @@ export const GeneratedUI = ({
   // world; under one shared class the second generation restyled the first.
   const scope = designScope(shape.id)
   const html = useMemo(() => sanitisePartialHtml(shape.html ?? '', scope), [shape.html, scope])
+
+  // How long this design has been on its way. Restarted whenever streaming
+  // begins, so a Continue counts from its own click rather than the first
+  // one. Seconds, because a page takes most of a minute before the first
+  // word and the clock is what says the wait is being spent on something.
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!shape.streaming) return
+    const startedAt = Date.now()
+    setElapsed(0)
+    const tick = setInterval(() => setElapsed(Date.now() - startedAt), 1000)
+    return () => clearInterval(tick)
+  }, [shape.streaming])
 
   const variables = useMemo(() => {
     const vars: Record<string, string> = {}
@@ -259,10 +278,16 @@ export const GeneratedUI = ({
         </div>
       )}
 
-      {shape.streaming && (
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white">
+      {/* The pill sits over the markup once there is markup; before that the
+          placeholder below carries the same stage and clock, and two clocks
+          on one panel is noise. */}
+      {shape.streaming && shape.html && (
+        <div
+          className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] tabular-nums text-white"
+          aria-live="polite"
+        >
           <Loader2 className="size-3 animate-spin" />
-          Designing…
+          {generationStage(shape.html)} · {formatElapsed(elapsed)}
         </div>
       )}
 
@@ -275,9 +300,23 @@ export const GeneratedUI = ({
       >
         {html ? (
           <div className={`${DESIGN_SCOPE} ${scope}`} dangerouslySetInnerHTML={{ __html: html }} />
+        ) : shape.streaming ? (
+          <div
+            className="grid h-40 place-items-center text-center text-xs text-white/50"
+            aria-live="polite"
+          >
+            <div>
+              <p className="flex items-center justify-center gap-1.5 text-sm text-white/80">
+                <Loader2 className="size-3.5 animate-spin" />
+                {generationStage(shape.html)}
+              </p>
+              <p className="mt-1 tabular-nums">{formatElapsed(elapsed)}</p>
+              <p className="mt-2 text-white/40">{GENERATION_TAKES}</p>
+            </div>
+          </div>
         ) : (
-          <div className="grid h-40 place-items-center text-xs text-white/40">
-            Waiting for the first chunk…
+          <div className="grid h-40 place-items-center px-6 text-center text-xs text-white/40">
+            {NOTHING_ARRIVED}
           </div>
         )}
       </div>

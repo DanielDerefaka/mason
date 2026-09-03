@@ -71,7 +71,7 @@ export const useDesignChat = () => {
       if (!response.ok || !response.body) {
         const refusal = noteGenerateRefusal(response)
         const body = (await response.json().catch(() => null)) as { message?: string } | null
-        throw new Error(refusal ?? body?.message ?? 'Could not revise the design')
+        throw new Error(refusal.message ?? body?.message ?? 'Could not revise the design')
       }
 
       const reader = response.body.getReader()

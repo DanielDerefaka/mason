@@ -20,7 +20,7 @@ vi.mock('./anthropic', () => ({
   anthropicProvider: (name: string) => ({ provider: 'house', modelId: name }),
 }))
 
-const { APICallError } = await import('ai')
+const { APICallError, RetryError } = await import('ai')
 const { ConvexError } = await import('convex/values')
 const {
   describeGenerationFailure,
@@ -219,14 +219,35 @@ describe('reporting a failed generation', () => {
     expect(printed.join(' ')).toContain('401')
   })
 
-  it('keeps the whole error and a 500 on the house key, as it always did', () => {
+  /**
+   * The regression this exists for: on the house key the upstream message
+   * went to the toast as it stood, so a visitor read "Failed after 3
+   * attempts. Last error: overloaded_error…", the SDK's retry log, in place
+   * of a sentence. The whole error still goes to the server log, which is
+   * how gateway bugs have been found; the caller gets the route's fallback.
+   */
+  it('logs the whole error on the house key but says only the fallback', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const error = new Error('gateway exploded')
+    const error = new Error('Failed after 3 attempts. Last error: overloaded_error')
     expect(describeGenerationFailure('[t]', error, request(), 'fallback')).toEqual({
       status: 500,
-      message: 'gateway exploded',
+      message: 'fallback',
     })
     expect(log).toHaveBeenCalledWith('[t]', error)
+  })
+
+  it('says the model is busy when Anthropic said so, even after the SDK retried', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const busy = new RetryError({
+      message: 'Failed after 3 attempts. Last error: overloaded_error',
+      reason: 'maxRetriesExceeded',
+      errors: [apiError(529), apiError(529)],
+    })
+    expect(describeGenerationFailure('[t]', busy, request(), 'fallback')).toEqual({
+      status: 503,
+      message: 'The model is busy right now. Try again in a moment',
+    })
+    expect(describeGenerationFailure('[t]', apiError(429), request(), 'fallback').status).toBe(503)
   })
 
   it('does not turn a non-HTTP failure on a visitor key into a fake status', () => {
