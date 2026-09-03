@@ -4,6 +4,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
 import { GUEST_PROJECT_CAP } from '../src/lib/try/guest-refusal'
 import { GUEST_PROJECT_LIMIT } from '../src/lib/try/project-cap'
+import { checkpointCanvas } from './versions'
 
 export const getProjects = query({
   args: {},
@@ -225,6 +226,13 @@ export const updateProjectSketches = mutation({
 
     const project = await ctx.db.get(args.projectId)
     if (!project || project.userId !== userId) throw new Error('Project not found')
+
+    // The canvas being overwritten goes into the version history first, about
+    // once a minute of work; a viewport-only write is not work. The history
+    // only ever held what somebody had pressed Save for, which was nothing.
+    if (args.touch !== false) {
+      await checkpointCanvas(ctx, args.projectId, userId, project.sketchesData, args.sketchesData)
+    }
 
     await ctx.db.patch(args.projectId, {
       sketchesData: args.sketchesData,

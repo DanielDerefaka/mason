@@ -6,6 +6,7 @@ import reducer, {
   MAX_SCALE,
   MIN_SCALE,
   type Shape,
+  addGeneratedUI,
   addShape,
   alignSelected,
   distributeSelected,
@@ -13,13 +14,18 @@ import reducer, {
   moveSelected,
   nudgeSelected,
   panBy,
+  readSketches,
   redo,
   removeSelected,
   reorderSelected,
+  restoreShapes,
+  setGeneratedHtml,
   setSelection,
+  setShapes,
   setViewport,
   shapesAdapter,
   shapesSlice,
+  snapshotHistory,
   toggleSelected,
   undo,
   zoomTo,
@@ -154,6 +160,126 @@ describe('history', () => {
     state = reducer(state, panBy({ dx: 100, dy: 100 }))
 
     expect(state.past.length).toBe(before)
+  })
+})
+
+describe('loading a sketch', () => {
+  /**
+   * `setShapes` replaced the table and left the undo stack alone. The store
+   * lives in the /try layout and outlives the canvas, so coming back from the
+   * editor and pressing Cmd+Z put the pre-edit design on the canvas, and
+   * switching sketches put the other sketch there.
+   */
+  it('starts with an empty history', () => {
+    let state = withShapes(shape('a'))
+    state = reducer(state, removeSelected())
+    state = reducer(state, setShapes([shape('b')]))
+    expect(state.past).toEqual([])
+    expect(state.future).toEqual([])
+
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['b'])
+  })
+
+  it('drops a selection that pointed into the old table', () => {
+    let state = withShapes(shape('a'))
+    state = reducer(state, setSelection(['a']))
+    state = reducer(state, setShapes([shape('b')]))
+    expect(state.selectedIds).toEqual([])
+  })
+
+  /**
+   * A tab closed mid-stream saves `streaming: true`, and undo now waits for a
+   * stream to end. Left as it was, that design would refuse undo forever.
+   */
+  it('settles a stream a closed tab left behind', () => {
+    const streamed = shape('d', { kind: 'generated-ui', html: '<p>', streaming: true })
+    const state = reducer(empty(), setShapes([streamed]))
+    expect(at(state, 'd').streaming).toBe(false)
+    expect(order(reducer(state, undo()))).toEqual(['d'])
+  })
+
+  it('reads a stored sketch with suspicion', () => {
+    expect(readSketches(undefined)).toEqual({ shapes: [], viewport: null })
+    expect(readSketches({ shapes: 'no', viewport: { scale: 'x' } })).toEqual({
+      shapes: [],
+      viewport: null,
+    })
+    const viewport = { scale: 2, translate: { x: 1, y: 2 } }
+    expect(readSketches({ shapes: [shape('a')], viewport })).toEqual({
+      shapes: [shape('a')],
+      viewport,
+    })
+  })
+
+  /** Restoring a version is an edit like any other: one Cmd+Z puts the canvas back. */
+  it('restores a version as one undo step', () => {
+    let state = withShapes(shape('a'))
+    state = reducer(state, setSelection(['a']))
+    state = reducer(state, restoreShapes([shape('b')]))
+    expect(order(state)).toEqual(['b'])
+    expect(state.selectedIds).toEqual([])
+
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['a'])
+  })
+})
+
+describe('history while a design streams in', () => {
+  /**
+   * Cmd+Z during generation deleted the design being written. `addGeneratedUI`
+   * snapshots the canvas from before the design existed, undo restored that,
+   * and every chunk after it updated an id that was no longer there.
+   */
+  it('refuses undo and redo until the stream ends, then allows both', () => {
+    let state = withShapes(shape('f', { kind: 'frame' }))
+    const design = shape('d', { kind: 'generated-ui', html: '', streaming: true })
+    state = reducer(state, addGeneratedUI(design))
+
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['f', 'd'])
+
+    state = reducer(state, setGeneratedHtml({ id: 'd', html: '<p>half', streaming: true }))
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['f', 'd'])
+
+    state = reducer(state, setGeneratedHtml({ id: 'd', html: '<p>done</p>', streaming: false }))
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['f'])
+
+    state = reducer(state, redo())
+    expect(at(state, 'd').html).toBe('<p>done</p>')
+  })
+})
+
+describe('a click is not an edit', () => {
+  /**
+   * A grab snapshots before it knows whether the pointer will move, so every
+   * click on a shape pushed a copy of the present: fifty clicks evicted the
+   * whole history, and the first Cmd+Z after a click did nothing visible.
+   */
+  it('does not let fifty clicks evict the history', () => {
+    let state = withShapes(shape('a'), shape('b'))
+    for (let index = 0; index < 60; index += 1) {
+      state = reducer(state, snapshotHistory())
+    }
+    expect(state.past.length).toBeLessThan(5)
+
+    state = reducer(state, undo())
+    expect(order(state)).toEqual(['a'])
+    state = reducer(state, undo())
+    expect(order(state)).toEqual([])
+  })
+
+  it('walks past the copy a click left, so one Cmd+Z reverses the last move', () => {
+    let state = withShapes(shape('a'))
+    state = reducer(state, setSelection(['a']))
+    state = reducer(state, snapshotHistory())
+    state = reducer(state, moveSelected({ dx: 40, dy: 0, commit: true }))
+    state = reducer(state, snapshotHistory())
+
+    state = reducer(state, undo())
+    expect(at(state, 'a').x).toBe(0)
   })
 })
 
