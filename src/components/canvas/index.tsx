@@ -28,6 +28,7 @@ import {
 } from '@/lib/export'
 import { toast } from 'sonner'
 import { AutoSave } from './autosave'
+import { isDrag, pressAt, type Press } from './click-slop'
 import { ToolBar } from './toolbar'
 import { Inspector, ShapeInspector } from './inspector'
 import { ArrangeBar } from './arrange'
@@ -847,14 +848,37 @@ export const Canvas = () => {
     shapes.flatMap((shape) => (shape.kind === 'text' ? [textStyleOf(shape).fontFamily] : [])),
   )
 
+  /**
+   * A click is not a drag. Moves stay away from the gesture handlers until
+   * the pointer has left the press by more than the slop, so selecting a
+   * shape neither moves it nor writes it; see `click-slop.ts`. Recorded in
+   * the capture phase because a shape stops its pointerdown from bubbling,
+   * and every gesture computes from its own origin, so the moves withheld
+   * here are never missed.
+   */
+  const press = useRef<Press | null>(null)
+  const onPressCapture = (event: React.PointerEvent<HTMLDivElement>) => {
+    press.current = pressAt(event.clientX, event.clientY)
+  }
+  const onMoveUnlessClick = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = press.current
+    if (start && !isDrag(start, event.clientX, event.clientY)) return
+    onPointerMove(event)
+  }
+  const onRelease = () => {
+    press.current = null
+    onPointerUp()
+  }
+
   return (
     <>
       <div
         ref={attachCanvasRef}
+        onPointerDownCapture={onPressCapture}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerMove={onMoveUnlessClick}
+        onPointerUp={onRelease}
+        onPointerCancel={onRelease}
         onDragOver={(event) => {
           if (!hasFiles(event)) return
           // Without preventDefault the browser navigates to the dropped file.

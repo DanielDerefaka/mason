@@ -38,7 +38,7 @@ describe('switching sketches cannot overwrite the one being left', () => {
   })
 
   it('re-runs when the project changes, or the guard would never be re-read', () => {
-    expect(source).toMatch(/\[project, projectId, dispatch\]/)
+    expect(source).toMatch(/\[project, projectId, dispatch, store\]/)
   })
 })
 

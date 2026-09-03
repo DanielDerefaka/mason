@@ -102,14 +102,56 @@ const initialState: ShapesState = {
 
 const HISTORY_LIMIT = 50
 
-const clone = (value: EntityState): EntityState =>
-  JSON.parse(JSON.stringify(value)) as EntityState
+const serialise = (value: EntityState) => JSON.stringify(value)
 
-/** Snapshot before a mutating action so undo has somewhere to go back to. */
+const clone = (value: EntityState): EntityState => JSON.parse(serialise(value)) as EntityState
+
+/**
+ * Snapshot before a mutating action so undo has somewhere to go back to.
+ *
+ * Nothing is pushed when the table has not changed since the last snapshot.
+ * A grab snapshots before it knows whether the pointer will move, so a plain
+ * click on a shape used to push a copy of the present: fifty clicks around a
+ * canvas evicted fifty real steps from a fifty-deep history, and the first
+ * Cmd+Z after any click visibly did nothing.
+ */
 const commit = (state: ShapesState) => {
+  state.future = []
+  const top = state.past[state.past.length - 1]
+  if (top && serialise(top) === serialise(state.entities)) return
   state.past.push(clone(state.entities))
   if (state.past.length > HISTORY_LIMIT) state.past.shift()
-  state.future = []
+}
+
+/** Whether a design is still being written onto the canvas by the model. */
+const isStreaming = (state: ShapesState) =>
+  Object.values(state.entities.entities).some((shape) => shape?.streaming === true)
+
+/**
+ * A shape as it can exist outside a live tab. `streaming` is true only while
+ * this tab holds the model's response open, so on anything read back from
+ * storage it is a stream a closed tab left behind, and a stale flag would
+ * keep undo refused for good.
+ */
+const settled = (shape: Shape): Shape =>
+  shape.streaming ? { ...shape, streaming: false } : shape
+
+/**
+ * What a project's stored `sketchesData` holds, read with suspicion: the
+ * field is `v.any()` on the server, rows from before the viewport was saved
+ * have none, and a version row holds whatever was written at the time.
+ */
+export const readSketches = (data: unknown): { shapes: Shape[]; viewport: Viewport | null } => {
+  const stored = (data ?? {}) as { shapes?: unknown; viewport?: Partial<Viewport> }
+  const shapes = Array.isArray(stored.shapes) ? (stored.shapes as Shape[]) : []
+  const viewport =
+    stored.viewport &&
+    typeof stored.viewport.scale === 'number' &&
+    typeof stored.viewport.translate?.x === 'number' &&
+    typeof stored.viewport.translate?.y === 'number'
+      ? (stored.viewport as Viewport)
+      : null
+  return { shapes, viewport }
 }
 
 export const shapesSlice = createSlice({
@@ -201,8 +243,31 @@ export const shapesSlice = createSlice({
       shapesAdapter.updateOne(state.entities, action.payload)
     },
 
+    /**
+     * The table as a project stores it: hydration, and nothing else.
+     *
+     * History starts empty here. The store lives in the /try layout and
+     * outlives the canvas, so it kept the undo stack of whatever came before:
+     * back from the editor, Cmd+Z put the pre-edit design on the canvas, and
+     * on a switch between sketches it put the *other sketch* there.
+     */
     setShapes: (state, action: PayloadAction<Shape[]>) => {
-      shapesAdapter.setAll(state.entities, action.payload)
+      shapesAdapter.setAll(state.entities, action.payload.map(settled))
+      state.past = []
+      state.future = []
+      state.selectedIds = []
+      state.editingId = null
+    },
+    /**
+     * A saved version, put back as one undoable step. The panel used to reload
+     * the page for this, which threw away the viewport and the undo stack with
+     * it, so a restore that turned out to be the wrong one could not be undone.
+     */
+    restoreShapes: (state, action: PayloadAction<Shape[]>) => {
+      commit(state)
+      shapesAdapter.setAll(state.entities, action.payload.map(settled))
+      state.selectedIds = []
+      state.editingId = null
     },
     selectShape: (state, action: PayloadAction<string | null>) => {
       state.selectedIds = action.payload === null ? [] : [action.payload]
@@ -291,8 +356,23 @@ export const shapesSlice = createSlice({
       state.viewport.scale = next
     },
 
+    /**
+     * Both directions wait for a stream to finish. Cmd+Z while a design was
+     * still arriving deleted it: `addGeneratedUI` snapshots the canvas from
+     * before the panel existed, so undo removed the panel and every chunk
+     * after that updated an id that was no longer there. The stream cannot be
+     * rewound, so history stands still until it is over.
+     *
+     * A snapshot identical to the present is stepped over rather than
+     * restored: a grab snapshots before it knows whether the pointer will
+     * move, and restoring the copy a click left would be an undo that did
+     * nothing.
+     */
     undo: (state) => {
-      const previous = state.past.pop()
+      if (isStreaming(state)) return
+      const present = serialise(state.entities)
+      let previous = state.past.pop()
+      while (previous && serialise(previous) === present) previous = state.past.pop()
       if (!previous) return
       state.future.push(clone(state.entities))
       // Cloned rather than assigned directly: `previous` is a draft belonging
@@ -303,7 +383,10 @@ export const shapesSlice = createSlice({
     },
 
     redo: (state) => {
-      const next = state.future.pop()
+      if (isStreaming(state)) return
+      const present = serialise(state.entities)
+      let next = state.future.pop()
+      while (next && serialise(next) === present) next = state.future.pop()
       if (!next) return
       state.past.push(clone(state.entities))
       state.entities = clone(next)
@@ -546,6 +629,7 @@ export const {
   updateShape,
   removeShape,
   setShapes,
+  restoreShapes,
   selectShape,
   setTool,
   zoomWheel,
